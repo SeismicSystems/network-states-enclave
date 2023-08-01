@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "crypto-ts": "^1.0.2",
+    "random-bigint": "^0.0.1"
+  }
+}
