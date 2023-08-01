@@ -1,4 +1,5 @@
-const randbigint = require("random-bigint");
+
+import Utils from "./utils";
 
 class Player {
   symbol: string;
@@ -15,7 +16,7 @@ class Player {
 class Tile {
   owner: Player;
   resources: number;
-  key: BigInt;
+  key: typeof Utils.FQ;
 
   constructor(o_: Player, r_: number, k_: BigInt) {
     this.owner = o_;
@@ -24,7 +25,7 @@ class Tile {
   }
 
   toString(): string {
-    const truncKey = this.key.toString()[0];
+    const truncKey = this.key.n.toString(16)[0];
     return `(${this.owner.toString()}, ${this.resources}, ${truncKey})`;
   }
 }
@@ -37,11 +38,17 @@ class Grid {
     for (let i = 0; i < sz; i++) {
       let row: Tile[] = new Array<Tile>();
       for (let j = 0; j < sz; j++) {
-        row.push(new Tile(unowned, 0, randbigint(256)));
+        row.push(new Tile(unowned, 0, Utils.randFQ()));
       }
       this.t.push(row);
     }
   }
+
+  // spawn(self, loc: [number, number], pl: Player) {
+  //   if(loc[0] >= self.t.length || loc[0] < 0 || loc[1] >= self.t[0].length || loc[1] < 0) {
+  //     throw new E
+  //   }
+  // }
 
   toString(): string {
     return this.t
