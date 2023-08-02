@@ -6,6 +6,7 @@ interface ServerToClientEvents {
   decryptResponse: (
     t: Tile
   ) => void;
+  update: () => void;
 }
 
 interface ClientToServerEvents {

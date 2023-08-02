@@ -10,6 +10,7 @@ import readline from "readline";
 const PORT: number = 3000;
 const GRID_SIZE: number = 5;
 const UPDATE_MLS: number = 1000;
+const MOVE_PROMPT: string = "Next move: ";
 
 const PLAYER_SYMBOL: string = process.argv[2];
 const PLAYER_START: Location = {
@@ -80,12 +81,9 @@ function move(inp: string) {
 }
 
 async function gameLoop() {
-  rl.question("Next move: ", async (ans) => {
+  rl.question(MOVE_PROMPT, async (ans) => {
     move(ans);
-    await sleep(UPDATE_MLS);
-    updatePlayerView();
-    await sleep(UPDATE_MLS);
-    g.printView();
+    await sleep(UPDATE_MLS * 2);
     gameLoop();
   });
 }
@@ -101,3 +99,11 @@ socket.on("connect", async () => {
 socket.on("decryptResponse", (t: Tile) => {
   g.setTile(t);
 });
+
+socket.on("update", async () => {
+  process.stdout.write("\n");
+  updatePlayerView();
+  await sleep(UPDATE_MLS);
+  g.printView();
+  process.stdout.write(MOVE_PROMPT);
+})

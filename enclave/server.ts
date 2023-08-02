@@ -40,6 +40,7 @@ io.on("connection", (socket: Socket) => {
   socket.on("move", (tFrom: Tile, tTo: Tile, uFrom: Tile, uTo: Tile) => {
     g.setTile(uFrom);
     g.setTile(uTo);
+    io.sockets.emit("update");
   });
 
   socket.on("decrypt", (l: Location, symbol: string) => {
@@ -50,7 +51,6 @@ io.on("connection", (socket: Socket) => {
       );
       return;
     }
-
     socket.emit("decryptResponse", g.getTile(l));
   });
 });
