@@ -5,7 +5,6 @@ import { Location } from "./types";
 
 export default class Grid {
   t: Tile[][];
-  unowned: Player;
   around = [
     [0, 0],
     [-1, 1],
@@ -17,23 +16,30 @@ export default class Grid {
     [1, 0],
     [1, -1],
   ];
+  unowned: Player = new Player("_");
+  mystery: Player = new Player("?");
 
-  constructor(sz: number, unowned: Player) {
+  constructor(sz: number, isInit: boolean) {
     this.t = new Array<Array<Tile>>();
     for (let i = 0; i < sz; i++) {
       let row: Tile[] = new Array<Tile>();
       for (let j = 0; j < sz; j++) {
-        row.push(new Tile(unowned, 0, Utils.randFQ()));
+        if (isInit) {
+          row.push(
+            new Tile(this.unowned, { r: i, c: j }, 0, Utils.randFQStr())
+          );
+        } else {
+          row.push(
+            new Tile(this.mystery, { r: i, c: j }, 0, Utils.randFQStr())
+          );
+        }
       }
       this.t.push(row);
     }
-    this.unowned = unowned;
   }
 
   inBounds(r: number, c: number): boolean {
-    return (
-      r < this.t.length && r >= 0 && c < this.t[0].length && c >= 0
-    );
+    return r < this.t.length && r >= 0 && c < this.t[0].length && c >= 0;
   }
 
   assertBounds(l: Location) {
@@ -50,18 +56,29 @@ export default class Grid {
     if (this.t[r][c].owner != this.unowned) {
       throw new Error("Tried to spawn player on an owned tile.");
     }
-    this.t[r][c] = new Tile(pl, resource, Utils.randFQ());
+    this.t[r][c] = new Tile(pl, { r: r, c: c }, resource, Utils.randFQStr());
   }
 
-  toString(): string {
-    return this.t
-      .map((row) => row.map((tile) => tile.toString()).join(" "))
-      .join("\n");
+  printView(): void {
+    for (let i = 0; i < this.t.length; i++) {
+      for (let j = 0; j < this.t[0].length; j++) {
+        let tl: Tile = this.getTile({ r: i, c: j });
+        process.stdout.write(
+          `(${tl.owner.symbol}, ${tl.resources}, ${tl.key.slice(0, 3)})`
+        );
+      }
+      process.stdout.write("\n");
+    }
+    process.stdout.write("---\n");
   }
 
   getTile(l: Location): Tile {
     this.assertBounds(l);
     return this.t[l.r][l.c];
+  }
+
+  setTile(tl: Tile) {
+    this.t[tl.loc.r][tl.loc.c] = tl;
   }
 
   inFog(l: Location, symbol: string): boolean {
@@ -76,5 +93,10 @@ export default class Grid {
       }
     });
     return !foundNeighbor;
+  }
+
+  move(from: Location, to: Location, resource: number) {
+    this.t[from.r][from.c].resources -= resource;
+    this.t[to.r][to.c].resources += resource;
   }
 }

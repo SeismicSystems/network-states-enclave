@@ -1,5 +1,7 @@
 import Player from "./Player";
+import Tile from "./Tile";
 import Grid from "./Grid";
+import Utils from "./utils";
 import { Location } from "./types";
 
 import express from "express";
@@ -17,7 +19,6 @@ const PORT: number = 3000;
 const GRID_SIZE: number = 5;
 const START_RESOURCES: number = 9;
 
-const UNOWNED: Player = new Player("_");
 const PLAYER_A: Player = new Player("A");
 const PLAYER_B: Player = new Player("B");
 const PLAYER_C: Player = new Player("C");
@@ -31,28 +32,26 @@ const io = new Server<
   SocketData
 >(server);
 
-const g = new Grid(GRID_SIZE, UNOWNED);
+const g = new Grid(GRID_SIZE, true);
 
 io.on("connection", (socket: Socket) => {
   console.log("Client connected: ", socket.id);
 
-  socket.on("move", () => {
-    console.log("LOGGED A MOVE");
+  socket.on("move", (from: Location, to: Location) => {
+    g.assertBounds(from);
+    g.assertBounds(to);
+    g.move(from, to, g.getTile(from).resources - 1);
   });
 
   socket.on("decrypt", (l: Location, symbol: string) => {
     if (g.inFog(l, symbol)) {
-      socket.emit("decryptResponse", l, "?", 0, "00");
+      socket.emit("decryptResponse", new Tile(g.mystery, l, 0, Utils.zeroFQStr()));
       return;
     }
 
-    let t = g.getTile(l);
     socket.emit(
       "decryptResponse",
-      l,
-      t.owner.symbol,
-      t.resources,
-      t.key.n.toString(16)
+      g.getTile(l)
     );
   });
 });
