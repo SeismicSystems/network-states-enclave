@@ -6,7 +6,7 @@ interface ServerToClientEvents {
     c: number,
     symbol: string,
     resource: number,
-    key: typeof Utils.FQ
+    key: string
   ) => void;
 }
 

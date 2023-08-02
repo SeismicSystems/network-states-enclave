@@ -40,9 +40,13 @@ io.on("connection", (socket: Socket) => {
   });
 
   socket.on("decrypt", (r: number, c: number, symbol: string) => {
-    console.log("got decrypt", r, c, symbol);
+    if (g.inFog(r, c, symbol)) {
+      socket.emit("decryptResponse", r, c, "?", 0, "00");
+      return;
+    } 
+
     let t = g.getTile(r, c);
-    socket.emit("decryptResponse", r, c, t.owner.symbol, t.resources, t.key);
+    socket.emit("decryptResponse", r, c, t.owner.symbol, t.resources, t.key.n.toString(16));
   });
 });
 
