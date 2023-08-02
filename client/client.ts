@@ -21,26 +21,39 @@ function sleep(milliseconds: number) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-function updatePlayerView() {
+async function updatePlayerView() {
   for (let i = 0; i < GRID_SIZE; i++) {
     for (let j = 0; j < GRID_SIZE; j++) {
       socket.emit("decrypt", { r: i, c: j }, "A");
     }
   }
-  sleep(1000).then(() => {
-    g.printView();
-  });
 }
 
-socket.on("connect", () => {
+function move() {
+  let tFrom: Tile = g.getTile({ r: 0, c: 0 });
+  let tTo: Tile = g.getTile({ r: 0, c: 1 });
+  let uFrom: Tile = new Tile(tFrom.owner, tFrom.loc, 1, Utils.randFQStr());
+  let uTo: Tile = new Tile(
+    tFrom.owner,
+    tTo.loc,
+    tTo.resources + tFrom.resources - 1,
+    Utils.randFQStr()
+  );
+  socket.emit("move", tFrom, tTo, uFrom, uTo);
+}
+
+socket.on("connect", async () => {
   console.log("Server connection established");
+
   updatePlayerView();
-  //   tFrom: Tile, tTo: Tile, uFrom: Tile, uTo: Tile
-  //   let tFrom: Tile = { owner: { symbol: "A" }, loc: {r: 0, c: 0}, resources: 9,  };
-  //   socket.emit("move", );loc: {}
-//   sleep(2000).then(() => {
-//     updatePlayerView();
-//   });
+  await sleep(1000);
+  g.printView();
+
+  move();
+  await sleep(1000);
+  updatePlayerView();
+  await sleep(1000);
+  g.printView();
 });
 
 socket.on("decryptResponse", (t: Tile) => {
