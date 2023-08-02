@@ -1,9 +1,17 @@
+import Utils from "./utils";
+
 interface ServerToClientEvents {
-  hello: () => void;
+  decryptResponse: (
+    r: number,
+    c: number,
+    symbol: string,
+    resource: number,
+    key: typeof Utils.FQ
+  ) => void;
 }
 
 interface ClientToServerEvents {
-  move: () => void;
+  decrypt: (r: number, c: number, symbol: string) => void;
 }
 
 interface InterServerEvents {
@@ -15,8 +23,8 @@ interface SocketData {
 }
 
 export {
-    ServerToClientEvents,
-    ClientToServerEvents,
-    InterServerEvents,
-    SocketData
-}
+  ServerToClientEvents,
+  ClientToServerEvents,
+  InterServerEvents,
+  SocketData,
+};

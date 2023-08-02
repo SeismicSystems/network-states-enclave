@@ -1,36 +1,3 @@
-
-
-// const app = express();
-// const server = http.createServer(app);
-// const io = new socketio.Server<
-//   ClientToServerEvents,
-//   ServerToClientEvents,
-//   InterServerEvents,
-//   SocketData
-// >(server, {
-//   transports: ["websocket"],
-//   cors: {
-//     origin: "http://localhost:9274"
-//   }
-// });
-
-// app.get('/', (req, res) => {
-//   console.log("REQ: ", req);
-// });
-
-// io.on("connection", (socket) => {
-//   console.log("Client connected:", socket.id);
-
-//   socket.on("move", () => {
-//     console.log("LOGGED A MOVE");
-//   });
-// });
-
-// server.listen(9274, () => {
-//   console.log("Listening on localhost:9274");
-// });
-
-
 import Player from "./Player";
 import Grid from "./Grid";
 
@@ -63,25 +30,29 @@ const io = new Server<
   SocketData
 >(server);
 
+const g = new Grid(GRID_SIZE, UNOWNED);
+
 io.on("connection", (socket: Socket) => {
   console.log("Client connected: ", socket.id);
 
   socket.on("move", () => {
     console.log("LOGGED A MOVE");
   });
+
+  socket.on("decrypt", (r: number, c: number, symbol: string) => {
+    console.log("got decrypt", r, c, symbol);
+    let t = g.getTile(r, c);
+    socket.emit("decryptResponse", r, c, t.owner.symbol, t.resources, t.key);
+  });
 });
+
+function spawnPlayers() {
+  g.spawn(0, 0, PLAYER_A, START_RESOURCES);
+  g.spawn(0, GRID_SIZE - 1, PLAYER_B, START_RESOURCES);
+  g.spawn(GRID_SIZE - 1, 0, PLAYER_C, START_RESOURCES);
+}
 
 server.listen(PORT, () => {
+  spawnPlayers();
   console.log(`Server running on http://localhost:${PORT}`);
 });
-
-// // (async () => {
-// //   const g = new Grid(GRID_SIZE, UNOWNED);
-
-// //   g.spawn(0, 0, PLAYER_A, START_RESOURCES);
-// //   g.spawn(0, GRID_SIZE - 1, PLAYER_B, START_RESOURCES);
-// //   g.spawn(GRID_SIZE - 1, 0, PLAYER_C, START_RESOURCES);
-
-// //   console.log(g.toString());
-// //   process.exit(0);
-// // })();
