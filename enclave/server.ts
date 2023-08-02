@@ -37,22 +37,21 @@ const g = new Grid(GRID_SIZE, true);
 io.on("connection", (socket: Socket) => {
   console.log("Client connected: ", socket.id);
 
-  socket.on("move", (from: Location, to: Location) => {
-    g.assertBounds(from);
-    g.assertBounds(to);
-    g.move(from, to, g.getTile(from).resources - 1);
+  socket.on("move", (tFrom: Tile, tTo: Tile, uFrom: Tile, uTo: Tile) => {
+    g.setTile(uFrom);
+    g.setTile(uTo);
   });
 
   socket.on("decrypt", (l: Location, symbol: string) => {
     if (g.inFog(l, symbol)) {
-      socket.emit("decryptResponse", new Tile(g.mystery, l, 0, Utils.zeroFQStr()));
+      socket.emit(
+        "decryptResponse",
+        new Tile(g.mystery, l, 0, Utils.zeroFQStr())
+      );
       return;
     }
 
-    socket.emit(
-      "decryptResponse",
-      g.getTile(l)
-    );
+    socket.emit("decryptResponse", g.getTile(l));
   });
 });
 
