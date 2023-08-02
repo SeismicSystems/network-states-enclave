@@ -4,7 +4,9 @@
   "main": "client.ts",
   "license": "BSD-2-Clause",
   "scripts": {
-    "dev": "ts-node-dev --respawn client.ts"
+    "devA": "ts-node-dev --respawn client.ts A 0 0",
+    "devB": "ts-node-dev --respawn client.ts B 0 4",
+    "devC": "ts-node-dev --respawn client.ts A 4 0"
   },
   "dependencies": {
     "socket.io-client": "^4.7.1"

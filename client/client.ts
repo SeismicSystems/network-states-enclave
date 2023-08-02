@@ -11,8 +11,11 @@ const PORT: number = 3000;
 const GRID_SIZE: number = 5;
 const UPDATE_MLS: number = 1000;
 
-const PLAYER_SYMBOL: string = "A";
-const PLAYER_START: Location = { r: 0, c: 0 };
+const PLAYER_SYMBOL: string = process.argv[2];
+const PLAYER_START: Location = {
+  r: Number(process.argv[3]),
+  c: Number(process.argv[4]),
+};
 const MOVE_KEYS: Record<string, number[]> = {
   w: [-1, 0],
   a: [0, -1],
