@@ -1,6 +1,7 @@
 import Utils from "./utils";
 import Player from "./Player";
 import Tile from "./Tile";
+import { Location } from "./types";
 
 export default class Grid {
   t: Tile[][];
@@ -30,18 +31,22 @@ export default class Grid {
   }
 
   inBounds(r: number, c: number): boolean {
-    return r < this.t.length && r >= 0 && c < this.t[0].length && c >= 0;
+    return (
+      r < this.t.length && r >= 0 && c < this.t[0].length && c >= 0
+    );
   }
 
-  assertBounds(r: number, c: number) {
-    if (!this.inBounds(r, c)) {
+  assertBounds(l: Location) {
+    if (!this.inBounds(l.r, l.c)) {
       throw new Error("Tried to edit tile out of bounds.");
     }
   }
 
-  spawn(r: number, c: number, pl: Player, resource: number) {
-    this.assertBounds(r, c);
+  spawn(l: Location, pl: Player, resource: number) {
+    this.assertBounds(l);
 
+    let r = l.r,
+      c = l.c;
     if (this.t[r][c].owner != this.unowned) {
       throw new Error("Tried to spawn player on an owned tile.");
     }
@@ -54,19 +59,22 @@ export default class Grid {
       .join("\n");
   }
 
-  getTile(r: number, c: number): Tile {
-    this.assertBounds(r, c);
-    return this.t[r][c];
+  getTile(l: Location): Tile {
+    this.assertBounds(l);
+    return this.t[l.r][l.c];
   }
 
-  inFog(r: number, c: number, symbol: string): boolean {
+  inFog(l: Location, symbol: string): boolean {
+    let r = l.r,
+      c = l.c;
     let foundNeighbor = false;
     this.around.forEach(([dy, dx]) => {
-      let nr = r + dy, nc = c + dx;
+      let nr = r + dy,
+        nc = c + dx;
       if (this.inBounds(nr, nc) && this.t[nr][nc].owner.symbol === symbol) {
         foundNeighbor = true;
       }
-    }) 
+    });
     return !foundNeighbor;
   }
 }

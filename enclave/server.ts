@@ -1,5 +1,6 @@
 import Player from "./Player";
 import Grid from "./Grid";
+import { Location } from "./types";
 
 import express from "express";
 import http from "http";
@@ -39,21 +40,27 @@ io.on("connection", (socket: Socket) => {
     console.log("LOGGED A MOVE");
   });
 
-  socket.on("decrypt", (r: number, c: number, symbol: string) => {
-    if (g.inFog(r, c, symbol)) {
-      socket.emit("decryptResponse", r, c, "?", 0, "00");
+  socket.on("decrypt", (l: Location, symbol: string) => {
+    if (g.inFog(l, symbol)) {
+      socket.emit("decryptResponse", l, "?", 0, "00");
       return;
-    } 
+    }
 
-    let t = g.getTile(r, c);
-    socket.emit("decryptResponse", r, c, t.owner.symbol, t.resources, t.key.n.toString(16));
+    let t = g.getTile(l);
+    socket.emit(
+      "decryptResponse",
+      l,
+      t.owner.symbol,
+      t.resources,
+      t.key.n.toString(16)
+    );
   });
 });
 
 function spawnPlayers() {
-  g.spawn(0, 0, PLAYER_A, START_RESOURCES);
-  g.spawn(0, GRID_SIZE - 1, PLAYER_B, START_RESOURCES);
-  g.spawn(GRID_SIZE - 1, 0, PLAYER_C, START_RESOURCES);
+  g.spawn({ r: 0, c: 0 }, PLAYER_A, START_RESOURCES);
+  g.spawn({ r: 0, c: GRID_SIZE - 1 }, PLAYER_B, START_RESOURCES);
+  g.spawn({ r: GRID_SIZE - 1, c: 0 }, PLAYER_C, START_RESOURCES);
 }
 
 server.listen(PORT, () => {

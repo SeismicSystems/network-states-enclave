@@ -1,6 +1,7 @@
 import { io, Socket } from "socket.io-client";
 import { ServerToClientEvents, ClientToServerEvents } from "../enclave/socket";
 import Utils from "../enclave/utils";
+import { Location } from "../enclave/types";
 
 const PORT: number = 3000;
 const GRID_SIZE: number = 5;
@@ -27,7 +28,7 @@ function printPlayerView() {
 function updatePlayerView() {
   for (let i = 0; i < GRID_SIZE; i++) {
     for (let j = 0; j < GRID_SIZE; j++) {
-      socket.emit("decrypt", i, j, "A");
+      socket.emit("decrypt", { r: i, c: j }, "A");
     }
   }
   sleep(1000).then(() => {
@@ -40,19 +41,12 @@ socket.on("connect", () => {
   viewGrid = new Array(GRID_SIZE)
     .fill(false)
     .map(() => new Array(GRID_SIZE).fill("(?, 0, 0x00)"));
-
   updatePlayerView();
 });
 
 socket.on(
   "decryptResponse",
-  (
-    r: number,
-    c: number,
-    symbol: string,
-    resource: number,
-    key: string
-  ) => {
-    viewGrid[r][c] = `(${symbol}, ${resource}, 0x${key.slice(0, 2)})`
+  (l: Location, symbol: string, resource: number, key: string) => {
+    viewGrid[l.r][l.c] = `(${symbol}, ${resource}, 0x${key.slice(0, 2)})`;
   }
 );

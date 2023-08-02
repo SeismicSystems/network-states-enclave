@@ -1,9 +1,9 @@
 import Utils from "./utils";
+import { Location } from "./types";
 
 interface ServerToClientEvents {
   decryptResponse: (
-    r: number,
-    c: number,
+    l: Location,
     symbol: string,
     resource: number,
     key: string
@@ -11,7 +11,8 @@ interface ServerToClientEvents {
 }
 
 interface ClientToServerEvents {
-  decrypt: (r: number, c: number, symbol: string) => void;
+  decrypt: (l: Location, symbol: string) => void;
+  // move: (: number, c1: number, r2: number, c2: number, )
 }
 
 interface InterServerEvents {
