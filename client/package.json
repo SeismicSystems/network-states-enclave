@@ -6,10 +6,12 @@
   "scripts": {
     "devA": "ts-node-dev --respawn client.ts A 0 0",
     "devB": "ts-node-dev --respawn client.ts B 0 4",
-    "devC": "ts-node-dev --respawn client.ts A 4 0"
+    "devC": "ts-node-dev --respawn client.ts C 4 0"
   },
   "dependencies": {
-    "socket.io-client": "^4.7.1"
+    "circomlibjs": "^0.1.7",
+    "socket.io-client": "^4.7.1",
+    "text-encoding-utf-8": "^1.0.2"
   },
   "devDependencies": {
     "ts-node-dev": "^2.0.0"

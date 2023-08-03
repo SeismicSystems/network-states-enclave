@@ -5,6 +5,8 @@ import { Location } from "./types";
 
 export default class Grid {
   t: Tile[][];
+  poseidon: any;
+  utf8Encoder: any;
   around = [
     [0, 0],
     [-1, 1],
@@ -19,19 +21,30 @@ export default class Grid {
   unowned: Player = new Player("_");
   mystery: Player = new Player("?");
 
-  constructor(sz: number, isInit: boolean) {
+  constructor(poseidon_: any, utf8Encoder_: any) {
+    this.poseidon = poseidon_;
+    this.utf8Encoder = utf8Encoder_;
     this.t = new Array<Array<Tile>>();
+  }
+
+  async seed(sz: number, isInit: boolean, nStates: any) {
     for (let i = 0; i < sz; i++) {
       let row: Tile[] = new Array<Tile>();
       for (let j = 0; j < sz; j++) {
         if (isInit) {
-          row.push(
-            new Tile(this.unowned, { r: i, c: j }, 0, Utils.randFQStr())
+          let tl: Tile = new Tile(
+            this.unowned,
+            { r: i, c: j },
+            0,
+            Utils.randFQ()
           );
+          await nStates.set(
+            Utils.FQToStr(tl.hash(this.utf8Encoder, this.poseidon))
+          );
+          await Utils.sleep(200);
+          row.push(tl);
         } else {
-          row.push(
-            new Tile(this.mystery, { r: i, c: j }, 0, Utils.randFQStr())
-          );
+          row.push(new Tile(this.mystery, { r: i, c: j }, 0, Utils.zeroFQ()));
         }
       }
       this.t.push(row);
@@ -56,7 +69,7 @@ export default class Grid {
     if (this.t[r][c].owner != this.unowned) {
       throw new Error("Tried to spawn player on an owned tile.");
     }
-    this.t[r][c] = new Tile(pl, { r: r, c: c }, resource, Utils.randFQStr());
+    this.t[r][c] = new Tile(pl, { r: r, c: c }, resource, Utils.randFQ());
   }
 
   printView(): void {
@@ -64,7 +77,10 @@ export default class Grid {
       for (let j = 0; j < this.t[0].length; j++) {
         let tl: Tile = this.getTile({ r: i, c: j });
         process.stdout.write(
-          `(${tl.owner.symbol}, ${tl.resources}, ${tl.key.slice(0, 3)})`
+          `(${tl.owner.symbol}, ${tl.resources}, ${Utils.FQToStr(tl.key).slice(
+            0,
+            3
+          )})`
         );
       }
       process.stdout.write("\n");

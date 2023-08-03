@@ -1,17 +1,15 @@
-import Utils from "./utils";
-import Tile from "./Tile";
 import { Location } from "./types";
 
 interface ServerToClientEvents {
   decryptResponse: (
-    t: Tile
+    t: any
   ) => void;
   update: () => void;
 }
 
 interface ClientToServerEvents {
   decrypt: (l: Location, symbol: string) => void;
-  move: (tFrom: Tile, tTo: Tile, uFrom: Tile, uTo: Tile) => void;
+  move: (tFrom: any, tTo: any, uFrom: any, uTo: any) => void;
 }
 
 interface InterServerEvents {

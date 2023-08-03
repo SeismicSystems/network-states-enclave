@@ -14,6 +14,14 @@ import {
   SocketData,
 } from "./socket";
 
+import { ethers } from "ethers";
+
+// @ts-ignore
+import { buildPoseidon } from "circomlibjs";
+// @ts-ignore
+import { TextEncoder } from "text-encoding-utf-8";
+
+const CONTRACT_ADDR: string = "0xFD471836031dc5108809D173A067e8486B9047A3";
 const PORT: number = 3000;
 
 const GRID_SIZE: number = 5;
@@ -32,26 +40,36 @@ const io = new Server<
   SocketData
 >(server);
 
-const g = new Grid(GRID_SIZE, true);
+// Anvil defaults
+const signer = new ethers.Wallet(
+  "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+  new ethers.providers.JsonRpcProvider("http://127.0.0.1:8545")
+);
+const nStates = new ethers.Contract(
+  CONTRACT_ADDR,
+  require("../contracts/out/NStates.sol/NStates.json").abi,
+  signer
+);
+
+let g: Grid;
+let poseidon, utf8Encoder;
 
 io.on("connection", (socket: Socket) => {
   console.log("Client connected: ", socket.id);
 
-  socket.on("move", (tFrom: Tile, tTo: Tile, uFrom: Tile, uTo: Tile) => {
-    g.setTile(uFrom);
-    g.setTile(uTo);
+  socket.on("move", (tFrom: any, tTo: any, uFrom: any, uTo: any) => {
+    g.setTile(Tile.fromJSON(uFrom));
+    g.setTile(Tile.fromJSON(uTo));
     io.sockets.emit("update");
   });
 
   socket.on("decrypt", (l: Location, symbol: string) => {
     if (g.inFog(l, symbol)) {
-      socket.emit(
-        "decryptResponse",
-        new Tile(g.mystery, l, 0, Utils.zeroFQStr())
-      );
+      let mysteryTile = new Tile(g.mystery, l, 0, Utils.zeroFQ());
+      socket.emit("decryptResponse", mysteryTile.toJSON());
       return;
     }
-    socket.emit("decryptResponse", g.getTile(l));
+    socket.emit("decryptResponse", g.getTile(l).toJSON());
   });
 });
 
@@ -61,7 +79,13 @@ function spawnPlayers() {
   g.spawn({ r: GRID_SIZE - 1, c: 0 }, PLAYER_C, START_RESOURCES);
 }
 
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
+  poseidon = await buildPoseidon();
+  utf8Encoder = new TextEncoder();
+
+  g = new Grid(poseidon, utf8Encoder);
+  await g.seed(GRID_SIZE, true, nStates)
   spawnPlayers();
+
   console.log(`Server running on http://localhost:${PORT}`);
 });
