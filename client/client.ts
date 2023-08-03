@@ -14,7 +14,7 @@ import { TextEncoder } from "text-encoding-utf-8";
 
 import { ethers } from "ethers";
 
-const CONTRACT_ADDR: string = "0xFD471836031dc5108809D173A067e8486B9047A3";
+const CONTRACT_ADDR: string = "0x666D0c3da3dBc946D5128D06115bb4eed4595580";
 const PORT: number = 3000;
 const GRID_SIZE: number = 5;
 const UPDATE_MLS: number = 1000;
