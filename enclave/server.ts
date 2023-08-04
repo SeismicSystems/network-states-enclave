@@ -21,7 +21,7 @@ import { buildPoseidon } from "circomlibjs";
 // @ts-ignore
 import { TextEncoder } from "text-encoding-utf-8";
 
-const CONTRACT_ADDR: string = "0x666D0c3da3dBc946D5128D06115bb4eed4595580";
+const CONTRACT_ADDR: string = "0x532802f2F9E0e3EE9d5Ba70C35E1F43C0498772D";
 const PORT: number = 3000;
 
 const GRID_SIZE: number = 5;
