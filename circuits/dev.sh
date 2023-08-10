@@ -8,6 +8,7 @@
 
 NAME=$1
 PTAU=$2
+UPPER_NAME="$(tr '[:lower:]' '[:upper:]' <<< ${NAME:0:1})${NAME:1}"
 
 # Compile circuit
 circom ${NAME}/${NAME}.circom --r1cs --wasm
@@ -31,7 +32,7 @@ node ${NAME}_js/generate_witness.js \
 yarn run snarkjs zkey export solidityverifier ${NAME}.zkey \
                                               ${NAME}Verifier.sol
 sed -i -e 's/0.6.11;/0.8.13;/g' ${NAME}Verifier.sol
-mv ${NAME^}Verifier.sol ../contracts/src
+mv ${UPPER_NAME}Verifier.sol ../contracts/src
 
 # Clean up
 mv ${NAME}.zkey ${NAME}/
