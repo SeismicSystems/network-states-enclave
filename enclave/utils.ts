@@ -17,11 +17,7 @@ export default class Utils {
   }
 
   static FQToStr(inp: typeof FQ): string {
-    return "0x" + inp.n.toString(16);
-  }
-
-  static numToHexStr(inp: number): string {
-    return "0x" + BigInt(inp).toString(16)
+    return inp.n.toString(10);
   }
 
   static sleep(milliseconds: number) {

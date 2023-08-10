@@ -15,29 +15,29 @@ export default class Tile {
     this.key = k_;
   }
 
-  hexify(utf8Encoder: any): string[] {
+  // [TODO] merge this with toJSON()
+  flatDec(utf8Encoder: any): string[] {
     let ownerEncoding: number = utf8Encoder
       .encode(this.owner.symbol)
       .reduce((acc: number, byte: number) => acc + byte.toString(10), "");
-    let ownerHex = "0x" + BigInt(ownerEncoding).toString(16);
     return [
-      ownerHex,
-      Utils.numToHexStr(this.loc.r),
-      Utils.numToHexStr(this.loc.c),
-      Utils.numToHexStr(this.resources),
+      BigInt(ownerEncoding).toString(10),
+      this.loc.r.toString(),
+      this.loc.c.toString(),
+      this.resources.toString(),
       Utils.FQToStr(this.key),
     ];
   }
 
   hash(utf8Encoder: any, poseidon: any): typeof Utils.FQ {
     return Utils.strToFQ(
-      "0x" + poseidon.F.toString(poseidon(this.hexify(utf8Encoder)), 16)
+      poseidon.F.toString(poseidon(this.flatDec(utf8Encoder)), 10)
     );
   }
 
   nullifier(poseidon: any): typeof Utils.FQ {
     return Utils.strToFQ(
-      "0x" + poseidon.F.toString(poseidon([Utils.FQToStr(this.key)]), 16)
+      poseidon.F.toString(poseidon([Utils.FQToStr(this.key)]), 10)
     );
   }
 

@@ -1,3 +1,5 @@
+#! /bin/bash
+
 : '
   Boilerplate circuit compilation & smoke testing. Do not use in prod. Assumes
   naming convention: {$NAME/, $NAME/$NAME.circom, and $NAME/${NAME}_smoke.json}.
@@ -29,7 +31,7 @@ node ${NAME}_js/generate_witness.js \
 yarn run snarkjs zkey export solidityverifier ${NAME}.zkey \
                                               ${NAME}Verifier.sol
 sed -i -e 's/0.6.11;/0.8.13;/g' ${NAME}Verifier.sol
-mv ${NAME}Verifier.sol ../contracts/src
+mv ${NAME^}Verifier.sol ../contracts/src
 
 # Clean up
 mv ${NAME}.zkey ${NAME}/
