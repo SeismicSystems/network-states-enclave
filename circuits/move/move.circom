@@ -4,46 +4,9 @@ include "../node_modules/circomlib/circuits/poseidon.circom";
 include "../node_modules/circomlib/circuits/comparators.circom";
 include "../utils/utils.circom";
 
-template BatchIsEqual(SIZE) {
-    signal input a[SIZE][2];
-
-    signal output out;
-
-    signal eqs[SIZE];
-    signal ands[SIZE];
-    for (var i = 0; i < SIZE; i++) {
-        eqs[i] <== IsEqual()([a[i][0], a[i][1]]);
-        if (i == 0) {
-            ands[i] <== eqs[i];
-        }
-        else {
-            ands[i] <== AND()(ands[i - 1], eqs[i]);
-        }
-    }
-    
-    out <== ands[SIZE - 1];
-}
-
-template BatchIsZero(SIZE) {
-    signal input a[SIZE];
-
-    signal output out;
-
-    signal zeros[SIZE];
-    signal ands[SIZE];
-    for (var i = 0; i < SIZE; i++) {
-        zeros[i] <== IsZero()(a[i]);
-        if (i == 0) {
-            ands[i] <== zeros[i];
-        }
-        else {
-            ands[i] <== AND()(ands[i - 1], zeros[i]);
-        }
-    }
-    
-    out <== ands[SIZE - 1];
-}
-
+/*
+ * Whether nullifiers for the previous tile states were computed correctly.
+ */
 template CheckNullifiers() {
     signal input keyFrom;
     signal input keyTo;
@@ -58,6 +21,10 @@ template CheckNullifiers() {
     out <== BatchIsEqual(2)([[rhoFrom, circuitRhoFrom], [rhoTo, circuitRhoTo]]);
 }
 
+/*
+ * Whether the hashes of the new tile states were computed correctly. It's this
+ * hiding commitment that's added to the on-chain merkle tree. 
+ */
 template CheckLeaves(N_TILE_ATTRS) {
     signal input uFrom[N_TILE_ATTRS];
     signal input uTo[N_TILE_ATTRS];
@@ -72,6 +39,11 @@ template CheckLeaves(N_TILE_ATTRS) {
     out <== BatchIsEqual(2)([[hUFrom, circuitHFrom], [hUTo, circuitHTo]]);
 }
 
+/*
+ * A valid step entails 1) new tile states must have the same coordinates as 
+ * the old states they are replacing and 2) the movement is one tile in one of
+ * the cardinal directions.  
+ */
 template CheckStep(VALID_MOVES, N_VALID_MOVES, N_TILE_ATTRS, ROW_IDX, COL_IDX) {
     signal input tFrom[N_TILE_ATTRS];
     signal input tTo[N_TILE_ATTRS];
@@ -91,7 +63,11 @@ template CheckStep(VALID_MOVES, N_VALID_MOVES, N_TILE_ATTRS, ROW_IDX, COL_IDX) {
     out <== AND()(positionsConsistent, stepValid);
 }
 
-template CheckResources(N_TILE_ATTRS, RSRC_IDX, SYMB_IDX, UNOWNED_SYMB, PRF_SYS_BITS) {
+/*
+ * Must preserve resource management logic- what happens when armies expand to
+ * unowned or enemy territories. 
+ */
+template CheckResources(N_TILE_ATTRS, RSRC_IDX, SYMB_IDX, UNOWNED, SYS_BITS) {
     signal input tFrom[N_TILE_ATTRS];
     signal input tTo[N_TILE_ATTRS];
     signal input uFrom[N_TILE_ATTRS];
@@ -103,17 +79,17 @@ template CheckResources(N_TILE_ATTRS, RSRC_IDX, SYMB_IDX, UNOWNED_SYMB, PRF_SYS_
     signal movedAllTroops <== IsZero()(uFrom[RSRC_IDX]);
 
     // Make sure resource management can't be broken via overflow
-    signal overflowFrom <== GreaterEqThan(PRF_SYS_BITS)([uFrom[RSRC_IDX], 
+    signal overflowFrom <== GreaterEqThan(SYS_BITS)([uFrom[RSRC_IDX], 
         tFrom[RSRC_IDX]]);
-    signal overflowTo <== GreaterEqThan(PRF_SYS_BITS)([uTo[RSRC_IDX], 
+    signal overflowTo <== GreaterEqThan(SYS_BITS)([uTo[RSRC_IDX], 
         tFrom[RSRC_IDX] + tTo[RSRC_IDX]]);
 
     // Properties we need to know regarding `to` tile relative to `from` tile
     signal ontoSelf <== IsEqual()([tFrom[SYMB_IDX], tTo[SYMB_IDX]]);
-    signal ontoUnowned <== IsEqual()([tTo[SYMB_IDX], UNOWNED_SYMB]);
+    signal ontoUnowned <== IsEqual()([tTo[SYMB_IDX], UNOWNED]);
     signal ontoSelfOrUnowned <== OR()(ontoSelf, ontoUnowned);
     signal ontoEnemy <== NOT()(ontoSelfOrUnowned);
-    signal ontoMoreOrEq <== GreaterEqThan(PRF_SYS_BITS)([tTo[RSRC_IDX], 
+    signal ontoMoreOrEq <== GreaterEqThan(SYS_BITS)([tTo[RSRC_IDX], 
         uFrom[RSRC_IDX] - tFrom[RSRC_IDX]]);
     signal ontoLess <== NOT()(ontoMoreOrEq);
 
@@ -145,12 +121,12 @@ template CheckResources(N_TILE_ATTRS, RSRC_IDX, SYMB_IDX, UNOWNED_SYMB, PRF_SYS_
 }
 
 /*
- * Prove valid state transitions for the `from` and `to` tiles. Also proves 
- * the inclusion of the old states in a merkle root. Assumes tiles are 
- * represented as [symbol, row, col, resource, key]. 
+ * Asserts 1) valid state transitions for the `from` and `to` tiles, 2) 
+ * inclusion of old states in a merkle root, and 3) proper permissions to 
+ * initiate the move. Assumes tiles are represented as 
+ * [symbol, row, col, resource, key]. 
  */
 template Move() {
-    log("-- BEGIN CIRCUIT LOGS");
     var N_VALID_MOVES = 4;
     var VALID_MOVES[N_VALID_MOVES][2] = [[0, 1], [0, -1], [1, 0], [-1, 0]];
 
@@ -161,8 +137,8 @@ template Move() {
     var RSRC_IDX = 3;
     var KEY_IDX = 4;
 
-    var UNOWNED_SYMB = 95;
-    var PRF_SYS_BITS = 252;
+    var UNOWNED = 95;
+    var SYS_BITS = 252;
 
     signal input hUFrom;
     signal input hUTo;
@@ -187,9 +163,7 @@ template Move() {
     stepCorrect === 1;
 
     signal resourcesCorrect <== CheckResources(N_TILE_ATTRS, RSRC_IDX, SYMB_IDX,
-        UNOWNED_SYMB, PRF_SYS_BITS)(tFrom, tTo, uFrom, uTo);
-
-    log("-- END CIRCUIT LOGS");
+        UNOWNED, SYS_BITS)(tFrom, tTo, uFrom, uTo);
 }
 
 component main { public [ hUFrom, hUTo, rhoFrom, rhoTo ] } = Move();
