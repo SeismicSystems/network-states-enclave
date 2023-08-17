@@ -1,7 +1,7 @@
 const { FQ } = require("./node_modules/babyjubjub/lib/Field.js");
-const { PublicKey, PrivateKey } = require("babyjubjub");
+const { PrivateKey } = require("babyjubjub");
 
-export default class Utils {
+export class Utils {
   static FQ: InstanceType<typeof FQ>;
 
   static randFQ(): string {

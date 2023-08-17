@@ -1,8 +1,12 @@
-import Player from "./Player";
-import Utils from "./utils";
-import { Location } from "./types";
+import { Player } from "./Player";
+import { Utils } from "./Utils";
 
-export default class Tile {
+export type Location = {
+  r: number;
+  c: number;
+};
+
+export class Tile {
   owner: Player;
   loc: Location;
   resources: number;

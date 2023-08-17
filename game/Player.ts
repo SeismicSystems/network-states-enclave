@@ -1,4 +1,4 @@
-export default class Player {
+export class Player {
   symbol: string;
 
   constructor(s_: string) {

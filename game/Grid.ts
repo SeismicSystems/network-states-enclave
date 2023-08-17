@@ -1,9 +1,13 @@
-import Utils from "./utils";
-import Player from "./Player";
-import Tile from "./Tile";
-import { Location } from "./types";
+// @ts-ignore
+import { buildPoseidon } from "circomlibjs";
+// @ts-ignore
+import { TextEncoder } from "text-encoding-utf-8";
 
-export default class Grid {
+import { Utils } from "./Utils";
+import { Player } from "./Player";
+import { Tile, Location } from "./Tile";
+
+export class Grid {
   t: Tile[][];
   poseidon: any;
   utf8Encoder: any;
@@ -21,10 +25,13 @@ export default class Grid {
   unowned: Player = new Player("_");
   mystery: Player = new Player("?");
 
-  constructor(poseidon_: any, utf8Encoder_: any) {
-    this.poseidon = poseidon_;
-    this.utf8Encoder = utf8Encoder_;
+  constructor() {
+    this.utf8Encoder = new TextEncoder();
     this.t = new Array<Array<Tile>>();
+  }
+
+  async setup() {
+    this.poseidon = await buildPoseidon();
   }
 
   async seed(sz: number, isInit: boolean, nStates: any) {

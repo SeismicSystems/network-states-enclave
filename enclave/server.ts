@@ -1,25 +1,15 @@
-import Player from "./Player";
-import Tile from "./Tile";
-import Grid from "./Grid";
-import Utils from "./utils";
-import { Location } from "./types";
-
 import express from "express";
 import http from "http";
 import { Server, Socket } from "socket.io";
+import { ethers } from "ethers";
+
 import {
   ServerToClientEvents,
   ClientToServerEvents,
   InterServerEvents,
   SocketData,
 } from "./socket";
-
-import { ethers } from "ethers";
-
-// @ts-ignore
-import { buildPoseidon } from "circomlibjs";
-// @ts-ignore
-import { TextEncoder } from "text-encoding-utf-8";
+import { Tile, Player, Grid, Location, Utils } from "../game";
 
 const CONTRACT_ADDR: string = "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0";
 const PORT: number = 3000;
@@ -80,11 +70,9 @@ function spawnPlayers() {
 }
 
 server.listen(PORT, async () => {
-  poseidon = await buildPoseidon();
-  utf8Encoder = new TextEncoder();
-
-  g = new Grid(poseidon, utf8Encoder);
-  await g.seed(GRID_SIZE, true, nStates)
+  g = new Grid();
+  await g.setup();
+  await g.seed(GRID_SIZE, true, nStates);
   spawnPlayers();
 
   console.log(`Server running on http://localhost:${PORT}`);

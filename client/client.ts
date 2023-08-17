@@ -1,18 +1,13 @@
-import { io, Socket } from "socket.io-client";
-import { ServerToClientEvents, ClientToServerEvents } from "../enclave/socket";
-import Utils from "../enclave/utils";
-import Tile from "../enclave/Tile";
-import Player from "../enclave/Player";
-import Grid from "../enclave/Grid";
-import { Location } from "../enclave/types";
+import { ethers } from "ethers";
 import readline from "readline";
-
+import { io, Socket } from "socket.io-client";
 // @ts-ignore
 import { buildPoseidon } from "circomlibjs";
 // @ts-ignore
 import { TextEncoder } from "text-encoding-utf-8";
 
-import { ethers } from "ethers";
+import { ServerToClientEvents, ClientToServerEvents } from "../enclave/socket";
+import { Tile, Grid, Location, Utils } from "../game";
 
 const CONTRACT_ADDR: string = "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0";
 const PORT: number = 3000;
@@ -51,27 +46,6 @@ var rl = readline.createInterface({
 });
 let cursor = PLAYER_START;
 let poseidon: any, utf8Encoder: any;
-
-// (async () => {
-//   let t_from = new Tile(new Player("A"), { r: 0, c: 0 }, 10, Utils.randFQ());
-//   let t_to = new Tile(new Player("_"), { r: 0, c: 1 }, 0, Utils.randFQ());
-//   let u_from = new Tile(new Player("A"), { r: 0, c: 0 }, 1, Utils.randFQ());
-//   let u_to = new Tile(new Player("A"), { r: 0, c: 1 }, 9, Utils.randFQ());
-
-//   poseidon = await buildPoseidon();
-//   utf8Encoder = new TextEncoder();
-//   console.log("t_from:", t_from.flatDec(utf8Encoder));
-//   console.log("t_to:", t_to.flatDec(utf8Encoder));
-//   console.log("u_from:", u_from.flatDec(utf8Encoder));
-//   console.log("u_to:", u_to.flatDec(utf8Encoder));
-//   console.log(
-//     "u_from hash:",
-//     Utils.FQToStr(u_from.hash(utf8Encoder, poseidon))
-//   );
-//   console.log("u_to hash:", Utils.FQToStr(u_to.hash(utf8Encoder, poseidon)));
-//   console.log("t_from nullifier:", Utils.FQToStr(t_from.nullifier(poseidon)));
-//   console.log("t_to nullifier:", Utils.FQToStr(t_to.nullifier(poseidon)));
-// })();
 
 const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
   `http://localhost:${PORT}`

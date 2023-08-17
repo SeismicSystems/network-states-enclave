@@ -1,0 +1,11 @@
+{
+  "name": "game",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "license": "MIT",
+  "dependencies": {
+    "babyjubjub": "^1.0.4",
+    "circomlibjs": "^0.1.7",
+    "text-encoding-utf-8": "^1.0.2"
+  }
+}
