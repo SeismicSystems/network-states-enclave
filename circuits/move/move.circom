@@ -4,6 +4,73 @@ include "../node_modules/circomlib/circuits/poseidon.circom";
 include "../node_modules/circomlib/circuits/comparators.circom";
 include "../utils/utils.circom";
 
+template BatchIsEqual(SIZE) {
+    signal input a[SIZE][2];
+
+    signal output out;
+
+    signal eqs[SIZE];
+    signal ands[SIZE];
+    for (var i = 0; i < SIZE; i++) {
+        eqs[i] <== IsEqual()([a[i][0], a[i][1]]);
+        if (i == 0) {
+            ands[i] <== eqs[i];
+        }
+        else {
+            ands[i] <== AND()(ands[i-1], eqs[i]);
+        }
+    }
+    
+    out <== ands[SIZE - 1];
+}
+
+template CheckNullifierCompute() {
+    signal input keyFrom;
+    signal input keyTo;
+    signal input rhoFrom;
+    signal input rhoTo;
+
+    signal output out;
+
+    signal circuitRhoFrom <== Poseidon(1)([keyFrom]);
+    signal circuitRhoTo <== Poseidon(1)([keyTo]);
+
+    out <== BatchIsEqual(2)([[rhoFrom, circuitRhoFrom], [rhoTo, circuitRhoTo]]);
+}
+
+template CheckLeafCompute(N_TILE_ATTRS) {
+    signal input uFrom[N_TILE_ATTRS];
+    signal input uTo[N_TILE_ATTRS];
+    signal input hUFrom;
+    signal input hUTo;
+
+    signal output out;
+
+    signal circuitHFrom <== Poseidon(N_TILE_ATTRS)(uFrom);
+    signal circuitHTo <== Poseidon(N_TILE_ATTRS)(uTo);
+
+    out <== BatchIsEqual(2)([[hUFrom, circuitHFrom], [hUTo, circuitHTo]]);
+}
+
+template CheckStep(VALID_MOVES, N_VALID_MOVES, N_TILE_ATTRS, ROW_IDX, COL_IDX) {
+    signal input tFrom[N_TILE_ATTRS];
+    signal input tTo[N_TILE_ATTRS];
+    signal input uFrom[N_TILE_ATTRS];
+    signal input uTo[N_TILE_ATTRS];
+
+    signal output out;
+
+    signal positionsConsistent <== BatchIsEqual(4)([[tFrom[ROW_IDX], 
+        uFrom[ROW_IDX]], [tFrom[COL_IDX], uFrom[COL_IDX]], [tTo[ROW_IDX], 
+        uTo[ROW_IDX]], [tTo[COL_IDX], uTo[COL_IDX]]]);
+
+    signal step[2] <== [tTo[ROW_IDX] - tFrom[ROW_IDX], 
+        tTo[COL_IDX] - tFrom[COL_IDX]];
+    signal stepValid <== PairArrayContains(N_VALID_MOVES)(VALID_MOVES, step);
+    
+    out <== AND()(positionsConsistent, stepValid);
+}
+
 /*
  * Prove valid state transitions for the `from` and `to` tiles. Also proves 
  * the inclusion of the old states in a merkle root. Assumes tiles are 
@@ -33,26 +100,18 @@ template Move() {
     signal input uFrom[N_TILE_ATTRS];
     signal input uTo[N_TILE_ATTRS];
 
-    // Assert the new state leaves are correctly computed
-    signal circuitHFrom <== Poseidon(N_TILE_ATTRS)(uFrom);
-    signal circuitHTo <== Poseidon(N_TILE_ATTRS)(uTo);
-    hUFrom === circuitHFrom;
-    hUTo === circuitHTo;
+    signal leavesCorrect <== CheckLeafCompute(N_TILE_ATTRS)(uFrom, uTo, hUFrom, 
+        hUTo);
+    leavesCorrect === 1;
 
-    // Assert the nullifiers for old tile states are correctly computed
-    signal circuitRhoFrom <== Poseidon(1)([tFrom[KEY_IDX]]);
-    signal circuitRhoTo <== Poseidon(1)([tTo[KEY_IDX]]);
-    rhoFrom === circuitRhoFrom;
-    rhoTo === circuitRhoTo;
+    signal nullifiersCorrect <== CheckNullifierCompute()(tFrom[KEY_IDX], 
+        tTo[KEY_IDX], rhoFrom, rhoTo);
+    nullifiersCorrect === 1;
 
     // Assert the rules of the game are followed
-    tTo[ROW_IDX] === uTo[ROW_IDX];
-    tFrom[ROW_IDX] === uFrom[ROW_IDX];
-
-    signal step[2] <== [tTo[ROW_IDX] - tFrom[ROW_IDX], 
-        tTo[COL_IDX] - tFrom[COL_IDX]];
-    signal stepValid <== PairArrayContains(N_VALID_MOVES)(VALID_MOVES, step);
-    stepValid === 1;
+    signal stepCorrect <== CheckStep(VALID_MOVES, N_VALID_MOVES, N_TILE_ATTRS, 
+        ROW_IDX, COL_IDX)(tFrom, tTo, uFrom, uTo);
+    stepCorrect === 1;
 
     signal movedAllTroops <== IsZero()(uFrom[RSRC_IDX]);
     movedAllTroops === 0;
@@ -63,8 +122,6 @@ template Move() {
     uFrom[RSRC_IDX] + uTo[RSRC_IDX] === tFrom[RSRC_IDX] + tTo[RSRC_IDX];
     uFrom[SYMB_IDX] === tFrom[SYMB_IDX];
     uTo[SYMB_IDX] === tFrom[SYMB_IDX];
-    
-    
 
     log("-- END CIRCUIT LOGS");
 }
