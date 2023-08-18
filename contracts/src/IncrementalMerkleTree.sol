@@ -86,7 +86,7 @@ abstract contract IncrementalMerkleTree {
      * Poseidon hash with t = 3, should be implemented in derived contract.
      */
     function _hashLeftRight(uint256 _left, uint256 _right)
-        public
+        internal
         view
         virtual
         returns (uint256);

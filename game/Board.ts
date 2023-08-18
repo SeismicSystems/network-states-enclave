@@ -41,7 +41,7 @@ export class Board {
       for (let j = 0; j < sz; j++) {
         if (isInit) {
           let tl: Tile = new Tile(
-            Grid.UNOWNED,
+            Board.UNOWNED,
             { r: i, c: j },
             0,
             Utils.randFQ()
@@ -49,10 +49,10 @@ export class Board {
           await nStates.set(
             Utils.FQToStr(tl.hash(this.utf8Encoder, this.poseidon))
           );
-          await Utils.sleep(200);
+          await Utils.sleep(50);
           row.push(tl);
         } else {
-          row.push(new Tile(Grid.MYSTERY, { r: i, c: j }, 0, Utils.zeroFQ()));
+          row.push(new Tile(Board.MYSTERY, { r: i, c: j }, 0, Utils.zeroFQ()));
         }
       }
       this.t.push(row);
@@ -60,7 +60,7 @@ export class Board {
   }
 
   /*
-   * Check if a location = (row, col) pair is within the bounds of the grid.
+   * Check if a location = (row, col) pair is within the bounds of the board.
    */
   private inBounds(r: number, c: number): boolean {
     return r < this.t.length && r >= 0 && c < this.t[0].length && c >= 0;
@@ -83,7 +83,7 @@ export class Board {
 
     let r = l.r,
       c = l.c;
-    if (this.t[r][c].owner != Grid.UNOWNED) {
+    if (this.t[r][c].owner != Board.UNOWNED) {
       throw new Error("Tried to spawn player on an owned tile.");
     }
     this.t[r][c] = new Tile(pl, { r: r, c: c }, resource, Utils.randFQ());
@@ -136,7 +136,7 @@ export class Board {
     let r = l.r,
       c = l.c;
     let foundNeighbor = false;
-    Grid.PERIMETER.forEach(([dy, dx]) => {
+    Board.PERIMETER.forEach(([dy, dx]) => {
       let nr = r + dy,
         nc = c + dx;
       if (this.inBounds(nr, nc) && this.t[nr][nc].owner.symbol === symbol) {

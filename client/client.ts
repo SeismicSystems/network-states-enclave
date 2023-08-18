@@ -29,7 +29,7 @@ const MOVE_KEYS: Record<string, number[]> = {
 };
 
 /*
- * Boot up interface with 1) Network States contrac and 2) the CLI.
+ * Boot up interface with 1) Network States contract and 2) the CLI.
  */
 const signer = new ethers.Wallet(
   <string>process.env.DEV_PRIV_KEY,
@@ -55,7 +55,7 @@ let b: Board;
  * Using Socket.IO to manage communication with enclave.
  */
 const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
-  `http://localhost:${PORT}`
+  `http://localhost:${process.env.SERVER_PORT}`
 );
 
 /*
@@ -134,7 +134,7 @@ async function move(inp: string) {
  * Update local view of game board based on enclave response.
  */
 function decryptResponse(t: any) {
-  g.setTile(Tile.fromJSON(t));
+  b.setTile(Tile.fromJSON(t));
 }
 
 /*
@@ -145,7 +145,7 @@ async function updateDisplay() {
   process.stdout.write("\n");
   updatePlayerView();
   await Utils.sleep(UPDATE_MLS);
-  g.printView();
+  b.printView();
   process.stdout.write(MOVE_PROMPT);
 }
 
