@@ -4,7 +4,7 @@ interface ServerToClientEvents {
   decryptResponse: (
     t: any
   ) => void;
-  update: () => void;
+  updateDisplay: () => void;
 }
 
 interface ClientToServerEvents {

@@ -14,15 +14,17 @@ import { Tile, Player, Grid, Location, Utils } from "../game";
 /*
  * Set game parameters and define default players.
  */
-const GRID_SIZE: number = 5;
-const START_RESOURCES: number = 9;
-
+const GRID_SIZE: number = parseInt(<string>process.env.GRID_SIZE, 10);
+const START_RESOURCES: number = parseInt(
+  <string>process.env.START_RESOURCES,
+  10
+);
 const PLAYER_A: Player = new Player("A");
 const PLAYER_B: Player = new Player("B");
 const PLAYER_C: Player = new Player("C");
 
 /*
- * Using Socket.IO to manage communication to clients. 
+ * Using Socket.IO to manage communication to clients.
  */
 const app = express();
 const server = http.createServer(app);
@@ -34,7 +36,7 @@ const io = new Server<
 >(server);
 
 /*
- * Boot up interface with Network States contract. 
+ * Boot up interface with Network States contract.
  */
 dotenv.config({ path: "../.env" });
 const signer = new ethers.Wallet(
@@ -53,13 +55,13 @@ const nStates = new ethers.Contract(
 let g: Grid;
 
 /*
- * Adjust internal state based on claimed move & notifies all users to 
- * update their local views. 
+ * Adjust internal state based on claimed move & notifies all users to
+ * update their local views.
  */
 function move(tFrom: any, tTo: any, uFrom: any, uTo: any) {
   g.setTile(Tile.fromJSON(uFrom));
   g.setTile(Tile.fromJSON(uTo));
-  io.sockets.emit("update");
+  io.sockets.emit("updateDisplay");
 }
 
 /*
@@ -75,7 +77,7 @@ function decrypt(socket: Socket, l: Location, symbol: string) {
 }
 
 /*
- * Dev function for spawning default players on the map. 
+ * Dev function for spawning default players on the map.
  */
 function spawnPlayers() {
   g.spawn({ r: 0, c: 0 }, PLAYER_A, START_RESOURCES);
@@ -84,7 +86,7 @@ function spawnPlayers() {
 }
 
 /*
- * Attach event handlers to a new connection. 
+ * Attach event handlers to a new connection.
  */
 io.on("connection", (socket: Socket) => {
   console.log("Client connected: ", socket.id);
@@ -97,7 +99,7 @@ io.on("connection", (socket: Socket) => {
 });
 
 /*
- * Start server & initialize game. 
+ * Start server & initialize game.
  */
 server.listen(process.env.SERVER_PORT, async () => {
   g = new Grid();
