@@ -21,6 +21,7 @@ interface IHasherT3 {
 contract NStates is IncrementalMerkleTree {
     IVerifier verifierContract;
     IHasherT3 hasherT3 = IHasherT3(0x5FbDB2315678afecb367f032d93F642f64180aa3);
+    address public owner;
 
     event NewLeaf(uint256 h);
     event NewNullifier(uint256 nf);
@@ -33,11 +34,18 @@ contract NStates is IncrementalMerkleTree {
         address verifier
     ) IncrementalMerkleTree(treeDepth, nothingUpMySleeve) {
         verifierContract = IVerifier(verifier);
+        owner = msg.sender;
     }
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only the owner can call this function");
+        _;
+    }
+
 
     function set(
         uint256 h
-    ) public {
+    ) public onlyOwner {
         emit NewLeaf(h);
         insertLeaf(h);
     }

@@ -2,45 +2,50 @@
 import { buildPoseidon } from "circomlibjs";
 // @ts-ignore
 import { TextEncoder } from "text-encoding-utf-8";
-
 import { Utils } from "./Utils";
 import { Player } from "./Player";
 import { Tile, Location } from "./Tile";
 
 export class Grid {
+  static PERIMETER: number[][] = [-1, 0, 1].flatMap((x) =>
+    [-1, 0, 1].map((y) => [x, y])
+  );
+  static UNOWNED: Player = new Player("_");
+  static MYSTERY: Player = new Player("?");
+
   t: Tile[][];
   poseidon: any;
   utf8Encoder: any;
-  around = [
-    [0, 0],
-    [-1, 1],
-    [-1, 0],
-    [-1, -1],
-    [0, 1],
-    [0, -1],
-    [1, 1],
-    [1, 0],
-    [1, -1],
-  ];
-  unowned: Player = new Player("_");
-  mystery: Player = new Player("?");
 
-  constructor() {
+  /*
+   * Instantiate new Grid object. To represent view of game board and hold
+   * related utility functions.
+   */
+  public constructor() {
     this.utf8Encoder = new TextEncoder();
     this.t = new Array<Array<Tile>>();
   }
 
-  async setup() {
+  /*
+   * Set up member variables that involve async. Cannot do in constructor.
+   * Must call before using any other Grid functions.
+   */
+  public async setup() {
     this.poseidon = await buildPoseidon();
   }
 
-  async seed(sz: number, isInit: boolean, nStates: any) {
+  /*
+   * Seed game board by sampling access key for each tile, updating on-chain
+   * merkle tree along the way. Doesn't do any sampling if isInit flag is off.
+   * With that setting, it only initializes board with mystery tiles.
+   */
+  public async seed(sz: number, isInit: boolean, nStates: any) {
     for (let i = 0; i < sz; i++) {
       let row: Tile[] = new Array<Tile>();
       for (let j = 0; j < sz; j++) {
         if (isInit) {
           let tl: Tile = new Tile(
-            this.unowned,
+            Grid.UNOWNED,
             { r: i, c: j },
             0,
             Utils.randFQ()
@@ -51,35 +56,47 @@ export class Grid {
           await Utils.sleep(200);
           row.push(tl);
         } else {
-          row.push(new Tile(this.mystery, { r: i, c: j }, 0, Utils.zeroFQ()));
+          row.push(new Tile(Grid.MYSTERY, { r: i, c: j }, 0, Utils.zeroFQ()));
         }
       }
       this.t.push(row);
     }
   }
 
-  inBounds(r: number, c: number): boolean {
+  /*
+   * Check if a location = (row, col) pair is within the bounds of the grid.
+   */
+  private inBounds(r: number, c: number): boolean {
     return r < this.t.length && r >= 0 && c < this.t[0].length && c >= 0;
   }
 
-  assertBounds(l: Location) {
+  /*
+   * Throws an error if a presented location isn't in bounds.
+   */
+  private assertBounds(l: Location) {
     if (!this.inBounds(l.r, l.c)) {
       throw new Error("Tried to edit tile out of bounds.");
     }
   }
 
-  spawn(l: Location, pl: Player, resource: number) {
+  /*
+   * Spawn a player at a location. 
+   */
+  public spawn(l: Location, pl: Player, resource: number) {
     this.assertBounds(l);
 
     let r = l.r,
       c = l.c;
-    if (this.t[r][c].owner != this.unowned) {
+    if (this.t[r][c].owner != Grid.UNOWNED) {
       throw new Error("Tried to spawn player on an owned tile.");
     }
     this.t[r][c] = new Tile(pl, { r: r, c: c }, resource, Utils.randFQ());
   }
 
-  printView(): void {
+  /*
+   * Displays colored gameboard. 
+   */
+  public printView(): void {
     for (let i = 0; i < this.t.length; i++) {
       for (let j = 0; j < this.t[0].length; j++) {
         let tl: Tile = this.getTile({ r: i, c: j });
@@ -101,20 +118,29 @@ export class Grid {
     process.stdout.write("---\n");
   }
 
-  getTile(l: Location): Tile {
+  /*
+   * Getter for Tile at a location. 
+   */ 
+  public getTile(l: Location): Tile {
     this.assertBounds(l);
     return this.t[l.r][l.c];
   }
 
-  setTile(tl: Tile) {
+  /*
+   * Set location to new Tile value. 
+   */
+  public setTile(tl: Tile) {
     this.t[tl.loc.r][tl.loc.c] = tl;
   }
 
+  /*
+   * Check if a location is in the FoW for player.
+   */
   inFog(l: Location, symbol: string): boolean {
     let r = l.r,
       c = l.c;
     let foundNeighbor = false;
-    this.around.forEach(([dy, dx]) => {
+    Grid.PERIMETER.forEach(([dy, dx]) => {
       let nr = r + dy,
         nc = c + dx;
       if (this.inBounds(nr, nc) && this.t[nr][nc].owner.symbol === symbol) {
@@ -122,10 +148,5 @@ export class Grid {
       }
     });
     return !foundNeighbor;
-  }
-
-  move(from: Location, to: Location, resource: number) {
-    this.t[from.r][from.c].resources -= resource;
-    this.t[to.r][to.c].resources += resource;
   }
 }
