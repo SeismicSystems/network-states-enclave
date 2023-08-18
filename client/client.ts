@@ -1,10 +1,6 @@
 import { ethers } from "ethers";
 import readline from "readline";
 import { io, Socket } from "socket.io-client";
-// @ts-ignore
-import { buildPoseidon } from "circomlibjs";
-// @ts-ignore
-import { TextEncoder } from "text-encoding-utf-8";
 
 import { ServerToClientEvents, ClientToServerEvents } from "../enclave/socket";
 import { Tile, Grid, Location, Utils } from "../game";
@@ -37,15 +33,13 @@ const nStates = new ethers.Contract(
   require("../contracts/out/NStates.sol/NStates.json").abi,
   signer
 );
+let g: Grid;
 
-let g = new Grid(GRID_SIZE, false);
-g.seed(GRID_SIZE, false, nStates);
 var rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
 });
 let cursor = PLAYER_START;
-let poseidon: any, utf8Encoder: any;
 
 const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
   `http://localhost:${PORT}`
@@ -88,10 +82,10 @@ async function move(inp: string) {
   }
 
   await nStates.move(
-    Utils.FQToStr(uFrom.hash(utf8Encoder, poseidon)),
-    Utils.FQToStr(uTo.hash(utf8Encoder, poseidon)),
-    Utils.FQToStr(tFrom.nullifier(poseidon)),
-    Utils.FQToStr(tTo.nullifier(poseidon))
+    Utils.FQToStr(uFrom.hash(g.utf8Encoder, g.poseidon)),
+    Utils.FQToStr(uTo.hash(g.utf8Encoder, g.poseidon)),
+    Utils.FQToStr(tFrom.nullifier(g.poseidon)),
+    Utils.FQToStr(tTo.nullifier(g.poseidon))
   );
 
   socket.emit(
@@ -116,12 +110,13 @@ async function gameLoop() {
 socket.on("connect", async () => {
   console.log("Server connection established");
 
+  g = new Grid();
+  await g.setup();
+  await g.seed(GRID_SIZE, false, nStates);
+
   updatePlayerView();
   await Utils.sleep(UPDATE_MLS);
   g.printView();
-
-  poseidon = await buildPoseidon();
-  utf8Encoder = new TextEncoder();
 
   gameLoop();
 });

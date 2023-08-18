@@ -95,12 +95,6 @@ export class Grid {
           color = "\x1b[37m";
         }
         process.stdout.write(color + `[${tl.owner.symbol}]` + reset);
-        // process.stdout.write(
-        //   `(${tl.owner.symbol}, ${tl.resources}, ${Utils.FQToStr(tl.key).slice(
-        //     0,
-        //     3
-        //   )})`
-        // );
       }
       process.stdout.write("\n");
     }
