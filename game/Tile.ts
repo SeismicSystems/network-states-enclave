@@ -1,5 +1,5 @@
 import { Player } from "./Player";
-import { Utils } from "./Utils";
+import { FQType, Utils } from "./Utils";
 
 export type Location = {
   r: number;
@@ -10,16 +10,37 @@ export class Tile {
   owner: Player;
   loc: Location;
   resources: number;
-  key: typeof Utils.FQ;
+  key: FQType;
 
-  constructor(o_: Player, l_: Location, r_: number, k_: typeof Utils.FQ) {
+  constructor(o_: Player, l_: Location, r_: number, k_: FQType) {
     this.owner = o_;
     this.loc = l_;
     this.resources = r_;
     this.key = k_;
   }
 
-  // [TODO] merge this with toJSON()
+  /*
+   * Compute hash of this Tile. 
+   */
+  hash(utf8Encoder: any, poseidon: any): FQType {
+    return Utils.strToFQ(
+      poseidon.F.toString(poseidon(this.flatDec(utf8Encoder)), 10)
+    );
+  }
+
+  /*
+   * Compute the nullifier, defined as the hash of access key. 
+   */
+  nullifier(poseidon: any): FQType {
+    return Utils.strToFQ(
+      poseidon.F.toString(poseidon([Utils.FQToStr(this.key)]), 10)
+    );
+  }
+
+  /*
+   * TEMPORARY WHILE PLAYER STILL REPRESENTED BY SYMBOL. replace with 
+   * Object.values(jsonRepr) once player represented by public key
+   */
   flatDec(utf8Encoder: any): string[] {
     let ownerEncoding: number = utf8Encoder
       .encode(this.owner.symbol)
@@ -33,38 +54,27 @@ export class Tile {
     ];
   }
 
-  hash(utf8Encoder: any, poseidon: any): typeof Utils.FQ {
-    return Utils.strToFQ(
-      poseidon.F.toString(poseidon(this.flatDec(utf8Encoder)), 10)
-    );
-  }
-
-  nullifier(poseidon: any): typeof Utils.FQ {
-    return Utils.strToFQ(
-      poseidon.F.toString(poseidon([Utils.FQToStr(this.key)]), 10)
-    );
-  }
-
-  toString(): string {
-    const truncKey = this.key[0];
-    return `(${this.owner.toString()}, ${this.resources}, ${truncKey})`;
-  }
-
+  /*
+   * Convert to JSON object where all values are strings. 
+   */
   toJSON(): object {
     return {
       owner: this.owner.symbol,
-      r: this.loc.r,
-      c: this.loc.c,
-      resources: this.resources,
+      r: this.loc.r.toString(),
+      c: this.loc.c.toString(),
+      resources: this.resources.toString(),
       key: Utils.FQToStr(this.key),
     };
   }
 
+  /*
+   * Convert JSON object to tile. 
+   */
   static fromJSON(obj: any): Tile {
     return new Tile(
       new Player(obj.owner),
-      { r: obj.r, c: obj.c },
-      obj.resources,
+      { r: parseInt(obj.r, 10), c: parseInt(obj.c, 10) },
+      parseInt(obj.resources, 10),
       Utils.strToFQ(obj.key)
     );
   }

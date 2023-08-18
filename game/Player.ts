@@ -4,8 +4,4 @@ export class Player {
   constructor(s_: string) {
     this.symbol = s_;
   }
-
-  toString(): string {
-    return `${this.symbol}`;
-  }
 }

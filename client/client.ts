@@ -2,8 +2,9 @@ import readline from "readline";
 import { ethers } from "ethers";
 import { io, Socket } from "socket.io-client";
 import dotenv from "dotenv";
+dotenv.config({ path: "../.env" });
 import { ServerToClientEvents, ClientToServerEvents } from "../enclave/socket";
-import { Tile, Grid, Location, Utils } from "../game";
+import { Tile, Board, Location, Utils } from "../game";
 
 /*
  * Conditions depend on which player is currently active.
@@ -17,7 +18,7 @@ const PLAYER_START: Location = {
 /*
  * Misc client parameters.
  */
-const GRID_SIZE: number = parseInt(<string>process.env.GRID_SIZE, 10);
+const BOARD_SIZE: number = parseInt(<string>process.env.BOARD_SIZE, 10);
 const UPDATE_MLS: number = 1000;
 const MOVE_PROMPT: string = "Next move: ";
 const MOVE_KEYS: Record<string, number[]> = {
@@ -30,7 +31,6 @@ const MOVE_KEYS: Record<string, number[]> = {
 /*
  * Boot up interface with 1) Network States contrac and 2) the CLI.
  */
-dotenv.config({ path: "../.env" });
 const signer = new ethers.Wallet(
   <string>process.env.DEV_PRIV_KEY,
   new ethers.providers.JsonRpcProvider(process.env.RPC_URL)
@@ -47,9 +47,9 @@ var rl = readline.createInterface({
 let cursor = PLAYER_START;
 
 /*
- * Client's local belief on game state stored in Grid object.
+ * Client's local belief on game state stored in Board object.
  */
-let g: Grid;
+let b: Board;
 
 /*
  * Using Socket.IO to manage communication with enclave.
@@ -59,12 +59,12 @@ const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
 );
 
 /*
- * Iterates through entire grid, asking enclave to reveal all secrets this
+ * Iterates through entire board, asking enclave to reveal all secrets this
  * player is privy to.
  */
 async function updatePlayerView() {
-  for (let i = 0; i < GRID_SIZE; i++) {
-    for (let j = 0; j < GRID_SIZE; j++) {
+  for (let i = 0; i < BOARD_SIZE; i++) {
+    for (let j = 0; j < BOARD_SIZE; j++) {
       socket.emit("decrypt", { r: i, c: j }, PLAYER_SYMBOL);
     }
   }
@@ -72,7 +72,7 @@ async function updatePlayerView() {
 
 /*
  * Computes proper state of tile an army is about to move onto. Goes through
- * game logic of what happens during a fight. 
+ * game logic of what happens during a fight.
  */
 function computeOntoTile(tTo: Tile, tFrom: Tile, uFrom: Tile): Tile {
   let uTo: Tile;
@@ -107,8 +107,8 @@ async function move(inp: string) {
   let nr = cursor.r + MOVE_KEYS[inp][0],
     nc = cursor.c + MOVE_KEYS[inp][1];
 
-  let tFrom: Tile = g.getTile(cursor);
-  let tTo: Tile = g.getTile({ r: nr, c: nc });
+  let tFrom: Tile = b.getTile(cursor);
+  let tTo: Tile = b.getTile({ r: nr, c: nc });
   let uFrom: Tile = new Tile(tFrom.owner, tFrom.loc, 1, Utils.randFQ());
   let uTo: Tile = computeOntoTile(tTo, tFrom, uFrom);
 
@@ -121,10 +121,10 @@ async function move(inp: string) {
   );
 
   await nStates.move(
-    Utils.FQToStr(uFrom.hash(g.utf8Encoder, g.poseidon)),
-    Utils.FQToStr(uTo.hash(g.utf8Encoder, g.poseidon)),
-    Utils.FQToStr(tFrom.nullifier(g.poseidon)),
-    Utils.FQToStr(tTo.nullifier(g.poseidon))
+    Utils.FQToStr(uFrom.hash(b.utf8Encoder, b.poseidon)),
+    Utils.FQToStr(uTo.hash(b.utf8Encoder, b.poseidon)),
+    Utils.FQToStr(tFrom.nullifier(b.poseidon)),
+    Utils.FQToStr(tTo.nullifier(b.poseidon))
   );
 
   cursor = { r: nr, c: nc };
@@ -166,13 +166,13 @@ async function gameLoop() {
 socket.on("connect", async () => {
   console.log("Server connection established");
 
-  g = new Grid();
-  await g.setup();
-  await g.seed(GRID_SIZE, false, nStates);
+  b = new Board();
+  await b.setup();
+  await b.seed(BOARD_SIZE, false, nStates);
 
   updatePlayerView();
   await Utils.sleep(UPDATE_MLS);
-  g.printView();
+  b.printView();
 
   gameLoop();
 });

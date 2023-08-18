@@ -6,7 +6,7 @@ import { Utils } from "./Utils";
 import { Player } from "./Player";
 import { Tile, Location } from "./Tile";
 
-export class Grid {
+export class Board {
   static PERIMETER: number[][] = [-1, 0, 1].flatMap((x) =>
     [-1, 0, 1].map((y) => [x, y])
   );
@@ -17,10 +17,6 @@ export class Grid {
   poseidon: any;
   utf8Encoder: any;
 
-  /*
-   * Instantiate new Grid object. To represent view of game board and hold
-   * related utility functions.
-   */
   public constructor() {
     this.utf8Encoder = new TextEncoder();
     this.t = new Array<Array<Tile>>();
@@ -28,7 +24,7 @@ export class Grid {
 
   /*
    * Set up member variables that involve async. Cannot do in constructor.
-   * Must call before using any other Grid functions.
+   * Must call before using any other Board functions.
    */
   public async setup() {
     this.poseidon = await buildPoseidon();

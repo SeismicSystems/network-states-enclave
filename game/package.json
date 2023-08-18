@@ -2,7 +2,7 @@
   "name": "game",
   "version": "1.0.0",
   "main": "index.ts",
-  "license": "MIT",
+  "license": "BSD-4-Clause",
   "dependencies": {
     "babyjubjub": "^1.0.4",
     "circomlibjs": "^0.1.7",

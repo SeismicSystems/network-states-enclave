@@ -3,18 +3,19 @@ import http from "http";
 import { Server, Socket } from "socket.io";
 import { ethers } from "ethers";
 import dotenv from "dotenv";
+dotenv.config({ path: "../.env" });
 import {
   ServerToClientEvents,
   ClientToServerEvents,
   InterServerEvents,
   SocketData,
 } from "./socket";
-import { Tile, Player, Grid, Location, Utils } from "../game";
+import { Tile, Player, Board, Location, Utils } from "../game";
 
 /*
  * Set game parameters and define default players.
  */
-const GRID_SIZE: number = parseInt(<string>process.env.GRID_SIZE, 10);
+const BOARD_SIZE: number = parseInt(<string>process.env.BOARD_SIZE, 10);
 const START_RESOURCES: number = parseInt(
   <string>process.env.START_RESOURCES,
   10
@@ -38,7 +39,6 @@ const io = new Server<
 /*
  * Boot up interface with Network States contract.
  */
-dotenv.config({ path: "../.env" });
 const signer = new ethers.Wallet(
   <string>process.env.DEV_PRIV_KEY,
   new ethers.providers.JsonRpcProvider(process.env.RPC_URL)
@@ -50,17 +50,17 @@ const nStates = new ethers.Contract(
 );
 
 /*
- * Enclave's internal belief on game state stored in Grid object.
+ * Enclave's internal belief on game state stored in Board object.
  */
-let g: Grid;
+let b: Board;
 
 /*
  * Adjust internal state based on claimed move & notifies all users to
  * update their local views.
  */
 function move(tFrom: any, tTo: any, uFrom: any, uTo: any) {
-  g.setTile(Tile.fromJSON(uFrom));
-  g.setTile(Tile.fromJSON(uTo));
+  b.setTile(Tile.fromJSON(uFrom));
+  b.setTile(Tile.fromJSON(uTo));
   io.sockets.emit("updateDisplay");
 }
 
@@ -68,21 +68,21 @@ function move(tFrom: any, tTo: any, uFrom: any, uTo: any) {
  * Exposes secrets at location l if user proves ownership of neighboring tile.
  */
 function decrypt(socket: Socket, l: Location, symbol: string) {
-  if (g.inFog(l, symbol)) {
-    let mysteryTile = new Tile(g.mystery, l, 0, Utils.zeroFQ());
+  if (b.inFog(l, symbol)) {
+    let mysteryTile = new Tile(Board.MYSTERY, l, 0, Utils.zeroFQ());
     socket.emit("decryptResponse", mysteryTile.toJSON());
     return;
   }
-  socket.emit("decryptResponse", g.getTile(l).toJSON());
+  socket.emit("decryptResponse", b.getTile(l).toJSON());
 }
 
 /*
  * Dev function for spawning default players on the map.
  */
 function spawnPlayers() {
-  g.spawn({ r: 0, c: 0 }, PLAYER_A, START_RESOURCES);
-  g.spawn({ r: 0, c: GRID_SIZE - 1 }, PLAYER_B, START_RESOURCES);
-  g.spawn({ r: GRID_SIZE - 1, c: 0 }, PLAYER_C, START_RESOURCES);
+  b.spawn({ r: 0, c: 0 }, PLAYER_A, START_RESOURCES);
+  b.spawn({ r: 0, c: BOARD_SIZE - 1 }, PLAYER_B, START_RESOURCES);
+  b.spawn({ r: BOARD_SIZE - 1, c: 0 }, PLAYER_C, START_RESOURCES);
 }
 
 /*
@@ -102,9 +102,9 @@ io.on("connection", (socket: Socket) => {
  * Start server & initialize game.
  */
 server.listen(process.env.SERVER_PORT, async () => {
-  g = new Grid();
-  await g.setup();
-  await g.seed(GRID_SIZE, true, nStates);
+  b = new Board();
+  await b.setup();
+  await b.seed(BOARD_SIZE, true, nStates);
   spawnPlayers();
 
   console.log(`Server running on http://localhost:${process.env.SERVER_PORT}`);
