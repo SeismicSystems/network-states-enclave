@@ -20,9 +20,9 @@ const START_RESOURCES: number = parseInt(
   <string>process.env.START_RESOURCES,
   10
 );
-const PLAYER_A: Player = new Player("A");
-const PLAYER_B: Player = new Player("B");
-const PLAYER_C: Player = new Player("C");
+const PLAYER_A: Player = new Player("A", <string>process.env.A_ETH_PRIV);
+const PLAYER_B: Player = new Player("B", <string>process.env.B_ETH_PRIV);
+const PLAYER_C: Player = new Player("C", <string>process.env.C_ETH_PRIV);
 
 /*
  * Using Socket.IO to manage communication to clients.

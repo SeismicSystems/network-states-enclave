@@ -96,18 +96,7 @@ export class Board {
     for (let i = 0; i < this.t.length; i++) {
       for (let j = 0; j < this.t[0].length; j++) {
         let tl: Tile = this.getTile({ r: i, c: j });
-        let color;
-        const reset = "\x1b[0m";
-        if (tl.owner.symbol === "A") {
-          color = "\x1b[32m";
-        } else if (tl.owner.symbol === "B") {
-          color = "\x1b[31m";
-        } else if (tl.owner.symbol === "C") {
-          color = "\x1b[44m";
-        } else {
-          color = "\x1b[37m";
-        }
-        process.stdout.write(color + `[${tl.owner.symbol}]` + reset);
+        process.stdout.write(`[${tl.owner.pubkey}]`);
       }
       process.stdout.write("\n");
     }
