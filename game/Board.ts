@@ -96,7 +96,7 @@ export class Board {
     for (let i = 0; i < this.t.length; i++) {
       for (let j = 0; j < this.t[0].length; j++) {
         let tl: Tile = this.getTile({ r: i, c: j });
-        process.stdout.write(`[${tl.owner.pubkey}]`);
+        process.stdout.write(`[${tl.owner.symbol}]`);
       }
       process.stdout.write("\n");
     }

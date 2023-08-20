@@ -1,18 +1,15 @@
-const { PrivateKey, PublicKey } = require("babyjubjub");
-const privateKeyToPublicKey = require("ethereum-private-key-to-public-key");
+import { PrivKey, Keypair } from "maci-domainobjs";
+import { formatPrivKeyForBabyJub } from "maci-crypto";
 
 export class Player {
   symbol: string;
-  ethpubkey?: string;
-  privkey?: typeof PrivateKey;
-  pubkey?: typeof PublicKey;
+  bjjKeys?: Keypair;
 
-  constructor(symb: string, eth_privkey?: string) {
+  constructor(symb: string, ethPriv?: BigInt) {
     this.symbol = symb;
-    if (eth_privkey) {
-      console.log("ETH PRIVKEY:", eth_privkey);
-      this.ethpubkey = `0x${privateKeyToPublicKey(eth_privkey).toString("hex")}`
-      console.log("ETH PUBKEY:", this.ethpubkey);
+    if (ethPriv) {
+      this.bjjKeys = new Keypair(new PrivKey(formatPrivKeyForBabyJub(ethPriv)));
+      console.log("KP:", this.bjjKeys);
     }
   }
 }
