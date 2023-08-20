@@ -1,131 +1,121 @@
-import { Player } from "../game";
+import express from "express";
+import http from "http";
+import { Server, Socket } from "socket.io";
+import { ethers } from "ethers";
 import dotenv from "dotenv";
 dotenv.config({ path: "../.env" });
+import {
+  ServerToClientEvents,
+  ClientToServerEvents,
+  InterServerEvents,
+  SocketData,
+} from "./socket";
+import { Tile, Player, Board, Location, Utils } from "../game";
+
+/*
+ * Set game parameters and define default players.
+ */
+const BOARD_SIZE: number = parseInt(<string>process.env.BOARD_SIZE, 10);
+const START_RESOURCES: number = parseInt(
+  <string>process.env.START_RESOURCES,
+  10
+);
 
 const PLAYER_A: Player = new Player(
   "A",
   BigInt(<string>process.env.A_ETH_PRIV)
 );
 
-// import express from "express";
-// import http from "http";
-// import { Server, Socket } from "socket.io";
-// import { ethers } from "ethers";
-// import dotenv from "dotenv";
-// dotenv.config({ path: "../.env" });
-// import {
-//   ServerToClientEvents,
-//   ClientToServerEvents,
-//   InterServerEvents,
-//   SocketData,
-// } from "./socket";
-// import { Tile, Player, Board, Location, Utils } from "../game";
+const PLAYER_B: Player = new Player(
+  "B",
+  BigInt(<string>process.env.B_ETH_PRIV)
+);
+const PLAYER_C: Player = new Player(
+  "C",
+  BigInt(<string>process.env.C_ETH_PRIV)
+);
 
-// /*
-//  * Set game parameters and define default players.
-//  */
-// const BOARD_SIZE: number = parseInt(<string>process.env.BOARD_SIZE, 10);
-// const START_RESOURCES: number = parseInt(
-//   <string>process.env.START_RESOURCES,
-//   10
-// );
+/*
+ * Using Socket.IO to manage communication to clients.
+ */
+const app = express();
+const server = http.createServer(app);
+const io = new Server<
+  ClientToServerEvents,
+  ServerToClientEvents,
+  InterServerEvents,
+  SocketData
+>(server);
 
-// const PLAYER_A: Player = new Player(
-//   "A",
-//   BigInt(<string>process.env.A_ETH_PRIV)
-// );
+/*
+ * Boot up interface with Network States contract.
+ */
+const signer = new ethers.Wallet(
+  <string>process.env.DEV_PRIV_KEY,
+  new ethers.providers.JsonRpcProvider(process.env.RPC_URL)
+);
+const nStates = new ethers.Contract(
+  <string>process.env.CONTRACT_ADDR,
+  require(<string>process.env.CONTRACT_ABI).abi,
+  signer
+);
 
-// const PLAYER_B: Player = new Player(
-//   "B",
-//   BigInt(<string>process.env.B_ETH_PRIV)
-// );
-// const PLAYER_C: Player = new Player(
-//   "C",
-//   BigInt(<string>process.env.C_ETH_PRIV)
-// );
+/*
+ * Enclave's internal belief on game state stored in Board object.
+ */
+let b: Board;
 
-// /*
-//  * Using Socket.IO to manage communication to clients.
-//  */
-// const app = express();
-// const server = http.createServer(app);
-// const io = new Server<
-//   ClientToServerEvents,
-//   ServerToClientEvents,
-//   InterServerEvents,
-//   SocketData
-// >(server);
+/*
+ * Adjust internal state based on claimed move & notifies all users to
+ * update their local views.
+ */
+function move(tFrom: any, tTo: any, uFrom: any, uTo: any) {
+  b.setTile(Tile.fromJSON(uFrom));
+  b.setTile(Tile.fromJSON(uTo));
+  io.sockets.emit("updateDisplay");
+}
 
-// /*
-//  * Boot up interface with Network States contract.
-//  */
-// const signer = new ethers.Wallet(
-//   <string>process.env.DEV_PRIV_KEY,
-//   new ethers.providers.JsonRpcProvider(process.env.RPC_URL)
-// );
-// const nStates = new ethers.Contract(
-//   <string>process.env.CONTRACT_ADDR,
-//   require(<string>process.env.CONTRACT_ABI).abi,
-//   signer
-// );
+/*
+ * Exposes secrets at location l if user proves ownership of neighboring tile.
+ */
+function decrypt(socket: Socket, l: Location, symbol: string) {
+  if (b.inFog(l, symbol)) {
+    socket.emit("decryptResponse", Tile.mystery(l).toJSON());
+    return;
+  }
+  socket.emit("decryptResponse", b.getTile(l).toJSON());
+}
 
-// /*
-//  * Enclave's internal belief on game state stored in Board object.
-//  */
-// let b: Board;
+/*
+ * Dev function for spawning default players on the map.
+ */
+function spawnPlayers() {
+  b.spawn({ r: 0, c: 0 }, PLAYER_A, START_RESOURCES);
+  b.spawn({ r: 0, c: BOARD_SIZE - 1 }, PLAYER_B, START_RESOURCES);
+  b.spawn({ r: BOARD_SIZE - 1, c: 0 }, PLAYER_C, START_RESOURCES);
+}
 
-// /*
-//  * Adjust internal state based on claimed move & notifies all users to
-//  * update their local views.
-//  */
-// function move(tFrom: any, tTo: any, uFrom: any, uTo: any) {
-//   b.setTile(Tile.fromJSON(uFrom));
-//   b.setTile(Tile.fromJSON(uTo));
-//   io.sockets.emit("updateDisplay");
-// }
+/*
+ * Attach event handlers to a new connection.
+ */
+io.on("connection", (socket: Socket) => {
+  console.log("Client connected: ", socket.id);
 
-// /*
-//  * Exposes secrets at location l if user proves ownership of neighboring tile.
-//  */
-// function decrypt(socket: Socket, l: Location, symbol: string) {
-//   if (b.inFog(l, symbol)) {
-//     let mysteryTile = new Tile(Board.MYSTERY, l, 0, Utils.zeroFQ());
-//     socket.emit("decryptResponse", mysteryTile.toJSON());
-//     return;
-//   }
-//   socket.emit("decryptResponse", b.getTile(l).toJSON());
-// }
+  socket.on("move", move);
 
-// /*
-//  * Dev function for spawning default players on the map.
-//  */
-// function spawnPlayers() {
-//   b.spawn({ r: 0, c: 0 }, PLAYER_A, START_RESOURCES);
-//   b.spawn({ r: 0, c: BOARD_SIZE - 1 }, PLAYER_B, START_RESOURCES);
-//   b.spawn({ r: BOARD_SIZE - 1, c: 0 }, PLAYER_C, START_RESOURCES);
-// }
+  socket.on("decrypt", (l: Location, symb: string) => {
+    decrypt(socket, l, symb);
+  });
+});
 
-// /*
-//  * Attach event handlers to a new connection.
-//  */
-// io.on("connection", (socket: Socket) => {
-//   console.log("Client connected: ", socket.id);
+/*
+ * Start server & initialize game.
+ */
+server.listen(process.env.SERVER_PORT, async () => {
+  b = new Board();
+  await b.setup();
+  await b.seed(BOARD_SIZE, true, nStates);
+  spawnPlayers();
 
-//   socket.on("move", move);
-
-//   socket.on("decrypt", (l: Location, symb: string) => {
-//     decrypt(socket, l, symb);
-//   });
-// });
-
-// /*
-//  * Start server & initialize game.
-//  */
-// server.listen(process.env.SERVER_PORT, async () => {
-//   b = new Board();
-//   await b.setup();
-//   await b.seed(BOARD_SIZE, true, nStates);
-//   spawnPlayers();
-
-//   console.log(`Server running on http://localhost:${process.env.SERVER_PORT}`);
-// });
+  console.log(`Server running on http://localhost:${process.env.SERVER_PORT}`);
+});

@@ -2,6 +2,7 @@
 import { buildPoseidon } from "circomlibjs";
 // @ts-ignore
 import { TextEncoder } from "text-encoding-utf-8";
+import { genRandomSalt } from "maci-crypto";
 import { Utils } from "./Utils";
 import { Player } from "./Player";
 import { Tile, Location } from "./Tile";
@@ -10,8 +11,6 @@ export class Board {
   static PERIMETER: number[][] = [-1, 0, 1].flatMap((x) =>
     [-1, 0, 1].map((y) => [x, y])
   );
-  static UNOWNED: Player = new Player("_");
-  static MYSTERY: Player = new Player("?");
 
   t: Tile[][];
   poseidon: any;
@@ -40,19 +39,12 @@ export class Board {
       let row: Tile[] = new Array<Tile>();
       for (let j = 0; j < sz; j++) {
         if (isInit) {
-          let tl: Tile = new Tile(
-            Board.UNOWNED,
-            { r: i, c: j },
-            0,
-            Utils.randFQ()
-          );
-          await nStates.set(
-            Utils.FQToStr(tl.hash(this.utf8Encoder, this.poseidon))
-          );
+          let tl: Tile = Tile.genUnowned({ r: i, c: j });
+          await nStates.set(tl.hash(this.utf8Encoder, this.poseidon));
           await Utils.sleep(50);
           row.push(tl);
         } else {
-          row.push(new Tile(Board.MYSTERY, { r: i, c: j }, 0, Utils.zeroFQ()));
+          row.push(Tile.mystery({ r: i, c: j }));
         }
       }
       this.t.push(row);
@@ -76,27 +68,38 @@ export class Board {
   }
 
   /*
-   * Spawn a player at a location. 
+   * Spawn a player at a location.
    */
   public spawn(l: Location, pl: Player, resource: number) {
     this.assertBounds(l);
 
     let r = l.r,
       c = l.c;
-    if (this.t[r][c].owner != Board.UNOWNED) {
+    if (this.t[r][c].owner != Tile.UNOWNED) {
       throw new Error("Tried to spawn player on an owned tile.");
     }
-    this.t[r][c] = new Tile(pl, { r: r, c: c }, resource, Utils.randFQ());
+    this.t[r][c] = new Tile(pl, { r: r, c: c }, resource, genRandomSalt());
   }
 
   /*
-   * Displays colored gameboard. 
+   * Displays colored gameboard.
    */
   public printView(): void {
     for (let i = 0; i < this.t.length; i++) {
       for (let j = 0; j < this.t[0].length; j++) {
         let tl: Tile = this.getTile({ r: i, c: j });
-        process.stdout.write(`[${tl.owner.symbol}]`);
+        let color;
+        const reset = "\x1b[0m";
+        if (tl.owner.symbol === "A") {
+          color = "\x1b[32m";
+        } else if (tl.owner.symbol === "B") {
+          color = "\x1b[31m";
+        } else if (tl.owner.symbol === "C") {
+          color = "\x1b[44m";
+        } else {
+          color = "\x1b[37m";
+        }
+        process.stdout.write(color + `[${tl.owner.symbol}]` + reset);
       }
       process.stdout.write("\n");
     }
@@ -104,15 +107,15 @@ export class Board {
   }
 
   /*
-   * Getter for Tile at a location. 
-   */ 
+   * Getter for Tile at a location.
+   */
   public getTile(l: Location): Tile {
     this.assertBounds(l);
     return this.t[l.r][l.c];
   }
 
   /*
-   * Set location to new Tile value. 
+   * Set location to new Tile value.
    */
   public setTile(tl: Tile) {
     this.t[tl.loc.r][tl.loc.c] = tl;

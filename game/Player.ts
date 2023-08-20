@@ -9,7 +9,6 @@ export class Player {
     this.symbol = symb;
     if (ethPriv) {
       this.bjjKeys = new Keypair(new PrivKey(formatPrivKeyForBabyJub(ethPriv)));
-      console.log("KP:", this.bjjKeys);
     }
   }
 }

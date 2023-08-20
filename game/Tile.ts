@@ -1,5 +1,5 @@
+import { genRandomSalt } from "maci-crypto";
 import { Player } from "./Player";
-import { FQType, Utils } from "./Utils";
 
 export type Location = {
   r: number;
@@ -7,12 +7,15 @@ export type Location = {
 };
 
 export class Tile {
+  static UNOWNED: Player = new Player("_");
+  static MYSTERY: Player = new Player("?");
+
   owner: Player;
   loc: Location;
   resources: number;
-  key: FQType;
+  key: BigInt;
 
-  constructor(o_: Player, l_: Location, r_: number, k_: FQType) {
+  constructor(o_: Player, l_: Location, r_: number, k_: BigInt) {
     this.owner = o_;
     this.loc = l_;
     this.resources = r_;
@@ -20,42 +23,39 @@ export class Tile {
   }
 
   /*
-   * Compute hash of this Tile. 
+   * Compute hash of this Tile and convert it into a decimal string. 
    */
-  hash(utf8Encoder: any, poseidon: any): FQType {
-    return Utils.strToFQ(
-      poseidon.F.toString(poseidon(this.flatDec(utf8Encoder)), 10)
-    );
+  hash(utf8Encoder: any, poseidon: any): string {
+    return poseidon.F.toString(poseidon(this.flatDec(utf8Encoder)), 10);
   }
 
   /*
-   * Compute the nullifier, defined as the hash of access key. 
+   * Compute the nullifier, defined as the hash of access key. Returns decimal
+   * string representation.
    */
-  nullifier(poseidon: any): FQType {
-    return Utils.strToFQ(
-      poseidon.F.toString(poseidon([Utils.FQToStr(this.key)]), 10)
-    );
+  nullifier(poseidon: any): string {
+    return poseidon.F.toString(poseidon([this.key]), 10);
   }
 
   /*
-   * TEMPORARY WHILE PLAYER STILL REPRESENTED BY SYMBOL. replace with 
+   * TEMPORARY WHILE PLAYER STILL REPRESENTED BY SYMBOL. replace with
    * Object.values(jsonRepr) once player represented by public key
    */
-  flatDec(utf8Encoder: any): string[] {
+  flatDec(utf8Encoder: any): BigInt[] {
     let ownerEncoding: number = utf8Encoder
       .encode(this.owner.symbol)
       .reduce((acc: number, byte: number) => acc + byte.toString(10), "");
     return [
-      BigInt(ownerEncoding).toString(10),
-      this.loc.r.toString(),
-      this.loc.c.toString(),
-      this.resources.toString(),
-      Utils.FQToStr(this.key),
+      BigInt(ownerEncoding),
+      BigInt(this.loc.r),
+      BigInt(this.loc.c),
+      BigInt(this.resources),
+      this.key,
     ];
   }
 
   /*
-   * Convert to JSON object where all values are strings. 
+   * Convert to JSON object where all values are strings.
    */
   toJSON(): object {
     return {
@@ -63,19 +63,40 @@ export class Tile {
       r: this.loc.r.toString(),
       c: this.loc.c.toString(),
       resources: this.resources.toString(),
-      key: Utils.FQToStr(this.key),
+      key: this.key.toString(10),
     };
   }
 
   /*
-   * Convert JSON object to tile. 
+   * Convert JSON object to tile.
    */
   static fromJSON(obj: any): Tile {
     return new Tile(
       new Player(obj.owner),
       { r: parseInt(obj.r, 10), c: parseInt(obj.c, 10) },
       parseInt(obj.resources, 10),
-      Utils.strToFQ(obj.key)
+      BigInt(obj.key)
     );
+  }
+
+  /*
+   * Meant to represent a tile in the fog of war.
+   */
+  static mystery(l: Location): Tile {
+    return new Tile(Tile.MYSTERY, l, 0, BigInt(0));
+  }
+
+  /*
+   * New unowned tile with random salt as the access key. 
+   */
+  static genUnowned(l: Location): Tile {
+    return new Tile(Tile.UNOWNED, l, 0, genRandomSalt());
+  }
+
+  /*
+   * New owned tile with random salt as the access key. 
+   */
+  static genOwned(o_: Player, l_: Location, r_: number): Tile {
+    return new Tile(o_, l_, r_, genRandomSalt());
   }
 }

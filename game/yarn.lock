@@ -635,14 +635,6 @@ b4a@^1.0.1:
   resolved "https://registry.yarnpkg.com/b4a/-/b4a-1.6.4.tgz#ef1c1422cae5ce6535ec191baeed7567443f36c9"
   integrity sha512-fpWrvyVHEKyeEvbKZTVOeZF3VSKKWtJxFIxX/jaVPf+cLbGUSitjb49pHLqPV2BUNNZ0LcoeEGfE/YCpyDYHIw==
 
-babyjubjub@^1.0.4:
-  version "1.0.4"
-  resolved "https://registry.yarnpkg.com/babyjubjub/-/babyjubjub-1.0.4.tgz#7b5ff0814005ea9c0a8bf63c93c5092232529bb6"
-  integrity sha512-R+EcKjxMSoctFCUtRUBKf3oDrnBrbbHUnt7u4LMGaERCx6/8+qfHZlqpBdsgAar9IvoPbDk0BLIj9lL9gfKCkw==
-  dependencies:
-    bignumber.js "^9.0.0"
-    buffer-reverse "^1.0.1"
-
 balanced-match@^1.0.0:
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/balanced-match/-/balanced-match-1.0.2.tgz#e83e3a7e3f300b34cb9d87f615fa0cbf357690ee"
@@ -853,11 +845,6 @@ bs58check@^2.1.2:
     bs58 "^4.0.0"
     create-hash "^1.1.0"
     safe-buffer "^5.1.2"
-
-buffer-reverse@^1.0.1:
-  version "1.0.1"
-  resolved "https://registry.yarnpkg.com/buffer-reverse/-/buffer-reverse-1.0.1.tgz#49283c8efa6f901bc01fa3304d06027971ae2f60"
-  integrity sha512-M87YIUBsZ6N924W57vDwT/aOu8hw7ZgdByz6ijksLjmHJELBASmYTTlNHRgjE+pTsT9oJXGaDSgqqwfdHotDUg==
 
 buffer-to-arraybuffer@^0.0.5:
   version "0.0.5"

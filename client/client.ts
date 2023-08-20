@@ -77,18 +77,16 @@ async function updatePlayerView() {
 function computeOntoTile(tTo: Tile, tFrom: Tile, uFrom: Tile): Tile {
   let uTo: Tile;
   if (tTo.owner === tFrom.owner) {
-    uTo = new Tile(
+    uTo = Tile.genOwned(
       tTo.owner,
       tTo.loc,
-      tTo.resources + tFrom.resources - 1,
-      Utils.randFQ()
+      tTo.resources + tFrom.resources - 1
     );
   } else {
-    uTo = new Tile(
+    uTo = Tile.genOwned(
       tTo.owner,
       tTo.loc,
       tTo.resources - tFrom.resources + 1,
-      Utils.randFQ()
     );
     if (uTo.resources < 0) {
       uTo.owner = uFrom.owner;
@@ -109,7 +107,7 @@ async function move(inp: string) {
 
   let tFrom: Tile = b.getTile(cursor);
   let tTo: Tile = b.getTile({ r: nr, c: nc });
-  let uFrom: Tile = new Tile(tFrom.owner, tFrom.loc, 1, Utils.randFQ());
+  let uFrom: Tile = Tile.genOwned(tFrom.owner, tFrom.loc, 1);
   let uTo: Tile = computeOntoTile(tTo, tFrom, uFrom);
 
   socket.emit(
@@ -121,10 +119,10 @@ async function move(inp: string) {
   );
 
   await nStates.move(
-    Utils.FQToStr(uFrom.hash(b.utf8Encoder, b.poseidon)),
-    Utils.FQToStr(uTo.hash(b.utf8Encoder, b.poseidon)),
-    Utils.FQToStr(tFrom.nullifier(b.poseidon)),
-    Utils.FQToStr(tTo.nullifier(b.poseidon))
+    uFrom.hash(b.utf8Encoder, b.poseidon),
+    uTo.hash(b.utf8Encoder, b.poseidon),
+    tFrom.nullifier(b.poseidon),
+    tTo.nullifier(b.poseidon)
   );
 
   cursor = { r: nr, c: nc };
