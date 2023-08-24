@@ -6,10 +6,6 @@ export type Location = {
   c: number;
 };
 
-export type Player = {
-  
-}
-
 export class Tile {
   static UNOWNED: Player = new Player("_");
   static MYSTERY: Player = new Player("?");

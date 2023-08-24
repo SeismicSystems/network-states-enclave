@@ -23,10 +23,18 @@ export class Player {
     }
   }
 
+  /*
+   * Convert Location into field element in Babyjubjub's base field using
+   * Poseidon hash. Assumes both row & col are less than the field's modulus. 
+   */
   static hForDecrypt(l: Location, poseidon: any): BigInt {
     return BigInt(poseidon.F.toString(poseidon([l.r, l.c])));
   }
 
+  /*
+   * Signs message (Babyjubjub field element) using EDDSA. Player instance must
+   * already have a derived private key. 
+   */
   public genSig(h: BigInt): Signature {
     if (this.bjjPriv === undefined) {
       throw Error("Must instantiate Player w/ ETH private key to enable sigs.");
@@ -34,6 +42,10 @@ export class Player {
     return sign(this.bjjPriv.rawPrivKey, h);
   }
 
+  /*
+   * Verifies signature. Player instance must be instantiated with Babyjubjub
+   * public key. 
+   */
   public verifySig(h: BigInt, sig: Signature): boolean {
     if (this.bjjPub === undefined) {
       throw Error("Must instantiate Player w/ ETH public key to enable sigs.");
