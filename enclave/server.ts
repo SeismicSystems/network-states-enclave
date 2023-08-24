@@ -117,5 +117,16 @@ server.listen(process.env.SERVER_PORT, async () => {
   await b.seed(BOARD_SIZE, true, nStates);
   spawnPlayers();
 
+  console.log("===== TOP");
+  const l: Location = { r: 0, c: 0 };
+
+  const sig = PLAYER_A.genSig(Player.hForDecrypt(l, b.poseidon));
+  console.log("sig", sig);
+  console.log(
+    "verif?",
+    PLAYER_A.verifySig(Player.hForDecrypt(l, b.poseidon), sig)
+  );
+  console.log("===== BOT");
+
   console.log(`Server running on http://localhost:${process.env.SERVER_PORT}`);
 });

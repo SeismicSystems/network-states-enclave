@@ -124,7 +124,7 @@ export class Board {
   /*
    * Check if a location is in the FoW for player.
    */
-  inFog(l: Location, symbol: string): boolean {
+  public inFog(l: Location, symbol: string): boolean {
     let r = l.r,
       c = l.c;
     let foundNeighbor = false;
