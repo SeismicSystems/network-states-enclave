@@ -26,6 +26,7 @@ export class Player {
   /*
    * Convert Location into field element in Babyjubjub's base field using
    * Poseidon hash. Assumes both row & col are less than the field's modulus. 
+   * This is used for decrypt requests to dispel FoW. 
    */
   static hForDecrypt(l: Location, poseidon: any): BigInt {
     return BigInt(poseidon.F.toString(poseidon([l.r, l.c])));
