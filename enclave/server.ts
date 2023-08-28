@@ -13,7 +13,7 @@ import {
 import { Tile, Player, Board, Location, Utils } from "../game";
 
 /*
- * Set game parameters and create dummy players. 
+ * Set game parameters and create dummy players.
  */
 const BOARD_SIZE: number = parseInt(<string>process.env.BOARD_SIZE, 10);
 const START_RESOURCES: number = parseInt(
@@ -22,18 +22,9 @@ const START_RESOURCES: number = parseInt(
 );
 
 const PRIVKEYS = JSON.parse(<string>process.env.ETH_PRIVKEYS);
-const PLAYER_A: Player = new Player(
-  "A",
-  BigInt(PRIVKEYS["A"])
-);
-const PLAYER_B: Player = new Player(
-  "B",
-  BigInt(PRIVKEYS["B"])
-);
-const PLAYER_C: Player = new Player(
-  "C",
-  BigInt(PRIVKEYS["C"])
-);
+const PLAYER_A: Player = new Player("A", BigInt(PRIVKEYS["A"]));
+const PLAYER_B: Player = new Player("B", BigInt(PRIVKEYS["B"]));
+const PLAYER_C: Player = new Player("C", BigInt(PRIVKEYS["C"]));
 
 /*
  * Using Socket.IO to manage communication to clients.
@@ -76,20 +67,22 @@ function move(tFrom: any, tTo: any, uFrom: any, uTo: any) {
 }
 
 /*
- * Exposes secrets at location l if a requesting player proves ownership of 
+ * Exposes secrets at location l if a requesting player proves ownership of
  * neighboring tile.
  */
-function decrypt(socket: Socket, l: Location, reqPlayer: Player, sig: string) {
+function decrypt(
+  socket: Socket,
+  l: Location,
+  reqPlayer: Player,
+  sigStr: string
+) {
   const h = Player.hForDecrypt(l, b.poseidon);
-  // if (reqPlayer.verifySig(h, Utils.unserializeSig(sig)) || !b.inFog(l, reqPlayer)) {
-
-  // }
-  // socket.emit("decryptResponse", Tile.mystery(l).toJSON());
-  // if (b.inFog(l, symbol)) {
-    
-  //   return;
-  // }
-  socket.emit("decryptResponse", b.getTile(l).toJSON());
+  const sig = Utils.unserializeSig(sigStr);
+  if (sig && reqPlayer.verifySig(h, sig) && b.noFog(l, reqPlayer)) {
+    socket.emit("decryptResponse", b.getTile(l).toJSON());
+    return;
+  }
+  socket.emit("decryptResponse", Tile.mystery(l).toJSON());
 }
 
 /*
@@ -109,7 +102,6 @@ io.on("connection", (socket: Socket) => {
   console.log("Client connected: ", socket.id);
 
   socket.on("move", move);
-
   socket.on("decrypt", (l: Location, pubkey: string, sig: string) => {
     decrypt(socket, l, Player.fromPubString(pubkey), sig);
   });

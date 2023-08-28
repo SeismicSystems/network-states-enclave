@@ -2,7 +2,6 @@
 import { buildPoseidon } from "circomlibjs";
 // @ts-ignore
 import { TextEncoder } from "text-encoding-utf-8";
-import { genRandomSalt } from "maci-crypto";
 import { Utils } from "./Utils";
 import { Player } from "./Player";
 import { Tile, Location } from "./Tile";
@@ -68,7 +67,7 @@ export class Board {
   }
 
   /*
-   * Spawn Player at a Location. Used for development.
+   * Spawn Player at a Location. Used for development. Enclave only func.
    */
   public spawn(l: Location, pl: Player, resource: number) {
     this.assertBounds(l);
@@ -82,7 +81,8 @@ export class Board {
   }
 
   /*
-   * Displays colored gameboard.
+   * Displays colored gameboard. Local belief of what the gameboard is from the
+   * perspective of the client.
    */
   public printView(): void {
     for (let i = 0; i < this.t.length; i++) {
@@ -115,27 +115,31 @@ export class Board {
   }
 
   /*
-   * Set location to new Tile value.
+   * Set location to new Tile value. Enclave-only func.
    */
   public setTile(tl: Tile) {
     this.t[tl.loc.r][tl.loc.c] = tl;
   }
 
   /*
-   * Check if a location is in the FoW for player.
+   * Check if a location is NOT in the FoW for requesting player. Enclave-only
+   * func.
    */
-  public inFog(l: Location, symbol: string): boolean {
+  public noFog(l: Location, reqPlayer: Player): boolean {
     let r = l.r,
       c = l.c;
     let foundNeighbor = false;
     Board.PERIMETER.forEach(([dy, dx]) => {
       let nr = r + dy,
         nc = c + dx;
-      if (this.inBounds(nr, nc) && this.t[nr][nc].owner.symbol === symbol) {
+      if (
+        this.inBounds(nr, nc) &&
+        this.t[nr][nc].owner.bjjPub.equals(reqPlayer.bjjPub)
+      ) {
         foundNeighbor = true;
       }
     });
-    return !foundNeighbor;
+    return foundNeighbor;
   }
 
   /*

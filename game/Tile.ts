@@ -1,3 +1,4 @@
+import { PubKey } from "maci-domainobjs";
 import { genRandomSalt } from "maci-crypto";
 import { Player } from "./Player";
 
@@ -23,7 +24,7 @@ export class Tile {
   }
 
   /*
-   * Compute hash of this Tile and convert it into a decimal string. 
+   * Compute hash of this Tile and convert it into a decimal string.
    */
   hash(utf8Encoder: any, poseidon: any): string {
     return poseidon.F.toString(poseidon(this.flatDec(utf8Encoder)), 10);
@@ -59,7 +60,8 @@ export class Tile {
    */
   toJSON(): object {
     return {
-      owner: this.owner.symbol,
+      symbol: this.owner.symbol,
+      bjjPub: this.owner.bjjPub.serialize(),
       r: this.loc.r.toString(),
       c: this.loc.c.toString(),
       resources: this.resources.toString(),
@@ -68,7 +70,7 @@ export class Tile {
   }
 
   /*
-   * Return true if this Tile is in the fog for the current player view. 
+   * Return true if this Tile is in the fog for the current player view.
    */
   isMystery(): boolean {
     return this.owner.symbol === Tile.MYSTERY.symbol;
@@ -79,7 +81,7 @@ export class Tile {
    */
   static fromJSON(obj: any): Tile {
     return new Tile(
-      new Player(obj.owner),
+      new Player(obj.symbol, undefined, PubKey.unserialize(obj.bjjPub)),
       { r: parseInt(obj.r, 10), c: parseInt(obj.c, 10) },
       parseInt(obj.resources, 10),
       BigInt(obj.key)
@@ -94,14 +96,14 @@ export class Tile {
   }
 
   /*
-   * New unowned tile with random salt as the access key. 
+   * New unowned tile with random salt as the access key.
    */
   static genUnowned(l: Location): Tile {
     return new Tile(Tile.UNOWNED, l, 0, genRandomSalt());
   }
 
   /*
-   * New owned tile with random salt as the access key. 
+   * New owned tile with random salt as the access key.
    */
   static genOwned(o_: Player, l_: Location, r_: number): Tile {
     return new Tile(o_, l_, r_, genRandomSalt());

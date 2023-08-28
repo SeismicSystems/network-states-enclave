@@ -9,7 +9,7 @@ export class Utils {
   }
 
   /*
-   * Serialize a MACI signature. 
+   * Serialize a MACI signature.
    */
   static serializeSig(sig: Signature): string {
     return JSON.stringify({
@@ -21,13 +21,16 @@ export class Utils {
   /*
    * Unserialize a MACI signature.
    */
-  static unserializeSig(serializedSignature: string): Signature {
-    return JSON.parse(serializedSignature, (key, value) => {
-      if (key === "R8" && Array.isArray(value)) {
-        return value.map((strValue) => BigInt(strValue));
-      } else {
-        return BigInt(value);
-      }
-    });
+  static unserializeSig(serializedSignature: string): Signature | null {
+    try {
+      const parsed = JSON.parse(serializedSignature);
+      return {
+        R8: [BigInt(parsed["R8"][0]), BigInt(parsed["R8"][1])],
+        S: BigInt(parsed["S"]),
+      };
+    } catch (error) {
+      console.error("Error while unserializing signature:", error);
+      return null;
+    }
   }
 }
