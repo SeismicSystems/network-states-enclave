@@ -3,6 +3,7 @@ import {
   Signature,
   formatPrivKeyForBabyJub,
   genPubKey,
+  genPrivKey,
   sign,
   verifySignature,
 } from "maci-crypto";
@@ -11,7 +12,7 @@ import { Location } from "./Tile";
 export class Player {
   symbol: string;
   bjjPriv?: PrivKey;
-  bjjPub?: PubKey;
+  bjjPub: PubKey;
 
   constructor(symb: string, ethPriv?: BigInt, bjjPub_?: PubKey) {
     this.symbol = symb;
@@ -20,7 +21,14 @@ export class Player {
       this.bjjPub = new PubKey(genPubKey(this.bjjPriv.rawPrivKey));
     } else if (bjjPub_) {
       this.bjjPub = bjjPub_;
+    } else {
+      this.bjjPriv = new PrivKey(genPrivKey());
+      this.bjjPub = new PubKey(genPubKey(this.bjjPriv.rawPrivKey));
     }
+  }
+
+  static fromPubString(p: string): Player {
+    return new Player("", undefined, PubKey.unserialize(p));
   }
 
   /*

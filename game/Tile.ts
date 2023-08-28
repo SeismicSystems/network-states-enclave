@@ -68,6 +68,13 @@ export class Tile {
   }
 
   /*
+   * Return true if this Tile is in the fog for the current player view. 
+   */
+  isMystery(): boolean {
+    return this.owner.symbol === Tile.MYSTERY.symbol;
+  }
+
+  /*
    * Convert JSON object to tile.
    */
   static fromJSON(obj: any): Tile {

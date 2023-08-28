@@ -13,7 +13,7 @@ import {
 import { Tile, Player, Board, Location, Utils } from "../game";
 
 /*
- * Set game parameters and define default players.
+ * Set game parameters and create dummy players. 
  */
 const BOARD_SIZE: number = parseInt(<string>process.env.BOARD_SIZE, 10);
 const START_RESOURCES: number = parseInt(
@@ -21,18 +21,18 @@ const START_RESOURCES: number = parseInt(
   10
 );
 
+const PRIVKEYS = JSON.parse(<string>process.env.ETH_PRIVKEYS);
 const PLAYER_A: Player = new Player(
   "A",
-  BigInt(<string>process.env.A_ETH_PRIV)
+  BigInt(PRIVKEYS["A"])
 );
-
 const PLAYER_B: Player = new Player(
   "B",
-  BigInt(<string>process.env.B_ETH_PRIV)
+  BigInt(PRIVKEYS["B"])
 );
 const PLAYER_C: Player = new Player(
   "C",
-  BigInt(<string>process.env.C_ETH_PRIV)
+  BigInt(PRIVKEYS["C"])
 );
 
 /*
@@ -76,18 +76,25 @@ function move(tFrom: any, tTo: any, uFrom: any, uTo: any) {
 }
 
 /*
- * Exposes secrets at location l if user proves ownership of neighboring tile.
+ * Exposes secrets at location l if a requesting player proves ownership of 
+ * neighboring tile.
  */
-function decrypt(socket: Socket, l: Location, symbol: string) {
-  if (b.inFog(l, symbol)) {
-    socket.emit("decryptResponse", Tile.mystery(l).toJSON());
-    return;
-  }
+function decrypt(socket: Socket, l: Location, reqPlayer: Player, sig: string) {
+  const h = Player.hForDecrypt(l, b.poseidon);
+  // if (reqPlayer.verifySig(h, Utils.unserializeSig(sig)) || !b.inFog(l, reqPlayer)) {
+
+  // }
+  // socket.emit("decryptResponse", Tile.mystery(l).toJSON());
+  // if (b.inFog(l, symbol)) {
+    
+  //   return;
+  // }
   socket.emit("decryptResponse", b.getTile(l).toJSON());
 }
 
 /*
- * Dev function for spawning default players on the map.
+ * Dev function for spawning default players on the map. Player A isn't spawned
+ * so we can test client spawn.
  */
 function spawnPlayers() {
   b.spawn({ r: 0, c: 0 }, PLAYER_A, START_RESOURCES);
@@ -103,8 +110,8 @@ io.on("connection", (socket: Socket) => {
 
   socket.on("move", move);
 
-  socket.on("decrypt", (l: Location, symb: string) => {
-    decrypt(socket, l, symb);
+  socket.on("decrypt", (l: Location, pubkey: string, sig: string) => {
+    decrypt(socket, l, Player.fromPubString(pubkey), sig);
   });
 });
 
@@ -116,17 +123,6 @@ server.listen(process.env.SERVER_PORT, async () => {
   await b.setup();
   await b.seed(BOARD_SIZE, true, nStates);
   spawnPlayers();
-
-  console.log("===== TOP");
-  const l: Location = { r: 0, c: 0 };
-
-  const sig = PLAYER_A.genSig(Player.hForDecrypt(l, b.poseidon));
-  console.log("sig", sig);
-  console.log(
-    "verif?",
-    PLAYER_A.verifySig(Player.hForDecrypt(l, b.poseidon), sig)
-  );
-  console.log("===== BOT");
 
   console.log(`Server running on http://localhost:${process.env.SERVER_PORT}`);
 });

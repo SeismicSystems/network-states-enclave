@@ -4,7 +4,7 @@ import { io, Socket } from "socket.io-client";
 import dotenv from "dotenv";
 dotenv.config({ path: "../.env" });
 import { ServerToClientEvents, ClientToServerEvents } from "../enclave/socket";
-import { Tile, Board, Location, Utils } from "../game";
+import { Player, Tile, Board, Location, Utils } from "../game";
 
 /*
  * Conditions depend on which player is currently active.
@@ -14,6 +14,10 @@ const PLAYER_START: Location = {
   r: Number(process.argv[3]),
   c: Number(process.argv[4]),
 };
+const PLAYER_PRIVKEY: BigInt = BigInt(
+  JSON.parse(<string>process.env.ETH_PRIVKEYS)[PLAYER_SYMBOL]
+);
+const PLAYER = new Player(PLAYER_SYMBOL, PLAYER_PRIVKEY);
 
 /*
  * Misc client parameters.
@@ -62,17 +66,24 @@ const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
  * Iterates through entire board, asking enclave to reveal all secrets this
  * player is privy to.
  */
-async function updatePlayerView() {
+function updatePlayerView() {
   for (let i = 0; i < BOARD_SIZE; i++) {
     for (let j = 0; j < BOARD_SIZE; j++) {
-      socket.emit("decrypt", { r: i, c: j }, PLAYER_SYMBOL);
+      const l: Location = { r: i, c: j };
+      const sig = PLAYER.genSig(Player.hForDecrypt(l, b.poseidon));
+      socket.emit(
+        "decrypt",
+        l,
+        PLAYER.bjjPub.serialize(),
+        Utils.serializeSig(sig)
+      );
     }
   }
 }
 
 /*
  * Computes proper state of tile an army is about to move onto. Goes through
- * game logic of what happens during a fight.
+ * game logic of what happens during a battle.
  */
 function computeOntoTile(tTo: Tile, tFrom: Tile, uFrom: Tile): Tile {
   let uTo: Tile;
@@ -86,7 +97,7 @@ function computeOntoTile(tTo: Tile, tFrom: Tile, uFrom: Tile): Tile {
     uTo = Tile.genOwned(
       tTo.owner,
       tTo.loc,
-      tTo.resources - tFrom.resources + 1,
+      tTo.resources - tFrom.resources + 1
     );
     if (uTo.resources < 0) {
       uTo.owner = uFrom.owner;
@@ -159,7 +170,7 @@ async function gameLoop() {
 }
 
 /*
- * Connect to enclave and sync with current viewable state.
+ * Set up player session with enclave. Spawning if necessary.
  */
 socket.on("connect", async () => {
   console.log("Server connection established");
@@ -167,11 +178,9 @@ socket.on("connect", async () => {
   b = new Board();
   await b.setup();
   await b.seed(BOARD_SIZE, false, nStates);
-
   updatePlayerView();
   await Utils.sleep(UPDATE_MLS);
   b.printView();
-
   gameLoop();
 });
 

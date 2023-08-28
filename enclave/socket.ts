@@ -1,14 +1,13 @@
+import { Signature } from "maci-crypto";
 import { Location } from "../game";
 
 interface ServerToClientEvents {
-  decryptResponse: (
-    t: any
-  ) => void;
+  decryptResponse: (t: any) => void;
   updateDisplay: () => void;
 }
 
 interface ClientToServerEvents {
-  decrypt: (l: Location, symbol: string) => void;
+  decrypt: (l: Location, pubkey: string, sig: string) => void;
   move: (tFrom: any, tTo: any, uFrom: any, uTo: any) => void;
 }
 

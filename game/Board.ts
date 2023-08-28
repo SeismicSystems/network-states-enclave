@@ -41,7 +41,7 @@ export class Board {
         if (isInit) {
           let tl: Tile = Tile.genUnowned({ r: i, c: j });
           await nStates.set(tl.hash(this.utf8Encoder, this.poseidon));
-          await Utils.sleep(50);
+          await Utils.sleep(200);
           row.push(tl);
         } else {
           row.push(Tile.mystery({ r: i, c: j }));
@@ -68,7 +68,7 @@ export class Board {
   }
 
   /*
-   * Spawn a player at a location.
+   * Spawn Player at a Location. Used for development.
    */
   public spawn(l: Location, pl: Player, resource: number) {
     this.assertBounds(l);
@@ -78,7 +78,7 @@ export class Board {
     if (this.t[r][c].owner != Tile.UNOWNED) {
       throw new Error("Tried to spawn player on an owned tile.");
     }
-    this.t[r][c] = new Tile(pl, { r: r, c: c }, resource, genRandomSalt());
+    this.t[r][c] = Tile.genOwned(pl, { r: r, c: c }, resource);
   }
 
   /*
@@ -136,5 +136,21 @@ export class Board {
       }
     });
     return !foundNeighbor;
+  }
+
+  /*
+   * Returns true if every Tile in this board instance is a Mystery. Only
+   * happens when not player isn't spawned yet.
+   */
+  public noVisibility() {
+    for (let i = 0; i < this.t.length; i++) {
+      for (let j = 0; j < this.t[0].length; j++) {
+        const tl: Tile = this.getTile({ r: i, c: j });
+        if (!tl.isMystery()) {
+          return false;
+        }
+      }
+    }
+    return true;
   }
 }
