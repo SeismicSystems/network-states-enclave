@@ -6,6 +6,7 @@ import {
   genPrivKey,
   sign,
   verifySignature,
+  hash2,
 } from "maci-crypto";
 import { Location } from "./Tile";
 
@@ -36,8 +37,8 @@ export class Player {
    * Poseidon hash. Assumes both row & col are less than the field's modulus. 
    * This is used for decrypt requests to dispel FoW. 
    */
-  static hForDecrypt(l: Location, poseidon: any): BigInt {
-    return BigInt(poseidon.F.toString(poseidon([l.r, l.c])));
+  static hForDecrypt(l: Location): BigInt {
+    return hash2([BigInt(l.r), BigInt(l.c)]);
   }
 
   /*

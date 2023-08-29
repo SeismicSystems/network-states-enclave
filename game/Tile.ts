@@ -1,5 +1,5 @@
 import { PubKey } from "maci-domainobjs";
-import { genRandomSalt } from "maci-crypto";
+import { genRandomSalt, hashOne, hash5 } from "maci-crypto";
 import { Player } from "./Player";
 
 export type Location = {
@@ -26,37 +26,26 @@ export class Tile {
   /*
    * Compute hash of this Tile and convert it into a decimal string.
    */
-  hash(utf8Encoder: any, poseidon: any): string {
-    return poseidon.F.toString(poseidon(this.flatDec(utf8Encoder)), 10);
+  hash(): string {
+    return hash5([
+      this.owner.bjjPub.hash(),
+      BigInt(this.loc.r),
+      BigInt(this.loc.c),
+      BigInt(this.resources),
+      this.key,
+    ]).toString();
   }
 
   /*
    * Compute the nullifier, defined as the hash of access key. Returns decimal
    * string representation.
    */
-  nullifier(poseidon: any): string {
-    return poseidon.F.toString(poseidon([this.key]), 10);
+  nullifier(): string {
+    return hashOne(this.key).toString();
   }
 
   /*
-   * [TODO] Replace this with Object.values(this.toJSON()) once symbol attribute
-   *        is no longer needed.
-   */
-  flatDec(utf8Encoder: any): BigInt[] {
-    let ownerEncoding: number = utf8Encoder
-      .encode(this.owner.symbol)
-      .reduce((acc: number, byte: number) => acc + byte.toString(10), "");
-    return [
-      BigInt(ownerEncoding),
-      BigInt(this.loc.r),
-      BigInt(this.loc.c),
-      BigInt(this.resources),
-      this.key,
-    ];
-  }
-
-  /*
-   * Convert to JSON object where all values are strings.
+   * Convert to JSON object with all values as strings.
    */
   toJSON(): object {
     return {
@@ -77,7 +66,7 @@ export class Tile {
   }
 
   /*
-   * Convert JSON object to tile.
+   * Convert JSON object to Tile.
    */
   static fromJSON(obj: any): Tile {
     return new Tile(

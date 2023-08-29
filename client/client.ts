@@ -73,7 +73,7 @@ function updatePlayerView() {
   for (let i = 0; i < BOARD_SIZE; i++) {
     for (let j = 0; j < BOARD_SIZE; j++) {
       const l: Location = { r: i, c: j };
-      const sig = PLAYER.genSig(Player.hForDecrypt(l, b.poseidon));
+      const sig = PLAYER.genSig(Player.hForDecrypt(l));
       socket.emit(
         "decrypt",
         l,
@@ -135,10 +135,10 @@ async function move(inp: string) {
   );
 
   await nStates.move(
-    uFrom.hash(b.utf8Encoder, b.poseidon),
-    uTo.hash(b.utf8Encoder, b.poseidon),
-    tFrom.nullifier(b.poseidon),
-    tTo.nullifier(b.poseidon)
+    uFrom.hash(),
+    uTo.hash(),
+    tFrom.nullifier(),
+    tTo.nullifier()
   );
 
   cursor = { r: nr, c: nc };
@@ -180,15 +180,12 @@ async function gameLoop() {
 socket.on("connect", async () => {
   console.log("Server connection established");
 
-  await Utils.reconstructMerkleRoot(Number(process.env.TREE_DEPTH), nStates);
-
-  // b = new Board();
-  // await b.setup();
-  // await b.seed(BOARD_SIZE, false, nStates);
-  // updatePlayerView();
-  // await Utils.sleep(UPDATE_MLS);
-  // b.printView();
-  // gameLoop();
+  b = new Board();
+  await b.seed(BOARD_SIZE, false, nStates);
+  updatePlayerView();
+  await Utils.sleep(UPDATE_MLS);
+  b.printView();
+  gameLoop();
 });
 
 /*

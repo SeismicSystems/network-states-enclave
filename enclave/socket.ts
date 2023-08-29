@@ -1,4 +1,3 @@
-import { Signature } from "maci-crypto";
 import { Location } from "../game";
 
 interface ServerToClientEvents {

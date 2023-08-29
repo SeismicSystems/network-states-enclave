@@ -1,7 +1,3 @@
-// @ts-ignore
-import { buildPoseidon } from "circomlibjs";
-// @ts-ignore
-import { TextEncoder } from "text-encoding-utf-8";
 import { Utils } from "./Utils";
 import { Player } from "./Player";
 import { Tile, Location } from "./Tile";
@@ -12,20 +8,9 @@ export class Board {
   );
 
   t: Tile[][];
-  poseidon: any;
-  utf8Encoder: any;
 
   public constructor() {
-    this.utf8Encoder = new TextEncoder();
     this.t = new Array<Array<Tile>>();
-  }
-
-  /*
-   * Set up member variables that involve async. Cannot do in constructor.
-   * Must call before using any other Board functions.
-   */
-  public async setup() {
-    this.poseidon = await buildPoseidon();
   }
 
   /*
@@ -39,7 +24,7 @@ export class Board {
       for (let j = 0; j < sz; j++) {
         if (isInit) {
           let tl: Tile = Tile.genUnowned({ r: i, c: j });
-          await nStates.set(tl.hash(this.utf8Encoder, this.poseidon));
+          await nStates.set(tl.hash());
           await Utils.sleep(200);
           row.push(tl);
         } else {

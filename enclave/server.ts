@@ -76,7 +76,7 @@ function decrypt(
   reqPlayer: Player,
   sigStr: string
 ) {
-  const h = Player.hForDecrypt(l, b.poseidon);
+  const h = Player.hForDecrypt(l);
   const sig = Utils.unserializeSig(sigStr);
   if (sig && reqPlayer.verifySig(h, sig) && b.noFog(l, reqPlayer)) {
     socket.emit("decryptResponse", b.getTile(l).toJSON());
@@ -112,7 +112,6 @@ io.on("connection", (socket: Socket) => {
  */
 server.listen(process.env.SERVER_PORT, async () => {
   b = new Board();
-  await b.setup();
   await b.seed(BOARD_SIZE, true, nStates);
   spawnPlayers();
 
