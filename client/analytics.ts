@@ -1,21 +1,23 @@
 import { ethers } from "ethers";
+import dotenv from "dotenv";
+dotenv.config({ path: "../.env" });
 
-const CONTRACT_ADDR: string = "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0";
-
-// Anvil defaults
+/*
+ * Boot up interface with 1) Network States contract and 2) the CLI.
+ */
 const signer = new ethers.Wallet(
-  "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
-  new ethers.providers.JsonRpcProvider("http://127.0.0.1:8545")
+  <string>process.env.DEV_PRIV_KEY,
+  new ethers.providers.JsonRpcProvider(process.env.RPC_URL)
 );
 const nStates = new ethers.Contract(
-  CONTRACT_ADDR,
-  require("../contracts/out/NStates.sol/NStates.json").abi,
+  <string>process.env.CONTRACT_ADDR,
+  require(<string>process.env.CONTRACT_ABI).abi,
   signer
 );
 
 (async () => {
   console.log("== Merkle Root")
-  console.log(await nStates.root());
+  console.log((await nStates.root()).toString());
   console.log("==\n");
 
   console.log("== Nullifiers")
