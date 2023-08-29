@@ -1,3 +1,5 @@
+import { groth16 } from "snarkjs";
+import { ethers } from "ethers";
 import { Utils } from "./Utils";
 import { Player } from "./Player";
 import { Tile, Location } from "./Tile";
@@ -141,5 +143,65 @@ export class Board {
       }
     }
     return true;
+  }
+
+  /*
+   * Computes proper state of tile an army is about to move onto. Goes through
+   * game logic of what happens during a battle.
+   */
+  static computeOntoTile(
+    tTo: Tile,
+    tFrom: Tile,
+    uFrom: Tile,
+    nMobilize: number
+  ): Tile {
+    let uTo: Tile;
+    if (tTo.owner === tFrom.owner) {
+      uTo = Tile.genOwned(
+        tTo.owner,
+        tTo.loc,
+        tTo.resources + nMobilize
+      );
+    } else {
+      uTo = Tile.genOwned(
+        tTo.owner,
+        tTo.loc,
+        tTo.resources - nMobilize
+      );
+      if (uTo.resources < 0) {
+        uTo.owner = uFrom.owner;
+        uTo.resources *= -1;
+      }
+    }
+    return uTo;
+  }
+
+  /*
+   * Generates state transitions, nullifiers, and ZKP needed to move troops from
+   * one tile to another. 
+   */
+  public constructMove(from: Location, to: Location, nMobilize: number) {
+    const tFrom: Tile = this.getTile(from);
+    const tTo: Tile = this.getTile(to);
+    let uFrom: Tile = Tile.genOwned(
+      tFrom.owner,
+      tFrom.loc,
+      tFrom.resources - nMobilize
+    );
+    let uTo: Tile = Board.computeOntoTile(tTo, tFrom, uFrom, nMobilize);
+
+
+  }
+
+  public moveZKP(nStates: ethers.Contract) {
+    // [TODO]
+    // signal input hUFrom;
+    // signal input hUTo;
+    // signal input rhoFrom;
+    // signal input rhoTo;
+    // signal input tFrom[N_TILE_ATTRS];
+    // signal input tTo[N_TILE_ATTRS];
+    // signal input uFrom[N_TILE_ATTRS];
+    // signal input uTo[N_TILE_ATTRS];
   }
 }

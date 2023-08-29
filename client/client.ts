@@ -85,63 +85,35 @@ function updatePlayerView() {
 }
 
 /*
- * Computes proper state of tile an army is about to move onto. Goes through
- * game logic of what happens during a battle.
- *
- * [TODO] Move this logic to Board.
- */
-function computeOntoTile(tTo: Tile, tFrom: Tile, uFrom: Tile): Tile {
-  let uTo: Tile;
-  if (tTo.owner === tFrom.owner) {
-    uTo = Tile.genOwned(
-      tTo.owner,
-      tTo.loc,
-      tTo.resources + tFrom.resources - 1
-    );
-  } else {
-    uTo = Tile.genOwned(
-      tTo.owner,
-      tTo.loc,
-      tTo.resources - tFrom.resources + 1
-    );
-    if (uTo.resources < 0) {
-      uTo.owner = uFrom.owner;
-      uTo.resources *= -1;
-    }
-  }
-  return uTo;
-}
-
-/*
  * Constructs new states induced by army at cursor moving in one of the
  * cardinal directions. Alerts enclave of intended move before sending it
- * to chain.
+ * to chain. Currently hardcoded to move all but one army unit to the next
+ * tile.
  */
 async function move(inp: string) {
-  let nr = cursor.r + MOVE_KEYS[inp][0],
+  const nr = cursor.r + MOVE_KEYS[inp][0],
     nc = cursor.c + MOVE_KEYS[inp][1];
+  const tFrom: Tile = b.getTile(cursor);
+  b.constructMove(cursor, { r: nr, c: nc }, tFrom.resources - 1);
 
-  let tFrom: Tile = b.getTile(cursor);
-  let tTo: Tile = b.getTile({ r: nr, c: nc });
-  let uFrom: Tile = Tile.genOwned(tFrom.owner, tFrom.loc, 1);
-  let uTo: Tile = computeOntoTile(tTo, tFrom, uFrom);
+  // console.log(b.moveZKP(nStates));
 
-  socket.emit(
-    "move",
-    tFrom.toJSON(),
-    tTo.toJSON(),
-    uFrom.toJSON(),
-    uTo.toJSON()
-  );
+  // socket.emit(
+  //   "move",
+  //   tFrom.toJSON(),
+  //   tTo.toJSON(),
+  //   uFrom.toJSON(),
+  //   uTo.toJSON()
+  // );
 
-  await nStates.move(
-    uFrom.hash(),
-    uTo.hash(),
-    tFrom.nullifier(),
-    tTo.nullifier()
-  );
+  // await nStates.move(
+  //   uFrom.hash(),
+  //   uTo.hash(),
+  //   tFrom.nullifier(),
+  //   tTo.nullifier()
+  // );
 
-  cursor = { r: nr, c: nc };
+  // cursor = { r: nr, c: nc };
 }
 
 /*
