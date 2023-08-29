@@ -65,6 +65,9 @@ const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
 /*
  * Iterates through entire board, asking enclave to reveal all secrets this
  * player is privy to.
+ *
+ * [TODO] Only ask for tiles that should be out of the fog.
+ *
  */
 function updatePlayerView() {
   for (let i = 0; i < BOARD_SIZE; i++) {
@@ -84,6 +87,8 @@ function updatePlayerView() {
 /*
  * Computes proper state of tile an army is about to move onto. Goes through
  * game logic of what happens during a battle.
+ *
+ * [TODO] Move this logic to Board.
  */
 function computeOntoTile(tTo: Tile, tFrom: Tile, uFrom: Tile): Tile {
   let uTo: Tile;
@@ -175,13 +180,15 @@ async function gameLoop() {
 socket.on("connect", async () => {
   console.log("Server connection established");
 
-  b = new Board();
-  await b.setup();
-  await b.seed(BOARD_SIZE, false, nStates);
-  updatePlayerView();
-  await Utils.sleep(UPDATE_MLS);
-  b.printView();
-  gameLoop();
+  await Utils.reconstructMerkleRoot(Number(process.env.TREE_DEPTH), nStates);
+
+  // b = new Board();
+  // await b.setup();
+  // await b.seed(BOARD_SIZE, false, nStates);
+  // updatePlayerView();
+  // await Utils.sleep(UPDATE_MLS);
+  // b.printView();
+  // gameLoop();
 });
 
 /*

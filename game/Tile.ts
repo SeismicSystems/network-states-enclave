@@ -39,8 +39,8 @@ export class Tile {
   }
 
   /*
-   * TEMPORARY WHILE PLAYER STILL REPRESENTED BY SYMBOL. replace with
-   * Object.values(jsonRepr) once player represented by public key
+   * [TODO] Replace this with Object.values(this.toJSON()) once symbol attribute
+   *        is no longer needed.
    */
   flatDec(utf8Encoder: any): BigInt[] {
     let ownerEncoding: number = utf8Encoder

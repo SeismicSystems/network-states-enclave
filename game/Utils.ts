@@ -1,4 +1,10 @@
-import { Signature } from "maci-crypto";
+import {
+  Signature,
+  NOTHING_UP_MY_SLEEVE,
+  IncrementalQuinTree,
+  hash2,
+} from "maci-crypto";
+import { ethers } from "ethers";
 
 export class Utils {
   /*
@@ -32,5 +38,30 @@ export class Utils {
       console.error("Error while unserializing signature:", error);
       return null;
     }
+  }
+
+  /*
+   * Use all emitted NewLeaf() events from contract to reconstruct on-chain
+   * merkle root. Logic here is useful for making merkle proofs later (this
+   * is why we don't just directly read the root from contract).
+   *
+   * [TODO] Memoize using local or third party indexer.
+   */
+  static async reconstructMerkleRoot(
+    treeDepth: number,
+    nStates: ethers.Contract
+  ): Promise<BigInt> {
+    const newLeafEvents = await nStates.queryFilter(nStates.filters.NewLeaf());
+    const leaves = newLeafEvents.map((e) => e.args?.h);
+    let tree = new IncrementalQuinTree(
+      treeDepth,
+      NOTHING_UP_MY_SLEEVE,
+      2,
+      hash2
+    );
+    leaves.forEach((lh: BigInt) => {
+      tree.insert(lh);
+    });
+    return tree.root;
   }
 }
