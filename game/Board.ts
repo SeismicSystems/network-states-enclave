@@ -1,3 +1,4 @@
+// @ts-ignore
 import { groth16 } from "snarkjs";
 import { ethers } from "ethers";
 import { Utils } from "./Utils";
@@ -177,31 +178,30 @@ export class Board {
   }
 
   /*
-   * Generates state transitions, nullifiers, and ZKP needed to move troops from
-   * one tile to another. 
+   * Generates state transition, nullifier combo, and ZKP needed to move troops 
+   * from one tile to another. 
    */
-  public constructMove(from: Location, to: Location, nMobilize: number) {
+  public constructMove(mRoot: BigInt, from: Location, to: Location, nMobilize: number) {
     const tFrom: Tile = this.getTile(from);
     const tTo: Tile = this.getTile(to);
-    let uFrom: Tile = Tile.genOwned(
+    const uFrom: Tile = Tile.genOwned(
       tFrom.owner,
       tFrom.loc,
       tFrom.resources - nMobilize
     );
-    let uTo: Tile = Board.computeOntoTile(tTo, tFrom, uFrom, nMobilize);
+    const uTo: Tile = Board.computeOntoTile(tTo, tFrom, uFrom, nMobilize);
 
-
-  }
-
-  public moveZKP(nStates: ethers.Contract) {
-    // [TODO]
-    // signal input hUFrom;
-    // signal input hUTo;
-    // signal input rhoFrom;
-    // signal input rhoTo;
-    // signal input tFrom[N_TILE_ATTRS];
-    // signal input tTo[N_TILE_ATTRS];
-    // signal input uFrom[N_TILE_ATTRS];
-    // signal input uTo[N_TILE_ATTRS];
+    const circuitInputs = {
+      root: mRoot.toString(),
+      hUFrom: uFrom.hash(),
+      hUTo: uTo.hash(),
+      rhoFrom: tFrom.nullifier(),
+      rhoTo: tTo.nullifier(),
+      tFrom: tFrom.toCircuitInput(),
+      tTo: tTo.toCircuitInput(),
+      uFrom: uFrom.toCircuitInput(),
+      uTo: uTo.toCircuitInput()
+    }
+    console.log(circuitInputs);
   }
 }

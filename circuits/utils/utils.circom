@@ -1,5 +1,6 @@
 pragma circom 2.1.1;
 
+include "../node_modules/circomlib/circuits/comparators.circom";
 include "../node_modules/circomlib/circuits/gates.circom";
 
 /*
@@ -48,7 +49,6 @@ template BatchIsZero(SIZE) {
     out <== accumulator[SIZE - 1];
 }
 
-
 /*
  * Checks whether a pair is present in an array of pairs.
  */
@@ -57,11 +57,14 @@ template PairArrayContains(N) {
     signal input pair[2];
     signal output out;
 
+    signal eqs[N];
     signal accumulator[N];
-    accumulator[0] <== ArrayEqual(2)(arr[0], pair);
+    accumulator[0] <== BatchIsEqual(2)([[arr[0][0], pair[0]], 
+        [arr[0][1], pair[1]]]);
     for (var i = 1; i < N; i++) {
-        accumulator[i] <== OR()(accumulator[i - 1], 
-            BatchIsEqual(2)([arr[i][0], pair[0]], [arr[i][1], pair[1]]));
+        eqs[i] <== BatchIsEqual(2)([[arr[i][0], pair[0]], 
+            [arr[i][1], pair[1]]]);
+        accumulator[i] <== OR()(accumulator[i - 1], eqs[i]);
     }
 
     out <== accumulator[N - 1];

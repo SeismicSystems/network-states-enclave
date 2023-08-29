@@ -1,5 +1,6 @@
 import { PubKey } from "maci-domainobjs";
-import { genRandomSalt, hashOne, hash5 } from "maci-crypto";
+import { genRandomSalt } from "maci-crypto";
+import { poseidon } from 'circomlib';
 import { Player } from "./Player";
 
 export type Location = {
@@ -24,16 +25,24 @@ export class Tile {
   }
 
   /*
+   * Represent Tile as an array of BigInt values to pass into the circuit.
+   */
+  toCircuitInput(): string[] {
+    return [
+      this.owner.bjjPub.rawPubKey[0].toString(),
+      this.owner.bjjPub.rawPubKey[1].toString(),
+      this.loc.r.toString(),
+      this.loc.c.toString(),
+      this.resources.toString(),
+      this.key.toString(),
+    ];
+  }
+
+  /*
    * Compute hash of this Tile and convert it into a decimal string.
    */
   hash(): string {
-    return hash5([
-      this.owner.bjjPub.hash(),
-      BigInt(this.loc.r),
-      BigInt(this.loc.c),
-      BigInt(this.resources),
-      this.key,
-    ]).toString();
+    return poseidon(this.toCircuitInput().map((e) => BigInt(e))).toString();
   }
 
   /*
@@ -41,7 +50,7 @@ export class Tile {
    * string representation.
    */
   nullifier(): string {
-    return hashOne(this.key).toString();
+    return poseidon([this.key]).toString();
   }
 
   /*
