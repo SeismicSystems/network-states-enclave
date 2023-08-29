@@ -1,6 +1,7 @@
+// @ts-ignore
+import { poseidon } from 'circomlib';
 import { PubKey } from "maci-domainobjs";
 import { genRandomSalt } from "maci-crypto";
-import { poseidon } from 'circomlib';
 import { Player } from "./Player";
 
 export type Location = {
