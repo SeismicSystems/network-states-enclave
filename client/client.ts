@@ -93,14 +93,18 @@ function updatePlayerView() {
 async function move(inp: string) {
   const nr = cursor.r + MOVE_KEYS[inp][0],
     nc = cursor.c + MOVE_KEYS[inp][1];
-  const tFrom = b.getTile(cursor);
   const mRoot = await Utils.reconstructMerkleRoot(
     Number(process.env.TREE_DEPTH),
     nStates
   );
-  b.constructMove(mRoot, cursor, { r: nr, c: nc }, tFrom.resources - 1);
+  const [tFrom, tTo, uFrom, uTo, proof, publicSignals] = await b.constructMove(
+    mRoot,
+    cursor,
+    { r: nr, c: nc },
+    b.getTile(cursor).resources - 1
+  );
 
-  // console.log(b.moveZKP(nStates));
+  console.log("PROOF", proof);
 
   // socket.emit(
   //   "move",

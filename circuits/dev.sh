@@ -34,7 +34,9 @@ yarn run snarkjs zkey export solidityverifier ${NAME}.zkey \
 sed -i -e 's/0.6.11;/0.8.13;/g' ${NAME}Verifier.sol
 mv ${UPPER_NAME}Verifier.sol ../contracts/src
 
+# Save proving key and witness generation script
+mv ${NAME}_js/${NAME}.wasm ${NAME}.zkey ${NAME}/
+
 # Clean up
-mv ${NAME}.zkey ${NAME}/
 rm -r ${NAME}Verifier.sol-e ${NAME}.vkey.json 
 rm -r ${NAME}.wtns ${NAME}_js/ ${NAME}.r1cs

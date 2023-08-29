@@ -1,11 +1,12 @@
 // @ts-ignore
 import { groth16 } from "snarkjs";
-import { ethers } from "ethers";
 import { Utils } from "./Utils";
 import { Player } from "./Player";
 import { Tile, Location } from "./Tile";
 
 export class Board {
+  static MOVE_WASM: string = "../circuits/move/move.wasm";
+  static MOVE_PROVKEY: string = "../circuits/move/move.zkey";
   static PERIMETER: number[][] = [-1, 0, 1].flatMap((x) =>
     [-1, 0, 1].map((y) => [x, y])
   );
@@ -158,17 +159,9 @@ export class Board {
   ): Tile {
     let uTo: Tile;
     if (tTo.owner === tFrom.owner) {
-      uTo = Tile.genOwned(
-        tTo.owner,
-        tTo.loc,
-        tTo.resources + nMobilize
-      );
+      uTo = Tile.genOwned(tTo.owner, tTo.loc, tTo.resources + nMobilize);
     } else {
-      uTo = Tile.genOwned(
-        tTo.owner,
-        tTo.loc,
-        tTo.resources - nMobilize
-      );
+      uTo = Tile.genOwned(tTo.owner, tTo.loc, tTo.resources - nMobilize);
       if (uTo.resources < 0) {
         uTo.owner = uFrom.owner;
         uTo.resources *= -1;
@@ -178,10 +171,15 @@ export class Board {
   }
 
   /*
-   * Generates state transition, nullifier combo, and ZKP needed to move troops 
-   * from one tile to another. 
+   * Generates state transition, nullifier combo, and ZKP needed to move troops
+   * from one tile to another.
    */
-  public constructMove(mRoot: BigInt, from: Location, to: Location, nMobilize: number) {
+  public async constructMove(
+    mRoot: BigInt,
+    from: Location,
+    to: Location,
+    nMobilize: number
+  ): Promise<any> {
     const tFrom: Tile = this.getTile(from);
     const tTo: Tile = this.getTile(to);
     const uFrom: Tile = Tile.genOwned(
@@ -191,17 +189,21 @@ export class Board {
     );
     const uTo: Tile = Board.computeOntoTile(tTo, tFrom, uFrom, nMobilize);
 
-    const circuitInputs = {
-      root: mRoot.toString(),
-      hUFrom: uFrom.hash(),
-      hUTo: uTo.hash(),
-      rhoFrom: tFrom.nullifier(),
-      rhoTo: tTo.nullifier(),
-      tFrom: tFrom.toCircuitInput(),
-      tTo: tTo.toCircuitInput(),
-      uFrom: uFrom.toCircuitInput(),
-      uTo: uTo.toCircuitInput()
-    }
-    console.log(circuitInputs);
+    const { proof, publicSignals } = await groth16.fullProve(
+      {
+        root: mRoot.toString(),
+        hUFrom: uFrom.hash(),
+        hUTo: uTo.hash(),
+        rhoFrom: tFrom.nullifier(),
+        rhoTo: tTo.nullifier(),
+        tFrom: tFrom.toCircuitInput(),
+        tTo: tTo.toCircuitInput(),
+        uFrom: uFrom.toCircuitInput(),
+        uTo: uTo.toCircuitInput(),
+      },
+      Board.MOVE_WASM,
+      Board.MOVE_PROVKEY
+    );
+    return [tFrom, tTo, uFrom, uTo, proof, publicSignals];
   }
 }
