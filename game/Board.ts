@@ -1,6 +1,6 @@
 // @ts-ignore
 import { groth16 } from "snarkjs";
-import { Utils } from "./Utils";
+import { Groth16Proof, Utils } from "./Utils";
 import { Player } from "./Player";
 import { Tile, Location } from "./Tile";
 
@@ -176,10 +176,11 @@ export class Board {
      */
     public async constructMove(
         mRoot: BigInt,
+        bjjPrivKeyHash: BigInt,
         from: Location,
         to: Location,
         nMobilize: number
-    ): Promise<any> {
+    ): Promise<[Tile, Tile, Tile, Tile, Groth16Proof]> {
         const tFrom: Tile = this.getTile(from);
         const tTo: Tile = this.getTile(to);
         const uFrom: Tile = Tile.genOwned(
@@ -189,9 +190,10 @@ export class Board {
         );
         const uTo: Tile = Board.computeOntoTile(tTo, tFrom, uFrom, nMobilize);
 
-        const { proof, publicSignals } = await groth16.fullProve(
+        const { proof, _ } = await groth16.fullProve(
             {
                 root: mRoot.toString(),
+                privKeyHash: bjjPrivKeyHash.toString(),
                 hUFrom: uFrom.hash(),
                 hUTo: uTo.hash(),
                 rhoFrom: tFrom.nullifier(),
@@ -204,6 +206,6 @@ export class Board {
             Board.MOVE_WASM,
             Board.MOVE_PROVKEY
         );
-        return [tFrom, tTo, uFrom, uTo, proof, publicSignals];
+        return [tFrom, tTo, uFrom, uTo, proof];
     }
 }
