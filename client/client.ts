@@ -11,11 +11,11 @@ import { Player, Tile, Board, Location, Utils } from "../game";
  */
 const PLAYER_SYMBOL: string = process.argv[2];
 const PLAYER_START: Location = {
-  r: Number(process.argv[3]),
-  c: Number(process.argv[4]),
+    r: Number(process.argv[3]),
+    c: Number(process.argv[4]),
 };
 const PLAYER_PRIVKEY: BigInt = BigInt(
-  JSON.parse(<string>process.env.ETH_PRIVKEYS)[PLAYER_SYMBOL]
+    JSON.parse(<string>process.env.ETH_PRIVKEYS)[PLAYER_SYMBOL]
 );
 const PLAYER = new Player(PLAYER_SYMBOL, PLAYER_PRIVKEY);
 
@@ -26,27 +26,27 @@ const BOARD_SIZE: number = parseInt(<string>process.env.BOARD_SIZE, 10);
 const UPDATE_MLS: number = 1000;
 const MOVE_PROMPT: string = "Next move: ";
 const MOVE_KEYS: Record<string, number[]> = {
-  w: [-1, 0],
-  a: [0, -1],
-  s: [1, 0],
-  d: [0, 1],
+    w: [-1, 0],
+    a: [0, -1],
+    s: [1, 0],
+    d: [0, 1],
 };
 
 /*
  * Boot up interface with 1) Network States contract and 2) the CLI.
  */
 const signer = new ethers.Wallet(
-  <string>process.env.DEV_PRIV_KEY,
-  new ethers.providers.JsonRpcProvider(process.env.RPC_URL)
+    <string>process.env.DEV_PRIV_KEY,
+    new ethers.providers.JsonRpcProvider(process.env.RPC_URL)
 );
 const nStates = new ethers.Contract(
-  <string>process.env.CONTRACT_ADDR,
-  require(<string>process.env.CONTRACT_ABI).abi,
-  signer
+    <string>process.env.CONTRACT_ADDR,
+    require(<string>process.env.CONTRACT_ABI).abi,
+    signer
 );
 var rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
+    input: process.stdin,
+    output: process.stdout,
 });
 let cursor = PLAYER_START;
 
@@ -59,7 +59,7 @@ let b: Board;
  * Using Socket.IO to manage communication with enclave.
  */
 const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
-  `http://localhost:${process.env.SERVER_PORT}`
+    `http://localhost:${process.env.SERVER_PORT}`
 );
 
 /*
@@ -67,21 +67,20 @@ const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
  * player is privy to.
  *
  * [TODO] Only ask for tiles that should be out of the fog.
- *
  */
 function updatePlayerView() {
-  for (let i = 0; i < BOARD_SIZE; i++) {
-    for (let j = 0; j < BOARD_SIZE; j++) {
-      const l: Location = { r: i, c: j };
-      const sig = PLAYER.genSig(Player.hForDecrypt(l));
-      socket.emit(
-        "decrypt",
-        l,
-        PLAYER.bjjPub.serialize(),
-        Utils.serializeSig(sig)
-      );
+    for (let i = 0; i < BOARD_SIZE; i++) {
+        for (let j = 0; j < BOARD_SIZE; j++) {
+            const l: Location = { r: i, c: j };
+            const sig = PLAYER.genSig(Player.hForDecrypt(l));
+            socket.emit(
+                "decrypt",
+                l,
+                PLAYER.bjjPub.serialize(),
+                Utils.serializeSig(sig)
+            );
+        }
     }
-  }
 }
 
 /*
@@ -91,44 +90,45 @@ function updatePlayerView() {
  * tile.
  */
 async function move(inp: string) {
-  const nr = cursor.r + MOVE_KEYS[inp][0],
-    nc = cursor.c + MOVE_KEYS[inp][1];
-  const mRoot = await Utils.reconstructMerkleRoot(
-    Number(process.env.TREE_DEPTH),
-    nStates
-  );
-  const [tFrom, tTo, uFrom, uTo, proof, publicSignals] = await b.constructMove(
-    mRoot,
-    cursor,
-    { r: nr, c: nc },
-    b.getTile(cursor).resources - 1
-  );
+    const nr = cursor.r + MOVE_KEYS[inp][0],
+        nc = cursor.c + MOVE_KEYS[inp][1];
+    const mRoot = await Utils.reconstructMerkleRoot(
+        Number(process.env.TREE_DEPTH),
+        nStates
+    );
+    const [tFrom, tTo, uFrom, uTo, proof, publicSignals] =
+        await b.constructMove(
+            mRoot,
+            cursor,
+            { r: nr, c: nc },
+            b.getTile(cursor).resources - 1
+        );
 
-  // console.log("PROOF", proof);
+    // console.log("PROOF", proof);
 
-  socket.emit(
-    "move",
-    tFrom.toJSON(),
-    tTo.toJSON(),
-    uFrom.toJSON(),
-    uTo.toJSON()
-  );
+    socket.emit(
+        "move",
+        tFrom.toJSON(),
+        tTo.toJSON(),
+        uFrom.toJSON(),
+        uTo.toJSON()
+    );
 
-  await nStates.move(
-    uFrom.hash(),
-    uTo.hash(),
-    tFrom.nullifier(),
-    tTo.nullifier()
-  );
+    await nStates.move(
+        uFrom.hash(),
+        uTo.hash(),
+        tFrom.nullifier(),
+        tTo.nullifier()
+    );
 
-  cursor = { r: nr, c: nc };
+    cursor = { r: nr, c: nc };
 }
 
 /*
  * Update local view of game board based on enclave response.
  */
 function decryptResponse(t: any) {
-  b.setTile(Tile.fromJSON(t));
+    b.setTile(Tile.fromJSON(t));
 }
 
 /*
@@ -136,36 +136,36 @@ function decryptResponse(t: any) {
  * a relevant move was made.
  */
 async function updateDisplay() {
-  process.stdout.write("\n");
-  updatePlayerView();
-  await Utils.sleep(UPDATE_MLS);
-  b.printView();
-  process.stdout.write(MOVE_PROMPT);
+    process.stdout.write("\n");
+    updatePlayerView();
+    await Utils.sleep(UPDATE_MLS);
+    b.printView();
+    process.stdout.write(MOVE_PROMPT);
 }
 
 /*
  * Repeatedly ask user for next move until exit.
  */
 async function gameLoop() {
-  rl.question(MOVE_PROMPT, async (ans) => {
-    await move(ans);
-    await Utils.sleep(UPDATE_MLS * 2);
-    gameLoop();
-  });
+    rl.question(MOVE_PROMPT, async (ans) => {
+        await move(ans);
+        await Utils.sleep(UPDATE_MLS * 2);
+        gameLoop();
+    });
 }
 
 /*
  * Set up player session with enclave. Spawning if necessary.
  */
 socket.on("connect", async () => {
-  console.log("Server connection established");
+    console.log("Server connection established");
 
-  b = new Board();
-  await b.seed(BOARD_SIZE, false, nStates);
-  updatePlayerView();
-  await Utils.sleep(UPDATE_MLS);
-  b.printView();
-  gameLoop();
+    b = new Board();
+    await b.seed(BOARD_SIZE, false, nStates);
+    updatePlayerView();
+    await Utils.sleep(UPDATE_MLS);
+    b.printView();
+    gameLoop();
 });
 
 /*

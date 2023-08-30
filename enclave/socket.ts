@@ -1,26 +1,26 @@
 import { Location } from "../game";
 
 interface ServerToClientEvents {
-  decryptResponse: (t: any) => void;
-  updateDisplay: () => void;
+    decryptResponse: (t: any) => void;
+    updateDisplay: () => void;
 }
 
 interface ClientToServerEvents {
-  decrypt: (l: Location, pubkey: string, sig: string) => void;
-  move: (tFrom: any, tTo: any, uFrom: any, uTo: any) => void;
+    decrypt: (l: Location, pubkey: string, sig: string) => void;
+    move: (tFrom: any, tTo: any, uFrom: any, uTo: any) => void;
 }
 
 interface InterServerEvents {
-  hello: () => void;
+    hello: () => void;
 }
 
 interface SocketData {
-  name: string;
+    name: string;
 }
 
 export {
-  ServerToClientEvents,
-  ClientToServerEvents,
-  InterServerEvents,
-  SocketData,
+    ServerToClientEvents,
+    ClientToServerEvents,
+    InterServerEvents,
+    SocketData,
 };

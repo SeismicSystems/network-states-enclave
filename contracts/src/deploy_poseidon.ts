@@ -5,20 +5,20 @@ import dotenv from "dotenv";
 dotenv.config({ path: "../../.env" });
 
 const signer = new ethers.Wallet(
-  <string>process.env.DEV_PRIV_KEY,
-  new ethers.providers.JsonRpcProvider(process.env.RPC_URL)
+    <string>process.env.DEV_PRIV_KEY,
+    new ethers.providers.JsonRpcProvider(process.env.RPC_URL)
 );
 const C3: ethers.ContractFactory = new ethers.ContractFactory(
-  poseidonContract.generateABI(2),
-  poseidonContract.createCode(2),
-  signer
+    poseidonContract.generateABI(2),
+    poseidonContract.createCode(2),
+    signer
 );
 
 async function logInfo(deployed: ethers.Contract, lbl: string) {
-  console.log(`== Deployed ${lbl}`);
-  console.log(`- tx hash: ${deployed.deployTransaction.hash}`);
-  console.log(`- deployed to: ${deployed.address}`);
-  console.log("==");
+    console.log(`== Deployed ${lbl}`);
+    console.log(`- tx hash: ${deployed.deployTransaction.hash}`);
+    console.log(`- deployed to: ${deployed.address}`);
+    console.log("==");
 }
 
 /*
@@ -26,7 +26,7 @@ async function logInfo(deployed: ethers.Contract, lbl: string) {
  * of Merkle Tree.
  */
 (async () => {
-  const deployedC3 = await C3.deploy();
+    const deployedC3 = await C3.deploy();
 
-  logInfo(deployedC3, "C3");
+    logInfo(deployedC3, "C3");
 })();
