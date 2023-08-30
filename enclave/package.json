@@ -9,9 +9,6 @@
     "watch": "^1.0.2"
   },
   "scripts": {
-    "dev": "ts-node-dev server.ts"
-  },
-  "devDependencies": {
-    "ts-node-dev": "^2.0.0"
+    "dev": "ts-node server.ts"
   }
 }
