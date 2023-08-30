@@ -2,6 +2,7 @@ pragma circom 2.1.1;
 
 include "../node_modules/circomlib/circuits/poseidon.circom";
 include "../node_modules/circomlib/circuits/comparators.circom";
+include "../node_modules/circomlib/circuits/babyjub.circom";
 include "../utils/utils.circom";
 
 /*
@@ -22,15 +23,24 @@ template CheckNullifiers() {
 }
 
 /*
- * Whether the hashes of the new tile states were computed correctly. It's this
- * hiding commitment that's added to the on-chain merkle tree. 
+ * Asserts 1) the hashes of the new tile states were computed correctly. 
+ * It's this hiding commitment that's added to the on-chain merkle tree. 
+ * 2) the player owns the 'from' tile, which is true when the player's 
+ * private key corresponds to the tile's public keys.
  */
-template CheckLeaves(N_TL_ATRS) {
+template CheckLeaves(N_TL_ATRS, PUBX_IDX, PUBY_IDX) {
     signal input uFrom[N_TL_ATRS];
     signal input uTo[N_TL_ATRS];
     signal input hUFrom;
     signal input hUTo;
+    signal input privKeyHash;
 
+    // Whether player 'owns' the 'from' tile
+    component bjj = BabyPbk();
+    bjj.in <== privKeyHash;
+    uFrom[PUBX_IDX] === bjj.Ax;
+    uFrom[PUBY_IDX] === bjj.Ay;
+    
     signal output out;
 
     signal circuitHFrom <== Poseidon(N_TL_ATRS)(uFrom);
@@ -129,8 +139,7 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, PUBY_IDX, UNOWNED, SYS_BITS) {
 /*
  * Asserts 1) valid state transitions for the `from` and `to` tiles, 2) 
  * inclusion of old states in a merkle root, and 3) proper permissions to 
- * initiate the move. Assumes tiles are represented as 
- * [symbol, row, col, resource, key]. 
+ * initiate the move.
  */
 template Move() {
     var N_VALID_MOVES = 4;
@@ -148,19 +157,19 @@ template Move() {
     var SYS_BITS = 252;
 
     signal input root;
-
     signal input hUFrom;
     signal input hUTo;
     signal input rhoFrom;
     signal input rhoTo;
+    signal input privKeyHash;
 
     signal input tFrom[N_TL_ATRS];
     signal input tTo[N_TL_ATRS];
     signal input uFrom[N_TL_ATRS];
     signal input uTo[N_TL_ATRS];
 
-    signal leavesCorrect <== CheckLeaves(N_TL_ATRS)(uFrom, uTo, hUFrom, 
-        hUTo);
+    signal leavesCorrect <== CheckLeaves(N_TL_ATRS, PUBX_IDX, PUBY_IDX)(uFrom, uTo, hUFrom, 
+        hUTo, privKeyHash);
     leavesCorrect === 1;
 
     signal nullifiersCorrect <== CheckNullifiers()(tFrom[KEY_IDX], 
