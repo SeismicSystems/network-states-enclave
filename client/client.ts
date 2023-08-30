@@ -104,24 +104,24 @@ async function move(inp: string) {
     b.getTile(cursor).resources - 1
   );
 
-  console.log("PROOF", proof);
+  // console.log("PROOF", proof);
 
-  // socket.emit(
-  //   "move",
-  //   tFrom.toJSON(),
-  //   tTo.toJSON(),
-  //   uFrom.toJSON(),
-  //   uTo.toJSON()
-  // );
+  socket.emit(
+    "move",
+    tFrom.toJSON(),
+    tTo.toJSON(),
+    uFrom.toJSON(),
+    uTo.toJSON()
+  );
 
-  // await nStates.move(
-  //   uFrom.hash(),
-  //   uTo.hash(),
-  //   tFrom.nullifier(),
-  //   tTo.nullifier()
-  // );
+  await nStates.move(
+    uFrom.hash(),
+    uTo.hash(),
+    tFrom.nullifier(),
+    tTo.nullifier()
+  );
 
-  // cursor = { r: nr, c: nc };
+  cursor = { r: nr, c: nc };
 }
 
 /*
