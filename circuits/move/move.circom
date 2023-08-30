@@ -129,8 +129,7 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, PUBY_IDX, UNOWNED, SYS_BITS) {
 /*
  * Asserts 1) valid state transitions for the `from` and `to` tiles, 2) 
  * inclusion of old states in a merkle root, and 3) proper permissions to 
- * initiate the move. Assumes tiles are represented as 
- * [symbol, row, col, resource, key]. 
+ * initiate the move.
  */
 template Move() {
     var N_VALID_MOVES = 4;
@@ -148,7 +147,6 @@ template Move() {
     var SYS_BITS = 252;
 
     signal input root;
-
     signal input hUFrom;
     signal input hUTo;
     signal input rhoFrom;
