@@ -161,12 +161,12 @@ template Move() {
     signal input hUTo;
     signal input rhoFrom;
     signal input rhoTo;
-    signal input privKeyHash;
 
     signal input tFrom[N_TL_ATRS];
     signal input tTo[N_TL_ATRS];
     signal input uFrom[N_TL_ATRS];
     signal input uTo[N_TL_ATRS];
+    signal input privKeyHash;
 
     signal leavesCorrect <== CheckLeaves(N_TL_ATRS, PUBX_IDX, PUBY_IDX)(uFrom, uTo, hUFrom, 
         hUTo, privKeyHash);

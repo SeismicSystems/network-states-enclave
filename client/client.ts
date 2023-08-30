@@ -97,12 +97,6 @@ async function move(inp: string) {
         Number(process.env.TREE_DEPTH),
         nStates
     );
-
-    if (PLAYER.bjjPriv === undefined || PLAYER.bjjPrivHash === undefined) {
-        throw Error(
-            "Must have Baby Jubjub private key in order to move."
-        );
-    }
  
     const [tFrom, tTo, uFrom, uTo, prf] = await b.constructMove(
         mRoot,

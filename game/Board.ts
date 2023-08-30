@@ -176,7 +176,7 @@ export class Board {
      */
     public async constructMove(
         mRoot: BigInt,
-        bjjPrivKeyHash: BigInt,
+        bjjPrivKeyHash: BigInt | undefined,
         from: Location,
         to: Location,
         nMobilize: number
@@ -189,6 +189,12 @@ export class Board {
             tFrom.resources - nMobilize
         );
         const uTo: Tile = Board.computeOntoTile(tTo, tFrom, uFrom, nMobilize);
+
+        if (bjjPrivKeyHash === undefined) {
+            throw Error(
+                "Cannot move without a baby jubjub private key."
+            );
+        }
 
         const { proof, _ } = await groth16.fullProve(
             {

@@ -21,14 +21,15 @@ export class Player {
         this.symbol = symb;
         if (ethPriv) {
             this.bjjPriv = new PrivKey(formatPrivKeyForBabyJub(ethPriv));
-            this.bjjPrivHash = formatPrivKeyForBabyJub(this.bjjPriv.rawPrivKey);
-            this.bjjPub = new PubKey(genPubKey(this.bjjPriv.rawPrivKey));
         } else if (bjjPub_) {
             this.bjjPub = bjjPub_;
         } else {
             this.bjjPriv = new PrivKey(genPrivKey());
-            this.bjjPrivHash = formatPrivKeyForBabyJub(this.bjjPriv.rawPrivKey);
+        }
+
+        if (this.bjjPriv) {
             this.bjjPub = new PubKey(genPubKey(this.bjjPriv.rawPrivKey));
+            this.bjjPrivHash = formatPrivKeyForBabyJub(this.bjjPriv.rawPrivKey);
         }
     }
 
