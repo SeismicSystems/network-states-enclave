@@ -190,6 +190,12 @@ export class Board {
         );
         const uTo: Tile = Board.computeOntoTile(tTo, tFrom, uFrom, nMobilize);
 
+        if (bjjPrivKeyHash === undefined) {
+            throw Error(
+                "Can't move without a baby jubjub private key."
+            )
+        }
+
         const { proof, publicSignals } = await groth16.fullProve(
             {
                 root: mRoot.toString(),
