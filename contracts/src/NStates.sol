@@ -11,7 +11,7 @@ interface IVerifier {
         uint256[2] memory a,
         uint256[2][2] memory b,
         uint256[2] memory c,
-        uint256[11] memory input
+        uint256[5] memory input
     ) external view returns (bool);
 }
 
@@ -24,7 +24,8 @@ interface IHasherT3 {
 
 contract NStates is IncrementalMerkleTree {
     IHasherT3 hasherT3 = IHasherT3(0x5FbDB2315678afecb367f032d93F642f64180aa3);
-    IVerifier verifierContract;
+    IVerifier verifierContract =
+        IVerifier(0x4826533B4897376654Bb4d4AD88B7faFD0C98528);
 
     event NewLeaf(uint256 h);
     event NewNullifier(uint256 nf);
@@ -34,10 +35,8 @@ contract NStates is IncrementalMerkleTree {
 
     constructor(
         uint8 treeDepth,
-        uint256 nothingUpMySleeve,
-        address verifier
+        uint256 nothingUpMySleeve
     ) IncrementalMerkleTree(treeDepth, nothingUpMySleeve) {
-        verifierContract = IVerifier(verifier);
         owner = msg.sender;
     }
 
@@ -61,35 +60,51 @@ contract NStates is IncrementalMerkleTree {
 
     /*
      * Accepts new states for tiles involved in move. Nullifies old states.
+     * Moves must operate on states that aren't nullified AND carry a ZKP
+     * anchored to a historical merkle root to be accepted.
      */
     function move(
-        uint256 uFrom,
-        uint256 uTo,
-        uint256 nfFrom,
-        uint256 nfTo
+        uint256 root,
+        uint256 hUFrom,
+        uint256 hUTo,
+        uint256 rhoFrom,
+        uint256 rhoTo,
+        uint256[2] memory a,
+        uint256[2][2] memory b,
+        uint256[2] memory c
     ) public {
-        emit NewLeaf(uFrom);
-        emit NewLeaf(uTo);
-        emit NewNullifier(nfFrom);
-        emit NewNullifier(nfTo);
+        require(
+            verifierContract.verifyProof(
+                a,
+                b,
+                c,
+                [root, hUFrom, hUTo, rhoFrom, rhoTo]
+            ),
+            "Invalid move proof"
+        );
 
-        nullifiers[nfFrom] = true;
-        nullifiers[nfTo] = true;
+        nullifiers[rhoFrom] = true;
+        nullifiers[rhoTo] = true;
 
-        insertLeaf(uFrom);
-        insertLeaf(uTo);
+        insertLeaf(hUFrom);
+        insertLeaf(hUTo);
+
+        emit NewLeaf(hUFrom);
+        emit NewLeaf(hUTo);
+        emit NewNullifier(rhoFrom);
+        emit NewNullifier(rhoTo);
     }
 
-    /* 
-     * Number of leaves in the merkle tree. Value is roughly double the number 
-     * of historic accepted moves. 
+    /*
+     * Number of leaves in the merkle tree. Value is roughly double the number
+     * of historic accepted moves.
      */
     function getNumLeaves() public view returns (uint256) {
         return nextLeafIndex;
     }
 
     /*
-     * Compute poseidon hash of two child hashes. 
+     * Compute poseidon hash of two child hashes.
      */
     function _hashLeftRight(
         uint256 l,
