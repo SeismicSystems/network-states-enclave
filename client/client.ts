@@ -97,8 +97,10 @@ async function move(inp: string) {
         Number(process.env.TREE_DEPTH),
         nStates
     );
+ 
     const [tFrom, tTo, uFrom, uTo, prf] = await b.constructMove(
         mRoot,
+        PLAYER.bjjPrivHash,
         cursor,
         { r: nr, c: nc },
         b.getTile(cursor).resources - 1

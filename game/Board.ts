@@ -176,6 +176,7 @@ export class Board {
      */
     public async constructMove(
         mRoot: BigInt,
+        bjjPrivKeyHash: BigInt | undefined,
         from: Location,
         to: Location,
         nMobilize: number
@@ -189,9 +190,10 @@ export class Board {
         );
         const uTo: Tile = Board.computeOntoTile(tTo, tFrom, uFrom, nMobilize);
 
-        const { proof, _ } = await groth16.fullProve(
+        const { proof, publicSignals } = await groth16.fullProve(
             {
                 root: mRoot.toString(),
+                privKeyHash: bjjPrivKeyHash.toString(),
                 hUFrom: uFrom.hash(),
                 hUTo: uTo.hash(),
                 rhoFrom: tFrom.nullifier(),

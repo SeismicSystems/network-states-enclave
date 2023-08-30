@@ -7,24 +7,29 @@ import {
     sign,
     verifySignature,
     hash2,
+    
 } from "maci-crypto";
 import { Location } from "./Tile";
 
 export class Player {
     symbol: string;
     bjjPriv?: PrivKey;
+    bjjPrivHash?: BigInt;
     bjjPub: PubKey;
 
     constructor(symb: string, ethPriv?: BigInt, bjjPub_?: PubKey) {
         this.symbol = symb;
         if (ethPriv) {
             this.bjjPriv = new PrivKey(formatPrivKeyForBabyJub(ethPriv));
-            this.bjjPub = new PubKey(genPubKey(this.bjjPriv.rawPrivKey));
         } else if (bjjPub_) {
             this.bjjPub = bjjPub_;
         } else {
             this.bjjPriv = new PrivKey(genPrivKey());
+        }
+
+        if (this.bjjPriv) {
             this.bjjPub = new PubKey(genPubKey(this.bjjPriv.rawPrivKey));
+            this.bjjPrivHash = formatPrivKeyForBabyJub(this.bjjPriv.rawPrivKey);
         }
     }
 
