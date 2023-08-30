@@ -90,22 +90,21 @@ function updatePlayerView() {
  * tile.
  */
 async function move(inp: string) {
+    // Construct move states
     const nr = cursor.r + MOVE_KEYS[inp][0],
         nc = cursor.c + MOVE_KEYS[inp][1];
     const mRoot = await Utils.reconstructMerkleRoot(
         Number(process.env.TREE_DEPTH),
         nStates
     );
-    const [tFrom, tTo, uFrom, uTo, proof, publicSignals] =
-        await b.constructMove(
-            mRoot,
-            cursor,
-            { r: nr, c: nc },
-            b.getTile(cursor).resources - 1
-        );
+    const [tFrom, tTo, uFrom, uTo, prf] = await b.constructMove(
+        mRoot,
+        cursor,
+        { r: nr, c: nc },
+        b.getTile(cursor).resources - 1
+    );
 
-    // console.log("PROOF", proof);
-
+    // Alert enclave of intended move 
     socket.emit(
         "move",
         tFrom.toJSON(),
@@ -114,13 +113,26 @@ async function move(inp: string) {
         uTo.toJSON()
     );
 
-    await nStates.move(
+    // Submit move to chain 
+    const formattedProof = await Utils.exportCallDataGroth16(prf, [
+        mRoot.toString(),
         uFrom.hash(),
         uTo.hash(),
         tFrom.nullifier(),
-        tTo.nullifier()
+        tTo.nullifier(),
+    ]);
+    await nStates.move(
+        mRoot.toString(),
+        uFrom.hash(),
+        uTo.hash(),
+        tFrom.nullifier(),
+        tTo.nullifier(),
+        formattedProof.a,
+        formattedProof.b,
+        formattedProof.c
     );
 
+    // Update player position
     cursor = { r: nr, c: nc };
 }
 
