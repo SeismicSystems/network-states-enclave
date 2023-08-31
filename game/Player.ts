@@ -15,7 +15,7 @@ export class Player {
     symbol: string;
     bjjPriv?: PrivKey;
     bjjPrivHash?: BigInt;
-    bjjPub: PubKey;
+    bjjPub!: PubKey;
 
     constructor(symb: string, ethPriv?: BigInt, bjjPub_?: PubKey) {
         this.symbol = symb;
