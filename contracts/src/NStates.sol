@@ -73,6 +73,10 @@ contract NStates is IncrementalMerkleTree {
         uint256[2][2] memory b,
         uint256[2] memory c
     ) public {
+        require(rootHistory[root], "Root must be in root history");
+        require(
+            !nullifiers[rhoFrom] && !nullifiers[rhoTo],
+            "Move has already been made");
         require(
             verifierContract.verifyProof(
                 a,
