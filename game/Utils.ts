@@ -6,7 +6,7 @@ import {
     IncrementalQuinTree,
     hash2,
 } from "maci-crypto";
-import { ethers } from "ethers";
+import { ethers, BigNumber } from "ethers";
 
 export type Groth16Proof = {
     pi_a: [string, string, string];
@@ -59,6 +59,34 @@ export class Utils {
 
     /*
      * Use all emitted NewLeaf() events from contract to reconstruct on-chain
+     * merkle tree.
+     * 
+     * [TODO] Memoize using local or third party indexer.
+     */
+    static async reconstructMerkleTree(
+        treeDepth: number,
+        nStates: ethers.Contract
+    ): Promise<IncrementalQuinTree> {
+        const newLeafEvents = await nStates.queryFilter(
+            nStates.filters.NewLeaf()
+        );
+        const leaves = newLeafEvents.map((e) => e.args?.h);
+        let tree = new IncrementalQuinTree(
+            treeDepth,
+            NOTHING_UP_MY_SLEEVE,
+            2,
+            hash2
+        );
+        leaves.forEach((lh: BigInt) => {
+            tree.insert(lh);
+        });
+        return tree;
+    }
+
+    /*
+     * ONLY CALL IF THE ENTIRE MERKLE TREE IS NOT NEEDED.
+     *
+     * Use all emitted NewLeaf() events from contract to reconstruct on-chain
      * merkle root. Logic here is useful for making merkle proofs later (this
      * is why we don't just directly read the root from contract).
      *
@@ -82,6 +110,27 @@ export class Utils {
             tree.insert(lh);
         });
         return tree.root;
+    }
+
+    /* 
+     * Constructs a proof that a given leaf (tileHash) is in the merkle root.
+     * Uses IncrementalQuinTree's genMerklePath(_index)
+     */
+    static generateMerkleProof(
+        tileHash: string,
+        mTree: IncrementalQuinTree
+    ): IncrementalQuinTree.MerkleProof {
+        const h = BigNumber.from(tileHash);
+        const numLeaves = mTree.leavesPerNode ** mTree.depth;
+
+        let leafIndex = 0;
+        for (let i = 0; i < numLeaves; i++) {
+            if (h.eq(mTree.getNode(i))) {
+                leafIndex = i;
+            }
+        }
+
+        return mTree.genMerklePath(leafIndex);
     }
 
     /*
