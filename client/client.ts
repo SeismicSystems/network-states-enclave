@@ -104,7 +104,7 @@ async function move(inp: string) {
     const mRoot = mTree.root;
  
     const [tFrom, tTo, uFrom, uTo, prf] = await b.constructMove(
-        mRoot,
+        mTree,
         PLAYER.bjjPrivHash,
         cursor,
         { r: nr, c: nc },

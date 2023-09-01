@@ -1,8 +1,9 @@
 pragma circom 2.1.1;
 
-include "../node_modules/circomlib/circuits/poseidon.circom";
-include "../node_modules/circomlib/circuits/comparators.circom";
-include "../node_modules/circomlib/circuits/babyjub.circom";
+include "../node_modules/maci-circuits/node_modules/circomlib/circuits/poseidon.circom";
+include "../node_modules/maci-circuits/node_modules/circomlib/circuits/comparators.circom";
+include "../node_modules/maci-circuits/node_modules/circomlib/circuits/babyjub.circom";
+include "../node_modules/maci-circuits/circom/trees/IncrementalMerkleTree.circom";
 include "../utils/utils.circom";
 
 /*
@@ -137,6 +138,37 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, PUBY_IDX, UNOWNED, SYS_BITS) {
 }
 
 /*
+ * The hashes of the old tiles must be included in the merkle root. If so,
+ * this proves that these tiles were computed from prior moves.
+ */
+template CheckMerkleInclusion(N_TL_ATRS, MERKLE_TREE_DEPTH) {
+    signal input root;
+    signal input tFrom[N_TL_ATRS];
+    signal input tFromPathIndices[MERKLE_TREE_DEPTH];
+    signal input tFromPathElements[MERKLE_TREE_DEPTH][1];
+    signal input tTo[N_TL_ATRS];
+    signal input toToPathIndices[MERKLE_TREE_DEPTH];
+    signal input tToPathElements[MERKLE_TREE_DEPTH][1];
+
+    signal hTFrom <== Poseidon(N_TL_ATRS)(tFrom);
+    signal hTTo <== Poseidon(N_TL_ATRS)(tTo);
+
+    signal output out;
+
+    component tFromMerkleProof = MerkleTreeInclusionProof(MERKLE_TREE_DEPTH);
+    tFromMerkleProof.leaf <== hTFrom;
+    tFromMerkleProof.path_index <== tFromPathIndices;
+    tFromMerkleProof.path_elements <== tFromPathElements;
+
+    component tToMerkleProof = MerkleTreeInclusionProof(MERKLE_TREE_DEPTH);
+    tToMerkleProof.leaf <== hTTo;
+    tToMerkleProof.path_index <== toToPathIndices;
+    tToMerkleProof.path_elements <== tToPathElements;
+
+    out <== BatchIsEqual(2)([[root, tFromMerkleProof.root], [root, tToMerkleProof.root]]);
+}
+
+/*
  * Asserts 1) valid state transitions for the `from` and `to` tiles, 2) 
  * inclusion of old states in a merkle root, and 3) proper permissions to 
  * initiate the move.
@@ -144,6 +176,8 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, PUBY_IDX, UNOWNED, SYS_BITS) {
 template Move() {
     var N_VALID_MOVES = 4;
     var VALID_MOVES[N_VALID_MOVES][2] = [[0, 1], [0, -1], [1, 0], [-1, 0]];
+
+    var MERKLE_TREE_DEPTH = 8;
 
     var N_TL_ATRS = 6;
     var PUBX_IDX = 0;
@@ -163,7 +197,11 @@ template Move() {
     signal input rhoTo;
 
     signal input tFrom[N_TL_ATRS];
+    signal input tFromPathIndices[MERKLE_TREE_DEPTH];
+    signal input tFromPathElements[MERKLE_TREE_DEPTH][1];
     signal input tTo[N_TL_ATRS];
+    signal input tToPathIndices[MERKLE_TREE_DEPTH];
+    signal input tToPathElements[MERKLE_TREE_DEPTH][1];
     signal input uFrom[N_TL_ATRS];
     signal input uTo[N_TL_ATRS];
     signal input privKeyHash;
@@ -182,6 +220,11 @@ template Move() {
 
     signal resourcesCorrect <== CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, 
         PUBY_IDX, UNOWNED, SYS_BITS)(tFrom, tTo, uFrom, uTo);
+
+    signal merkleProofCorrect <== CheckMerkleInclusion(N_TL_ATRS,
+        MERKLE_TREE_DEPTH)(root, tFrom, tFromPathIndices, tFromPathElements,
+        tTo, tToPathIndices, tToPathElements);
+    merkleProofCorrect === 1;
 }
 
 component main { public [ root, hUFrom, hUTo, rhoFrom, rhoTo ] } = Move();
