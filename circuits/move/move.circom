@@ -28,6 +28,8 @@ template CheckNullifiers() {
  * It's this hiding commitment that's added to the on-chain merkle tree. 
  * 2) the player owns the 'from' tile, which is true when the player's 
  * private key corresponds to the tile's public keys.
+ *
+ * [TODO]: move pubKey checks into BatchIsEqual?
  */
 template CheckLeaves(N_TL_ATRS, PUBX_IDX, PUBY_IDX) {
     signal input uFrom[N_TL_ATRS];
@@ -153,6 +155,11 @@ template CheckMerkleInclusion(N_TL_ATRS, MERKLE_TREE_DEPTH) {
     signal hTFrom <== Poseidon(N_TL_ATRS)(tFrom);
     signal hTTo <== Poseidon(N_TL_ATRS)(tTo);
 
+    log("==hTFrom");
+    log(hTFrom);
+    log("==hTTo");
+    log(hTTo);
+
     signal output out;
 
     component tFromMerkleProof = MerkleTreeInclusionProof(MERKLE_TREE_DEPTH);
@@ -166,6 +173,13 @@ template CheckMerkleInclusion(N_TL_ATRS, MERKLE_TREE_DEPTH) {
     tToMerkleProof.path_elements <== tToPathElements;
 
     out <== BatchIsEqual(2)([[root, tFromMerkleProof.root], [root, tToMerkleProof.root]]);
+    log("==root");
+    log(root);
+    log("==tFromMerkleProof.root");
+    log(tFromMerkleProof.root);
+    log("==tToMerkleProof.root");
+    log(tToMerkleProof.root);
+
     // part causing error: root = tFromMerkleProof.root
 }
 

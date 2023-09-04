@@ -197,6 +197,9 @@ export class Board {
             )
         }
 
+        console.log('==tFrom.hash(): ', tFrom.hash());
+        console.log('==tTo.hash(): ', tTo.hash());
+
         const mProofFrom = Utils.generateMerkleProof(tFrom.hash(), mTree);
         const mProofTo = Utils.generateMerkleProof(tTo.hash(), mTree);
 
