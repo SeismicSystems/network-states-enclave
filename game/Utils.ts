@@ -83,35 +83,6 @@ export class Utils {
         return tree;
     }
 
-    /*
-     * ONLY CALL IF THE ENTIRE MERKLE TREE IS NOT NEEDED.
-     *
-     * Use all emitted NewLeaf() events from contract to reconstruct on-chain
-     * merkle root. Logic here is useful for making merkle proofs later (this
-     * is why we don't just directly read the root from contract).
-     *
-     * [TODO] Memoize using local or third party indexer.
-     */
-    static async reconstructMerkleRoot(
-        treeDepth: number,
-        nStates: ethers.Contract
-    ): Promise<BigInt> {
-        const newLeafEvents = await nStates.queryFilter(
-            nStates.filters.NewLeaf()
-        );
-        const leaves = newLeafEvents.map((e) => e.args?.h);
-        let tree = new IncrementalQuinTree(
-            treeDepth,
-            NOTHING_UP_MY_SLEEVE,
-            2,
-            hash2
-        );
-        leaves.forEach((lh: BigInt) => {
-            tree.insert(lh);
-        });
-        return tree.root;
-    }
-
     /* 
      * Constructs a proof that a given leaf (tileHash) is in the merkle root.
      * Uses IncrementalQuinTree's genMerklePath(_index)
@@ -123,11 +94,15 @@ export class Utils {
         const h = BigNumber.from(tileHash);
         const numLeaves = mTree.leavesPerNode ** mTree.depth;
 
-        let leafIndex = 0;
+        let leafIndex = -1;
         for (let i = 0; i < numLeaves; i++) {
             if (h.eq(mTree.getNode(i))) {
                 leafIndex = i;
             }
+        }
+        if (leafIndex < 0) {
+            throw Error("Cannot construct Merkle proof for a hash not in root. "
+            + "Hash: " + tileHash);
         }
         const mProof = mTree.genMerklePath(leafIndex);
 

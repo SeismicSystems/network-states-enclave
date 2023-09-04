@@ -28,8 +28,6 @@ template CheckNullifiers() {
  * It's this hiding commitment that's added to the on-chain merkle tree. 
  * 2) the player owns the 'from' tile, which is true when the player's 
  * private key corresponds to the tile's public keys.
- *
- * [TODO]: move pubKey checks into BatchIsEqual?
  */
 template CheckLeaves(N_TL_ATRS, PUBX_IDX, PUBY_IDX) {
     signal input uFrom[N_TL_ATRS];
@@ -49,7 +47,11 @@ template CheckLeaves(N_TL_ATRS, PUBX_IDX, PUBY_IDX) {
     signal circuitHFrom <== Poseidon(N_TL_ATRS)(uFrom);
     signal circuitHTo <== Poseidon(N_TL_ATRS)(uTo);
 
-    out <== BatchIsEqual(2)([[hUFrom, circuitHFrom], [hUTo, circuitHTo]]);
+    out <== BatchIsEqual(4)([
+        [uFrom[PUBX_IDX], bjj.Ax],
+        [uFrom[PUBY_IDX], bjj.Ay],
+        [hUFrom, circuitHFrom], 
+        [hUTo, circuitHTo]]);
 }
 
 /*
@@ -149,7 +151,7 @@ template CheckMerkleInclusion(N_TL_ATRS, MERKLE_TREE_DEPTH) {
     signal input tFromPathIndices[MERKLE_TREE_DEPTH];
     signal input tFromPathElements[MERKLE_TREE_DEPTH][1];
     signal input tTo[N_TL_ATRS];
-    signal input toToPathIndices[MERKLE_TREE_DEPTH];
+    signal input tToPathIndices[MERKLE_TREE_DEPTH];
     signal input tToPathElements[MERKLE_TREE_DEPTH][1];
 
     signal hTFrom <== Poseidon(N_TL_ATRS)(tFrom);
@@ -157,17 +159,12 @@ template CheckMerkleInclusion(N_TL_ATRS, MERKLE_TREE_DEPTH) {
 
     signal output out;
 
-    component tFromMerkleProof = MerkleTreeInclusionProof(MERKLE_TREE_DEPTH);
-    tFromMerkleProof.leaf <== hTFrom;
-    tFromMerkleProof.path_index <== tFromPathIndices;
-    tFromMerkleProof.path_elements <== tFromPathElements;
+    signal fromPrfRoot <== MerkleTreeInclusionProof(MERKLE_TREE_DEPTH)(hTFrom,
+        tFromPathIndices, tFromPathElements);
+    signal toPrfRoot <== MerkleTreeInclusionProof(MERKLE_TREE_DEPTH)(hTTo,
+        tToPathIndices, tToPathElements);
 
-    component tToMerkleProof = MerkleTreeInclusionProof(MERKLE_TREE_DEPTH);
-    tToMerkleProof.leaf <== hTTo;
-    tToMerkleProof.path_index <== toToPathIndices;
-    tToMerkleProof.path_elements <== tToPathElements;
-
-    out <== BatchIsEqual(2)([[root, tFromMerkleProof.root], [root, tToMerkleProof.root]]);
+    out <== BatchIsEqual(2)([[root, fromPrfRoot], [root, toPrfRoot]]);
 }
 
 /*

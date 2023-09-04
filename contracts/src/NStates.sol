@@ -28,7 +28,7 @@ contract NStates is IncrementalMerkleTree {
         IVerifier(0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512);
 
     event NewLeaf(uint256 h);
-    event NewNullifier(uint256 nf);
+    event NewNullifier(uint256 rho);
 
     address public owner;
     mapping(uint256 => bool) public nullifiers;
@@ -61,12 +61,10 @@ contract NStates is IncrementalMerkleTree {
     /*
      * Game deployer has the ability to initialize players onto the board.
      */
-    function spawn(uint256 h, uint256 n) public onlyOwner {
-        insertLeaf(h);
-        nullifiers[n] = true;
-
-        emit NewLeaf(h);
-        emit NewNullifier(n);
+    function spawn(uint256 h, uint256 rho) public onlyOwner {
+        set(h);
+        nullifiers[rho] = true;
+        emit NewNullifier(rho);
     }
 
     /*

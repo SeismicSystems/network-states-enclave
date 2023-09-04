@@ -97,10 +97,6 @@ async function move(inp: string) {
         Number(process.env.TREE_DEPTH),
         nStates
     );
-    // const mRoot = await Utils.reconstructMerkleRoot(
-    //     Number(process.env.TREE_DEPTH),
-    //     nStates
-    // );
     const mRoot = mTree.root;
  
     const [tFrom, tTo, uFrom, uTo, prf] = await b.constructMove(
@@ -110,9 +106,6 @@ async function move(inp: string) {
         { r: nr, c: nc },
         b.getTile(cursor).resources - 1
     );
-
-    // Utils.generateMerkleProof(tFrom.hash(), mTree);
-    // Utils.generateMerkleProof(tTo.hash(), mTree);
 
     // Alert enclave of intended move 
     socket.emit(
