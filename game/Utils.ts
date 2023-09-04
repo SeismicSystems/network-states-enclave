@@ -94,13 +94,14 @@ export class Utils {
         const h = BigNumber.from(tileHash);
         const numLeaves = mTree.leavesPerNode ** mTree.depth;
 
-        let leafIndex = -1;
+        let leafIndex: number | undefined;
+        console.log(leafIndex);
         for (let i = 0; i < numLeaves; i++) {
             if (h.eq(mTree.getNode(i))) {
                 leafIndex = i;
             }
         }
-        if (leafIndex < 0) {
+        if (leafIndex === undefined) {
             throw Error("Cannot construct Merkle proof for a hash not in root. "
             + "Hash: " + tileHash);
         }
