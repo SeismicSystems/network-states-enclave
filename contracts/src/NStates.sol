@@ -58,10 +58,14 @@ contract NStates is IncrementalMerkleTree {
         insertLeaf(h);
     }
 
+    /*
+     * Game deployer has the ability to initialize players onto the board.
+     */
     function spawn(uint256 h, uint256 n) public onlyOwner {
-        emit NewLeaf(h);
         insertLeaf(h);
         nullifiers[n] = true;
+
+        emit NewLeaf(h);
         emit NewNullifier(n);
     }
 
