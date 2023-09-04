@@ -166,6 +166,7 @@ template CheckMerkleInclusion(N_TL_ATRS, MERKLE_TREE_DEPTH) {
     tToMerkleProof.path_elements <== tToPathElements;
 
     out <== BatchIsEqual(2)([[root, tFromMerkleProof.root], [root, tToMerkleProof.root]]);
+    // part causing error: root = tFromMerkleProof.root
 }
 
 /*

@@ -119,7 +119,7 @@ export class Utils {
     static generateMerkleProof(
         tileHash: string,
         mTree: IncrementalQuinTree
-    ): IncrementalQuinTree.MerkleProof {
+    ) {
         const h = BigNumber.from(tileHash);
         const numLeaves = mTree.leavesPerNode ** mTree.depth;
 
@@ -129,8 +129,13 @@ export class Utils {
                 leafIndex = i;
             }
         }
+        const mProof = mTree.genMerklePath(leafIndex);
 
-        return mTree.genMerklePath(leafIndex);
+        // Format indices and pathElements.
+        return {
+            indices: mProof.indices.map((i: number) => i.toString()),
+            pathElements: mProof.pathElements.map((e: BigInt[]) => [e[0].toString()])
+        };
     }
 
     /*

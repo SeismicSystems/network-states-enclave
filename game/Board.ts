@@ -3,6 +3,7 @@ import { groth16 } from "snarkjs";
 import { Groth16Proof, Utils } from "./Utils";
 import { Player } from "./Player";
 import { Tile, Location } from "./Tile";
+import { IncrementalQuinTree } from "maci-crypto";
 
 export class Board {
     static MOVE_WASM: string = "../circuits/move/move.wasm";
@@ -175,7 +176,7 @@ export class Board {
      * troops from one tile to another.
      */
     public async constructMove(
-        mRoot: BigInt,
+        mTree: IncrementalQuinTree,
         bjjPrivKeyHash: BigInt | undefined,
         from: Location,
         to: Location,
@@ -196,22 +197,31 @@ export class Board {
             )
         }
 
+        const mProofFrom = Utils.generateMerkleProof(tFrom.hash(), mTree);
+        const mProofTo = Utils.generateMerkleProof(tTo.hash(), mTree);
+
         const { proof, publicSignals } = await groth16.fullProve(
             {
-                root: mRoot.toString(),
+                root: mTree.root.toString(),
                 privKeyHash: bjjPrivKeyHash.toString(),
                 hUFrom: uFrom.hash(),
                 hUTo: uTo.hash(),
                 rhoFrom: tFrom.nullifier(),
                 rhoTo: tTo.nullifier(),
                 tFrom: tFrom.toCircuitInput(),
+                tFromPathIndices: mProofFrom.indices,
+                tFromPathElements: mProofFrom.pathElements,
                 tTo: tTo.toCircuitInput(),
+                tToPathIndices: mProofTo.indices,
+                tToPathElements:mProofTo.pathElements,
                 uFrom: uFrom.toCircuitInput(),
                 uTo: uTo.toCircuitInput(),
             },
             Board.MOVE_WASM,
             Board.MOVE_PROVKEY
         );
+
+        console.log('PROOF PASSED');
         return [tFrom, tTo, uFrom, uTo, proof];
     }
 }
