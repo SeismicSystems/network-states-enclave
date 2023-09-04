@@ -93,13 +93,14 @@ async function move(inp: string) {
     // Construct move states
     const nr = cursor.r + MOVE_KEYS[inp][0],
         nc = cursor.c + MOVE_KEYS[inp][1];
-    const mRoot = await Utils.reconstructMerkleRoot(
+    const mTree = await Utils.reconstructMerkleTree(
         Number(process.env.TREE_DEPTH),
         nStates
     );
+    const mRoot = mTree.root;
  
     const [tFrom, tTo, uFrom, uTo, prf] = await b.constructMove(
-        mRoot,
+        mTree,
         PLAYER.bjjPrivHash,
         cursor,
         { r: nr, c: nc },

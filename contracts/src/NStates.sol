@@ -25,10 +25,10 @@ interface IHasherT3 {
 contract NStates is IncrementalMerkleTree {
     IHasherT3 hasherT3 = IHasherT3(0x5FbDB2315678afecb367f032d93F642f64180aa3);
     IVerifier verifierContract =
-        IVerifier(0x4826533B4897376654Bb4d4AD88B7faFD0C98528);
+        IVerifier(0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512);
 
     event NewLeaf(uint256 h);
-    event NewNullifier(uint256 nf);
+    event NewNullifier(uint256 rho);
 
     address public owner;
     mapping(uint256 => bool) public nullifiers;
@@ -59,6 +59,15 @@ contract NStates is IncrementalMerkleTree {
     }
 
     /*
+     * Game deployer has the ability to initialize players onto the board.
+     */
+    function spawn(uint256 h, uint256 rho) public onlyOwner {
+        set(h);
+        nullifiers[rho] = true;
+        emit NewNullifier(rho);
+    }
+
+    /*
      * Accepts new states for tiles involved in move. Nullifies old states.
      * Moves must operate on states that aren't nullified AND carry a ZKP
      * anchored to a historical merkle root to be accepted.
@@ -76,7 +85,8 @@ contract NStates is IncrementalMerkleTree {
         require(rootHistory[root], "Root must be in root history");
         require(
             !nullifiers[rhoFrom] && !nullifiers[rhoTo],
-            "Move has already been made");
+            "Move has already been made"
+        );
         require(
             verifierContract.verifyProof(
                 a,

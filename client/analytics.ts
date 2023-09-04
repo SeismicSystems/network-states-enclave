@@ -25,7 +25,7 @@ const nStates = new ethers.Contract(
         nStates.filters.NewNullifier()
     );
     const nullifiers = newNullifierEvents.map((e) => {
-        return e.args?.nf.toHexString().slice(0, 5);
+        return e.args?.rho.toHexString().slice(0, 5);
     });
     console.log(nullifiers);
     console.log("==\n");
