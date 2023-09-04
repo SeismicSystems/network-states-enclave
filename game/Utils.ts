@@ -130,7 +130,6 @@ export class Utils {
             }
         }
         const mProof = mTree.genMerklePath(leafIndex);
-        console.log('proof root: ', mProof.root);
 
         // Format indices and pathElements.
         return {

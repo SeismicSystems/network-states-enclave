@@ -155,11 +155,6 @@ template CheckMerkleInclusion(N_TL_ATRS, MERKLE_TREE_DEPTH) {
     signal hTFrom <== Poseidon(N_TL_ATRS)(tFrom);
     signal hTTo <== Poseidon(N_TL_ATRS)(tTo);
 
-    log("==hTFrom");
-    log(hTFrom);
-    log("==hTTo");
-    log(hTTo);
-
     signal output out;
 
     component tFromMerkleProof = MerkleTreeInclusionProof(MERKLE_TREE_DEPTH);
@@ -173,14 +168,6 @@ template CheckMerkleInclusion(N_TL_ATRS, MERKLE_TREE_DEPTH) {
     tToMerkleProof.path_elements <== tToPathElements;
 
     out <== BatchIsEqual(2)([[root, tFromMerkleProof.root], [root, tToMerkleProof.root]]);
-    log("==root");
-    log(root);
-    log("==tFromMerkleProof.root");
-    log(tFromMerkleProof.root);
-    log("==tToMerkleProof.root");
-    log(tToMerkleProof.root);
-
-    // part causing error: root = tFromMerkleProof.root
 }
 
 /*

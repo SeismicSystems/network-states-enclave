@@ -25,7 +25,7 @@ interface IHasherT3 {
 contract NStates is IncrementalMerkleTree {
     IHasherT3 hasherT3 = IHasherT3(0x5FbDB2315678afecb367f032d93F642f64180aa3);
     IVerifier verifierContract =
-        IVerifier(0x4826533B4897376654Bb4d4AD88B7faFD0C98528);
+        IVerifier(0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512);
 
     event NewLeaf(uint256 h);
     event NewNullifier(uint256 nf);
@@ -58,6 +58,13 @@ contract NStates is IncrementalMerkleTree {
         insertLeaf(h);
     }
 
+    function spawn(uint256 h, uint256 n) public onlyOwner {
+        emit NewLeaf(h);
+        insertLeaf(h);
+        nullifiers[n] = true;
+        emit NewNullifier(n);
+    }
+
     /*
      * Accepts new states for tiles involved in move. Nullifies old states.
      * Moves must operate on states that aren't nullified AND carry a ZKP
@@ -76,7 +83,8 @@ contract NStates is IncrementalMerkleTree {
         require(rootHistory[root], "Root must be in root history");
         require(
             !nullifiers[rhoFrom] && !nullifiers[rhoTo],
-            "Move has already been made");
+            "Move has already been made"
+        );
         require(
             verifierContract.verifyProof(
                 a,

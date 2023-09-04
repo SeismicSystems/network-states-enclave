@@ -89,10 +89,10 @@ function decrypt(
  * Dev function for spawning default players on the map. Player A isn't spawned
  * so we can test client spawn.
  */
-function spawnPlayers() {
-    b.spawn({ r: 0, c: 0 }, PLAYER_A, START_RESOURCES);
-    b.spawn({ r: 0, c: BOARD_SIZE - 1 }, PLAYER_B, START_RESOURCES);
-    b.spawn({ r: BOARD_SIZE - 1, c: 0 }, PLAYER_C, START_RESOURCES);
+async function spawnPlayers() {
+    await b.spawn({ r: 0, c: 0 }, PLAYER_A, START_RESOURCES, nStates);
+    await b.spawn({ r: 0, c: BOARD_SIZE - 1 }, PLAYER_B, START_RESOURCES, nStates);
+    await b.spawn({ r: BOARD_SIZE - 1, c: 0 }, PLAYER_C, START_RESOURCES, nStates);
 }
 
 /*
@@ -113,7 +113,7 @@ io.on("connection", (socket: Socket) => {
 server.listen(process.env.SERVER_PORT, async () => {
     b = new Board();
     await b.seed(BOARD_SIZE, true, nStates);
-    spawnPlayers();
+    await spawnPlayers();
 
     console.log(
         `Server running on http://localhost:${process.env.SERVER_PORT}`

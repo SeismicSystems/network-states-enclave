@@ -57,9 +57,9 @@ export class Board {
     }
 
     /*
-     * Spawn Player at a Location. Used for development. Enclave only func.
+     * Spawn Player at a Location. Used for development. Enclave only func. 
      */
-    public spawn(l: Location, pl: Player, resource: number) {
+    public async spawn(l: Location, pl: Player, resource: number, nStates: any) {
         this.assertBounds(l);
 
         let r = l.r,
@@ -67,7 +67,15 @@ export class Board {
         if (this.t[r][c].owner != Tile.UNOWNED) {
             throw new Error("Tried to spawn player on an owned tile.");
         }
+
+        // Before tile is changed, we need the nullifier.
+        const nullifier = this.t[r][c].nullifier();
+
         this.t[r][c] = Tile.genOwned(pl, { r: r, c: c }, resource);
+
+        // Update the merkle root on-chain.
+        await nStates.spawn(this.t[r][c].hash(), nullifier);
+        await Utils.sleep(200);
     }
 
     /*
@@ -197,9 +205,6 @@ export class Board {
             )
         }
 
-        console.log('==tFrom.hash(): ', tFrom.hash());
-        console.log('==tTo.hash(): ', tTo.hash());
-
         const mProofFrom = Utils.generateMerkleProof(tFrom.hash(), mTree);
         const mProofTo = Utils.generateMerkleProof(tTo.hash(), mTree);
 
@@ -224,7 +229,6 @@ export class Board {
             Board.MOVE_PROVKEY
         );
 
-        console.log('PROOF PASSED');
         return [tFrom, tTo, uFrom, uTo, proof];
     }
 }
