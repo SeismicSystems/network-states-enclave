@@ -6,7 +6,7 @@ import {
     IncrementalQuinTree,
     hash2,
 } from "maci-crypto";
-import { ethers } from "ethers";
+import { ethers, BigNumber } from "ethers";
 
 export type Groth16Proof = {
     pi_a: [string, string, string];
@@ -59,15 +59,14 @@ export class Utils {
 
     /*
      * Use all emitted NewLeaf() events from contract to reconstruct on-chain
-     * merkle root. Logic here is useful for making merkle proofs later (this
-     * is why we don't just directly read the root from contract).
-     *
+     * merkle tree.
+     * 
      * [TODO] Memoize using local or third party indexer.
      */
-    static async reconstructMerkleRoot(
+    static async reconstructMerkleTree(
         treeDepth: number,
         nStates: ethers.Contract
-    ): Promise<BigInt> {
+    ): Promise<IncrementalQuinTree> {
         const newLeafEvents = await nStates.queryFilter(
             nStates.filters.NewLeaf()
         );
@@ -81,7 +80,38 @@ export class Utils {
         leaves.forEach((lh: BigInt) => {
             tree.insert(lh);
         });
-        return tree.root;
+        return tree;
+    }
+
+    /* 
+     * Constructs a proof that a given leaf (tileHash) is in the merkle root.
+     * Uses IncrementalQuinTree's genMerklePath(_index)
+     */
+    static generateMerkleProof(
+        tileHash: string,
+        mTree: IncrementalQuinTree
+    ) {
+        const h = BigNumber.from(tileHash);
+        const numLeaves = mTree.leavesPerNode ** mTree.depth;
+
+        let leafIndex: number | undefined;
+        console.log(leafIndex);
+        for (let i = 0; i < numLeaves; i++) {
+            if (h.eq(mTree.getNode(i))) {
+                leafIndex = i;
+            }
+        }
+        if (leafIndex === undefined) {
+            throw Error("Cannot construct Merkle proof for a hash not in root. "
+            + "Hash: " + tileHash);
+        }
+        const mProof = mTree.genMerklePath(leafIndex);
+
+        // Format indices and pathElements.
+        return {
+            indices: mProof.indices.map((i: number) => i.toString()),
+            pathElements: mProof.pathElements.map((e: BigInt[]) => [e[0].toString()])
+        };
     }
 
     /*
