@@ -1,13 +1,20 @@
-const wasmTester = require("circom_tester").wasm;
+import { createRequire } from 'module';
 
 describe("move circuit", () => {
-    let circuit;
+    let requireESM;
 
     beforeEach(async () => {
-        circuit = await wasmTester("move/move.circom");
+        requireESM = createRequire(import.meta.url);
+        const { Player, Tile, Board, Location, Utils } = requireESM('../../game');
+        
+        // Your code setup using Player, Tile, Board, Location, Utils
     });
 
-    it("should work on hello world", () => {
-        console.log("hello world");
+    afterEach(() => {
+        jest.resetModules();
+    });
+
+    it("fails if either of the nullifiers are invalid", async () => {
+        // Your test code here
     });
 });
