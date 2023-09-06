@@ -6,10 +6,8 @@ describe("Unit tests for CheckNullifiers()", () => {
     let circuit;
 
     beforeEach(async () => {
-        circuit = await wasm(
-            "test/circuits/test_check_nullifiers.circom"
-        );
-    })
+        circuit = await wasm("test/circuits/test_check_nullifiers.circom");
+    });
 
     it("fails if either of the nullifiers are invalid", async () => {
         const t1 = Tile.genUnowned({ r: 0, c: 0 });
@@ -63,16 +61,14 @@ describe("Unit tests for CheckLeaves()", () => {
     let circuit;
 
     beforeEach(async () => {
-        circuit = await wasm(
-            "test/circuits/test_check_leaves.circom"
-        );
-    })
+        circuit = await wasm("test/circuits/test_check_leaves.circom");
+    });
 
     it("fails if player tries to move troops they don't own", async () => {
         const p1 = new Player("A", BigInt("0xfff"));
         const p2 = new Player("B", BigInt("0xddd"));
-        const t1 = Tile.genOwned(p1, {r: 0, c: 0}, 9);
-        const t2 = Tile.genOwned(p1, {r: 0, c: 0}, 9);
+        const t1 = Tile.genOwned(p1, { r: 0, c: 0 }, 9);
+        const t2 = Tile.genOwned(p1, { r: 0, c: 0 }, 9);
 
         const w = await circuit.calculateWitness(
             {
@@ -91,8 +87,8 @@ describe("Unit tests for CheckLeaves()", () => {
     it("fails if proposed hashes don't match the new", async () => {
         const p1 = new Player("A", BigInt("0xfff"));
         const p2 = new Player("B", BigInt("0xddd"));
-        const t1 = Tile.genOwned(p1, {r: 0, c: 0}, 9);
-        const t2 = Tile.genOwned(p2, {r: 0, c: 0}, 9);
+        const t1 = Tile.genOwned(p1, { r: 0, c: 0 }, 9);
+        const t2 = Tile.genOwned(p2, { r: 0, c: 0 }, 9);
 
         const w1 = await circuit.calculateWitness(
             {
@@ -124,8 +120,8 @@ describe("Unit tests for CheckLeaves()", () => {
     it("passes if move initiated by owner & new hashes valid", async () => {
         const p1 = new Player("A", BigInt("0xfff"));
         const p2 = new Player("B", BigInt("0xddd"));
-        const t1 = Tile.genOwned(p1, {r: 0, c: 0}, 9);
-        const t2 = Tile.genOwned(p2, {r: 0, c: 0}, 9);
+        const t1 = Tile.genOwned(p1, { r: 0, c: 0 }, 9);
+        const t2 = Tile.genOwned(p2, { r: 0, c: 0 }, 9);
 
         const w = await circuit.calculateWitness(
             {
@@ -140,4 +136,56 @@ describe("Unit tests for CheckLeaves()", () => {
         assert.equal(w[1], BigInt("1"));
         await circuit.checkConstraints(w);
     });
+});
+
+describe("Unit tests for CheckStep()", () => {
+    let circuit;
+
+    beforeEach(async () => {
+        circuit = await wasm("test/circuits/test_check_step.circom");
+    });
+
+    it("fails if player tries to move diagonally", async () => {
+        const t1 = Tile.genUnowned({ r: 0, c: 0 });
+        const t2 = Tile.genUnowned({ r: 1, c: 1 });
+
+        const u1 = Tile.genUnowned({ r: 0, c: 0 });
+        const u2 = Tile.genUnowned({ r: 1, c: 1 });
+
+        const w = await circuit.calculateWitness(
+            {
+                tFrom: t1.toCircuitInput(),
+                tTo: t2.toCircuitInput(),
+                uFrom: u1.toCircuitInput(),
+                uTo: u2.toCircuitInput(),
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("0"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails if player swaps locations during update", async () => {
+        const t1 = Tile.genUnowned({ r: 0, c: 0 });
+        const t2 = Tile.genUnowned({ r: 0, c: 1 });
+
+        const u1 = Tile.genUnowned({ r: 5, c: 5 });
+        const u2 = Tile.genUnowned({ r: 0, c: 1 });
+
+        const w = await circuit.calculateWitness(
+            {
+                tFrom: t1.toCircuitInput(),
+                tTo: t2.toCircuitInput(),
+                uFrom: u1.toCircuitInput(),
+                uTo: u2.toCircuitInput(),
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("0"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails if player tries to move in place", async () => {});
+
+    it("passes if state updated correctly in unit cardinal plane", async () => {});
 });
