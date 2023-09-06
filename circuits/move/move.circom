@@ -30,27 +30,26 @@ template CheckNullifiers() {
  * private key corresponds to the tile's public keys.
  */
 template CheckLeaves(N_TL_ATRS, PUBX_IDX, PUBY_IDX) {
-    signal input hUFrom;
-    signal input hUTo;
-
     signal input uFrom[N_TL_ATRS];
     signal input uTo[N_TL_ATRS];
+    signal input hUFrom;
+    signal input hUTo;
     signal input privKeyHash;
+
+    // Whether player 'owns' the 'from' tile
+    component bjj = BabyPbk();
+    bjj.in <== privKeyHash;
+    uFrom[PUBX_IDX] === bjj.Ax;
+    uFrom[PUBY_IDX] === bjj.Ay;
     
     signal output out;
 
-
-    // Whether player 'owns' the 'from' tile
-    signal bjjPubKeyX, bjjPubKeyY;
-    (bjjPubKeyX, bjjPubKeyY) <== BabyPbk()(privKeyHash);
-
-    // Whether hashes are computed correctly
     signal circuitHFrom <== Poseidon(N_TL_ATRS)(uFrom);
     signal circuitHTo <== Poseidon(N_TL_ATRS)(uTo);
 
     out <== BatchIsEqual(4)([
-        [uFrom[PUBX_IDX], bjjPubKeyX],
-        [uFrom[PUBY_IDX], bjjPubKeyY],
+        [uFrom[PUBX_IDX], bjj.Ax],
+        [uFrom[PUBY_IDX], bjj.Ay],
         [hUFrom, circuitHFrom], 
         [hUTo, circuitHTo]]);
 }
@@ -85,11 +84,13 @@ template CheckStep(VALID_MOVES, N_VALID_MOVES, N_TL_ATRS, ROW_IDX, COL_IDX) {
  */
 template CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, PUBY_IDX, TRP_UPD_IDX, UNOWNED, SYS_BITS) {
     signal input currentTroopInterval;
-
+    
     signal input tFrom[N_TL_ATRS];
     signal input tTo[N_TL_ATRS];
     signal input uFrom[N_TL_ATRS];
     signal input uTo[N_TL_ATRS];
+    signal input fromUpdatedTroops;
+    signal input toUpdatedTroops;
 
     signal output out;
 
@@ -109,48 +110,59 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, PUBY_IDX, TRP_UPD_IDX, UNOWNED
     // Not allowed to move all troops off of tile
     signal movedAllTroops <== IsZero()(uFrom[RSRC_IDX]);
 
-    // Compute troop counts after considering all missed updates
-    signal fromUpdatedRsrc <== tFrom[RSRC_IDX] + currentTroopInterval
+    // Make sure updated troop counts are computed correctly
+    signal fromCorrectTroops <== tFrom[RSRC_IDX] + currentTroopInterval 
         - tFrom[TRP_UPD_IDX];
-    signal toUpdatedRsrc <== (tTo[RSRC_IDX] + currentTroopInterval
+    signal toCorrectTroops <== (tTo[RSRC_IDX] + currentTroopInterval
         - tTo[TRP_UPD_IDX]) * ontoSelfOrEnemy;
+    signal troopRsrcCorrect <== BatchIsEqual(2)([
+        [fromCorrectTroops, fromUpdatedTroops],
+        [toCorrectTroops, toUpdatedTroops]]);
+
+    // Troop updates should be accounted for in new tile states
+    signal troopsCounted <== BatchIsEqual(2)([
+        [currentTroopInterval, uFrom[TRP_UPD_IDX]],
+        [currentTroopInterval, uTo[TRP_UPD_IDX]]]);
+
+    signal troopUpdateCorrect <== AND()(troopRsrcCorrect, troopsCounted);
+    signal troopUpdateIncorrect <== NOT()(troopUpdateCorrect);
 
     // Make sure resource management can't be broken via overflow
     signal overflowFrom <== GreaterEqThan(SYS_BITS)([uFrom[RSRC_IDX], 
-        fromUpdatedRsrc]);
+        fromUpdatedTroops]);
     signal overflowTo <== GreaterEqThan(SYS_BITS)([uTo[RSRC_IDX], 
-        fromUpdatedRsrc + toUpdatedRsrc]);
+        fromUpdatedTroops + toUpdatedTroops]);
 
-    // Properties we need to know regarding `to` tile relative to `from` tile
-    signal ontoMoreOrEq <== GreaterEqThan(SYS_BITS)([toUpdatedRsrc, 
-        uFrom[RSRC_IDX] - fromUpdatedRsrc]);
+    // Whether we need to capture the to tile
+    signal ontoMoreOrEq <== GreaterEqThan(SYS_BITS)([toUpdatedTroops, 
+        uFrom[RSRC_IDX] - fromUpdatedTroops]);
     signal ontoLess <== NOT()(ontoMoreOrEq);
 
     // Moving onto a non-enemy tile (self or unowned)
-    signal case1Logic <== BatchIsEqual(3)([[fromUpdatedRsrc + toUpdatedRsrc, 
+    signal case1Logic <== BatchIsEqual(3)([[fromUpdatedTroops + toUpdatedTroops, 
         uFrom[RSRC_IDX] + uTo[RSRC_IDX]], [tFromPub, uFromPub],
         [tToPub, uToPub]]);
     signal case1LogicWrong <== NOT()(case1Logic);
     signal case1 <== case1LogicWrong * ontoSelfOrUnowned;
 
     // Moving onto enemy tile that has more or eq resource vs what's being sent
-    signal case2Logic <== BatchIsEqual(3)([[fromUpdatedRsrc - uFrom[RSRC_IDX], 
-        toUpdatedRsrc - uTo[RSRC_IDX]], [tFromPub, uFromPub],
+    signal case2Logic <== BatchIsEqual(3)([[fromUpdatedTroops - uFrom[RSRC_IDX], 
+        toUpdatedTroops - uTo[RSRC_IDX]], [tFromPub, uFromPub],
         [tToPub, uToPub]]);
     signal case2LogicWrong <== NOT()(case2Logic);
     signal case2Selector <== AND()(ontoEnemy, ontoMoreOrEq);
     signal case2 <== case2LogicWrong * case2Selector;
 
     // Moving onto enemy tile that has less resource vs what's being sent
-    signal case3Logic <== BatchIsEqual(3)([[fromUpdatedRsrc - uFrom[RSRC_IDX], 
-        toUpdatedRsrc + uTo[RSRC_IDX]], [tFromPub, uFromPub],
+    signal case3Logic <== BatchIsEqual(3)([[fromUpdatedTroops - uFrom[RSRC_IDX], 
+        toUpdatedTroops + uTo[RSRC_IDX]], [tFromPub, uFromPub],
         [tFromPub, uToPub]]);
     signal case3LogicWrong <== NOT()(case3Logic);
     signal case3Selector <== AND()(ontoEnemy, ontoLess);
     signal case3 <== case3LogicWrong * case3Selector;
 
-    out <== BatchIsZero(6)([movedAllTroops, overflowFrom, overflowTo, case1,
-        case2, case3]);
+    out <== BatchIsZero(7)([movedAllTroops, troopUpdateIncorrect, overflowFrom, 
+        overflowTo, case1, case2, case3]);
 }
 
 /*
@@ -159,7 +171,6 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, PUBY_IDX, TRP_UPD_IDX, UNOWNED
  */
 template CheckMerkleInclusion(N_TL_ATRS, MERKLE_TREE_DEPTH) {
     signal input root;
-
     signal input tFrom[N_TL_ATRS];
     signal input tFromPathIndices[MERKLE_TREE_DEPTH];
     signal input tFromPathElements[MERKLE_TREE_DEPTH][1];
@@ -218,10 +229,12 @@ template Move() {
     signal input tToPathElements[MERKLE_TREE_DEPTH][1];
     signal input uFrom[N_TL_ATRS];
     signal input uTo[N_TL_ATRS];
+    signal input fromUpdatedTroops;
+    signal input toUpdatedTroops;
     signal input privKeyHash;
 
-    signal leavesCorrect <== CheckLeaves(N_TL_ATRS, PUBX_IDX, PUBY_IDX)(hUFrom, 
-        hUTo, uFrom, uTo, privKeyHash);
+    signal leavesCorrect <== CheckLeaves(N_TL_ATRS, PUBX_IDX, PUBY_IDX)(uFrom, uTo, hUFrom, 
+        hUTo, privKeyHash);
     leavesCorrect === 1;
 
     signal nullifiersCorrect <== CheckNullifiers()(tFrom[KEY_IDX], 
@@ -233,8 +246,8 @@ template Move() {
     stepCorrect === 1;
 
     signal resourcesCorrect <== CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, 
-        PUBY_IDX, TRP_UPD_IDX, UNOWNED, SYS_BITS)
-        (currentTroopInterval, tFrom, tTo, uFrom, uTo);
+        PUBY_IDX, TRP_UPD_IDX, UNOWNED, SYS_BITS)(currentTroopInterval, tFrom, 
+        tTo, uFrom, uTo, fromUpdatedTroops, toUpdatedTroops);
 
     signal merkleProofCorrect <== CheckMerkleInclusion(N_TL_ATRS,
         MERKLE_TREE_DEPTH)(root, tFrom, tFromPathIndices, tFromPathElements,
@@ -242,4 +255,4 @@ template Move() {
     merkleProofCorrect === 1;
 }
 
-component main { public [ root, currentTroopInterval, hUFrom, hUTo, rhoFrom, rhoTo ] } = Move();
+component main { public [ root, hUFrom, hUTo, rhoFrom, rhoTo ] } = Move();
