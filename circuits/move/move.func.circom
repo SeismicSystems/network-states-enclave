@@ -34,15 +34,14 @@ template CheckLeaves(N_TL_ATRS, PUBX_IDX, PUBY_IDX) {
     signal input uTo[N_TL_ATRS];
     signal input hUFrom;
     signal input hUTo;
+
     signal input privKeyHash;
+
+    signal output out;
 
     // Whether player 'owns' the 'from' tile
     component bjj = BabyPbk();
     bjj.in <== privKeyHash;
-    uFrom[PUBX_IDX] === bjj.Ax;
-    uFrom[PUBY_IDX] === bjj.Ay;
-    
-    signal output out;
 
     signal circuitHFrom <== Poseidon(N_TL_ATRS)(uFrom);
     signal circuitHTo <== Poseidon(N_TL_ATRS)(uTo);
@@ -147,6 +146,7 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, PUBY_IDX, UNOWNED, SYS_BITS) {
  */
 template CheckMerkleInclusion(N_TL_ATRS, MERKLE_TREE_DEPTH) {
     signal input root;
+    
     signal input tFrom[N_TL_ATRS];
     signal input tFromPathIndices[MERKLE_TREE_DEPTH];
     signal input tFromPathElements[MERKLE_TREE_DEPTH][1];
@@ -154,10 +154,10 @@ template CheckMerkleInclusion(N_TL_ATRS, MERKLE_TREE_DEPTH) {
     signal input tToPathIndices[MERKLE_TREE_DEPTH];
     signal input tToPathElements[MERKLE_TREE_DEPTH][1];
 
+    signal output out;
+
     signal hTFrom <== Poseidon(N_TL_ATRS)(tFrom);
     signal hTTo <== Poseidon(N_TL_ATRS)(tTo);
-
-    signal output out;
 
     signal fromPrfRoot <== MerkleTreeInclusionProof(MERKLE_TREE_DEPTH)(hTFrom,
         tFromPathIndices, tFromPathElements);
