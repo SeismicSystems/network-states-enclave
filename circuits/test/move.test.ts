@@ -166,11 +166,11 @@ describe("Unit tests for CheckStep()", () => {
     });
 
     it("fails if player swaps locations during update", async () => {
-        const t1 = Tile.genUnowned({ r: 0, c: 0 });
-        const t2 = Tile.genUnowned({ r: 0, c: 1 });
+        const t1 = Tile.genUnowned({ r: 81, c: 30 });
+        const t2 = Tile.genUnowned({ r: 81, c: 29 });
 
         const u1 = Tile.genUnowned({ r: 5, c: 5 });
-        const u2 = Tile.genUnowned({ r: 0, c: 1 });
+        const u2 = Tile.genUnowned({ r: 81, c: 29 });
 
         const w = await circuit.calculateWitness(
             {
@@ -185,7 +185,43 @@ describe("Unit tests for CheckStep()", () => {
         await circuit.checkConstraints(w);
     });
 
-    it("fails if player tries to move in place", async () => {});
+    it("fails if player tries to move in place", async () => {
+        const t1 = Tile.genUnowned({ r: 0, c: 0 });
+        const t2 = Tile.genUnowned({ r: 0, c: 0 });
 
-    it("passes if state updated correctly in unit cardinal plane", async () => {});
+        const u1 = Tile.genUnowned({ r: 0, c: 0 });
+        const u2 = Tile.genUnowned({ r: 0, c: 0 });
+
+        const w = await circuit.calculateWitness(
+            {
+                tFrom: t1.toCircuitInput(),
+                tTo: t2.toCircuitInput(),
+                uFrom: u1.toCircuitInput(),
+                uTo: u2.toCircuitInput(),
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("0"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("passes if state updated in unit cardinal plane", async () => {
+        const t1 = Tile.genUnowned({ r: 12, c: 15 });
+        const t2 = Tile.genUnowned({ r: 11, c: 15 });
+
+        const u1 = Tile.genUnowned({ r: 12, c: 15 });
+        const u2 = Tile.genUnowned({ r: 11, c: 15 });
+
+        const w = await circuit.calculateWitness(
+            {
+                tFrom: t1.toCircuitInput(),
+                tTo: t2.toCircuitInput(),
+                uFrom: u1.toCircuitInput(),
+                uTo: u2.toCircuitInput(),
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("1"));
+        await circuit.checkConstraints(w);
+    });
 });
