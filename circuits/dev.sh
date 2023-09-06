@@ -2,8 +2,9 @@
 
 : '
   Boilerplate circuit compilation & smoke testing. Do not use in prod. Assumes
-  naming convention: {$NAME/, $NAME/$NAME.circom, and $NAME/${NAME}_smoke.json}.
-  Outputs solidity verifier in ../contracts/src and proving key in $NAME/.
+  naming convention: {$NAME/, $NAME/$NAME.circom, $NAME/${NAME}.func.json,
+  and $NAME/${NAME}.smoke.json}. Outputs solidity verifier in 
+  ../contracts/src and proving key in $NAME/.
 '
 
 NAME=$1
@@ -25,7 +26,7 @@ yarn run snarkjs zkey export verificationkey ${NAME}.zkey \
 # Compute witness, used as smoke test for circuit
 node ${NAME}_js/generate_witness.js \
      ${NAME}_js/${NAME}.wasm \
-     ${NAME}/${NAME}_smoke.json \
+     ${NAME}/${NAME}.smoke.json \
      ${NAME}.wtns
 
 # Export solidity verifier
