@@ -121,7 +121,23 @@ describe("Unit tests for CheckLeaves()", () => {
         await circuit.checkConstraints(w2);
     });
 
-    it("passes if move initiated by new owner & new hashes valid", async () => {
+    it("passes if move initiated by owner & new hashes valid", async () => {
+        const p1 = new Player("A", BigInt("0xfff"));
+        const p2 = new Player("B", BigInt("0xddd"));
+        const t1 = Tile.genOwned(p1, {r: 0, c: 0}, 9);
+        const t2 = Tile.genOwned(p2, {r: 0, c: 0}, 9);
 
+        const w = await circuit.calculateWitness(
+            {
+                uFrom: t1.toCircuitInput(),
+                uTo: t2.toCircuitInput(),
+                hUFrom: t1.hash(),
+                hUTo: t2.hash(),
+                privKeyHash: p1.bjjPrivHash,
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("1"));
+        await circuit.checkConstraints(w);
     });
 });
