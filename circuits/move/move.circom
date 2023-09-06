@@ -30,26 +30,27 @@ template CheckNullifiers() {
  * private key corresponds to the tile's public keys.
  */
 template CheckLeaves(N_TL_ATRS, PUBX_IDX, PUBY_IDX) {
-    signal input uFrom[N_TL_ATRS];
-    signal input uTo[N_TL_ATRS];
     signal input hUFrom;
     signal input hUTo;
-    signal input privKeyHash;
 
-    // Whether player 'owns' the 'from' tile
-    component bjj = BabyPbk();
-    bjj.in <== privKeyHash;
-    uFrom[PUBX_IDX] === bjj.Ax;
-    uFrom[PUBY_IDX] === bjj.Ay;
+    signal input uFrom[N_TL_ATRS];
+    signal input uTo[N_TL_ATRS];
+    signal input privKeyHash;
     
     signal output out;
 
+
+    // Whether player 'owns' the 'from' tile
+    signal bjjPubKeyX, bjjPubKeyY;
+    (bjjPubKeyX, bjjPubKeyY) <== BabyPbk()(privKeyHash);
+
+    // Whether hashes are computed correctly
     signal circuitHFrom <== Poseidon(N_TL_ATRS)(uFrom);
     signal circuitHTo <== Poseidon(N_TL_ATRS)(uTo);
 
     out <== BatchIsEqual(4)([
-        [uFrom[PUBX_IDX], bjj.Ax],
-        [uFrom[PUBY_IDX], bjj.Ay],
+        [uFrom[PUBX_IDX], bjjPubKeyX],
+        [uFrom[PUBY_IDX], bjjPubKeyY],
         [hUFrom, circuitHFrom], 
         [hUTo, circuitHTo]]);
 }
@@ -82,22 +83,15 @@ template CheckStep(VALID_MOVES, N_VALID_MOVES, N_TL_ATRS, ROW_IDX, COL_IDX) {
  * Must preserve resource management logic- what happens when armies expand to
  * unowned or enemy territories. 
  */
-template CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, PUBY_IDX, UNOWNED, SYS_BITS) {
+template CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, PUBY_IDX, TROOP_UPDATE_INTERVAL, UNOWNED, SYS_BITS) {
+    signal input currentTroopInterval;
+
     signal input tFrom[N_TL_ATRS];
     signal input tTo[N_TL_ATRS];
     signal input uFrom[N_TL_ATRS];
     signal input uTo[N_TL_ATRS];
 
     signal output out;
-
-    // Not allowed to move all troops off of tile
-    signal movedAllTroops <== IsZero()(uFrom[RSRC_IDX]);
-
-    // Make sure resource management can't be broken via overflow
-    signal overflowFrom <== GreaterEqThan(SYS_BITS)([uFrom[RSRC_IDX], 
-        tFrom[RSRC_IDX]]);
-    signal overflowTo <== GreaterEqThan(SYS_BITS)([uTo[RSRC_IDX], 
-        tFrom[RSRC_IDX] + tTo[RSRC_IDX]]);
 
     // Hash public keys so we can compare single field elements
     signal tFromPub <== Poseidon(2)([tFrom[PUBX_IDX], tFrom[PUBY_IDX]]);
@@ -110,6 +104,23 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, PUBY_IDX, UNOWNED, SYS_BITS) {
     signal ontoUnowned <== IsEqual()([tToPub, UNOWNED]);
     signal ontoSelfOrUnowned <== OR()(ontoSelf, ontoUnowned);
     signal ontoEnemy <== NOT()(ontoSelfOrUnowned);
+
+    // Not allowed to move all troops off of tile
+    signal movedAllTroops <== IsZero()(uFrom[RSRC_IDX]);
+
+    // Update logic: 1. compute how many troops there should be on both tiles
+    // after considering troop updates, 2. use the move logic as if those values
+    // are true values
+
+
+
+    // Make sure resource management can't be broken via overflow
+    signal overflowFrom <== GreaterEqThan(SYS_BITS)([uFrom[RSRC_IDX], 
+        tFrom[RSRC_IDX]]);
+    signal overflowTo <== GreaterEqThan(SYS_BITS)([uTo[RSRC_IDX], 
+        tFrom[RSRC_IDX] + tTo[RSRC_IDX]]);
+
+    // Properties we need to know regarding `to` tile relative to `from` tile
     signal ontoMoreOrEq <== GreaterEqThan(SYS_BITS)([tTo[RSRC_IDX], 
         uFrom[RSRC_IDX] - tFrom[RSRC_IDX]]);
     signal ontoLess <== NOT()(ontoMoreOrEq);
@@ -147,6 +158,7 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, PUBY_IDX, UNOWNED, SYS_BITS) {
  */
 template CheckMerkleInclusion(N_TL_ATRS, MERKLE_TREE_DEPTH) {
     signal input root;
+
     signal input tFrom[N_TL_ATRS];
     signal input tFromPathIndices[MERKLE_TREE_DEPTH];
     signal input tFromPathElements[MERKLE_TREE_DEPTH][1];
@@ -178,18 +190,22 @@ template Move() {
 
     var MERKLE_TREE_DEPTH = 8;
 
-    var N_TL_ATRS = 6;
+    var TROOP_UPDATE_INTERVAL = 50;
+
+    var N_TL_ATRS = 7;
     var PUBX_IDX = 0;
     var PUBY_IDX = 1;
     var ROW_IDX = 2;
     var COL_IDX = 3;
     var RSRC_IDX = 4;
     var KEY_IDX = 5;
+    var LST_TRP_UPD = 6;
 
     var UNOWNED = 95;
     var SYS_BITS = 252;
 
     signal input root;
+    signal input currentTroopInterval;
     signal input hUFrom;
     signal input hUTo;
     signal input rhoFrom;
@@ -205,8 +221,8 @@ template Move() {
     signal input uTo[N_TL_ATRS];
     signal input privKeyHash;
 
-    signal leavesCorrect <== CheckLeaves(N_TL_ATRS, PUBX_IDX, PUBY_IDX)(uFrom, uTo, hUFrom, 
-        hUTo, privKeyHash);
+    signal leavesCorrect <== CheckLeaves(N_TL_ATRS, PUBX_IDX, PUBY_IDX)(hUFrom, 
+        hUTo, uFrom, uTo, privKeyHash);
     leavesCorrect === 1;
 
     signal nullifiersCorrect <== CheckNullifiers()(tFrom[KEY_IDX], 
@@ -218,7 +234,8 @@ template Move() {
     stepCorrect === 1;
 
     signal resourcesCorrect <== CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, 
-        PUBY_IDX, UNOWNED, SYS_BITS)(tFrom, tTo, uFrom, uTo);
+        PUBY_IDX, TROOP_UPDATE_INTERVAL, UNOWNED, SYS_BITS)
+        (currentTroopInterval, tFrom, tTo, uFrom, uTo);
 
     signal merkleProofCorrect <== CheckMerkleInclusion(N_TL_ATRS,
         MERKLE_TREE_DEPTH)(root, tFrom, tFromPathIndices, tFromPathElements,
@@ -226,4 +243,4 @@ template Move() {
     merkleProofCorrect === 1;
 }
 
-component main { public [ root, hUFrom, hUTo, rhoFrom, rhoTo ] } = Move();
+component main { public [ root, currentTroopInterval, hUFrom, hUTo, rhoFrom, rhoTo ] } = Move();
