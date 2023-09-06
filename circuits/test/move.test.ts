@@ -225,3 +225,176 @@ describe("Unit tests for CheckStep()", () => {
         await circuit.checkConstraints(w);
     });
 });
+
+describe("Unit tests for CheckRsrc()", () => {
+    let circuit;
+
+    beforeEach(async () => {
+        circuit = await wasm("test/circuits/test_check_rsrc.circom");
+    });
+
+    it("fails if player moves all troops out of a tile", async () => {
+        const p = new Player("A", BigInt("0xfff"));
+        const t1 = Tile.genOwned(p, { r: 123, c: 321 }, 9);
+        const t2 = Tile.genUnowned({ r: 124, c: 321 });
+        const u1 = Tile.genOwned(p, { r: 123, c: 321 }, 0);
+        const u2 = Tile.genOwned(p, { r: 124, c: 321 }, 9);
+
+        const w = await circuit.calculateWitness(
+            {
+                tFrom: t1.toCircuitInput(),
+                tTo: t2.toCircuitInput(),
+                uFrom: u1.toCircuitInput(),
+                uTo: u2.toCircuitInput(),
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("0"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails if player invents troops out of thin air, case 1", async () => {
+        const p = new Player("A", BigInt("0xfff"));
+        const t1 = Tile.genOwned(p, { r: 123, c: 321 }, 3);
+        const t2 = Tile.genUnowned({ r: 124, c: 321 });
+        const u1 = Tile.genOwned(p, { r: 123, c: 321 }, 3);
+        const u2 = Tile.genOwned(p, { r: 124, c: 321 }, 2);
+
+        const w = await circuit.calculateWitness(
+            {
+                tFrom: t1.toCircuitInput(),
+                tTo: t2.toCircuitInput(),
+                uFrom: u1.toCircuitInput(),
+                uTo: u2.toCircuitInput(),
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("0"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails if player invents troops out of thin air, case 2", async () => {
+        const p1 = new Player("A", BigInt("0xfff"));
+        const p2 = new Player("B", BigInt("0xddd"));
+        const t1 = Tile.genOwned(p1, { r: 123, c: 321 }, 9);
+        const t2 = Tile.genOwned(p2, { r: 124, c: 321 }, 3);
+        const u1 = Tile.genOwned(p1, { r: 123, c: 321 }, 1);
+        const u2 = Tile.genOwned(p1, { r: 124, c: 321 }, 11);
+
+        const w = await circuit.calculateWitness(
+            {
+                tFrom: t1.toCircuitInput(),
+                tTo: t2.toCircuitInput(),
+                uFrom: u1.toCircuitInput(),
+                uTo: u2.toCircuitInput(),
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("0"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails if player claims to capture with fewer resources", async () => {
+        const p1 = new Player("A", BigInt("0xfff"));
+        const p2 = new Player("B", BigInt("0xddd"));
+        const t1 = Tile.genOwned(p1, { r: 123, c: 321 }, 3);
+        const t2 = Tile.genOwned(p2, { r: 124, c: 321 }, 9);
+        const u1 = Tile.genOwned(p1, { r: 123, c: 321 }, 1);
+        const u2 = Tile.genOwned(p1, { r: 124, c: 321 }, 2);
+
+        const w = await circuit.calculateWitness(
+            {
+                tFrom: t1.toCircuitInput(),
+                tTo: t2.toCircuitInput(),
+                uFrom: u1.toCircuitInput(),
+                uTo: u2.toCircuitInput(),
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("0"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails if player doesn't capture when they should", async () => {
+        const p1 = new Player("A", BigInt("0xfff"));
+        const p2 = new Player("B", BigInt("0xddd"));
+        const t1 = Tile.genOwned(p1, { r: 123, c: 321 }, 5);
+        const t2 = Tile.genOwned(p2, { r: 124, c: 321 }, 2);
+        const u1 = Tile.genOwned(p1, { r: 123, c: 321 }, 2);
+        const u2 = Tile.genOwned(p2, { r: 124, c: 321 }, 1);
+
+        const w = await circuit.calculateWitness(
+            {
+                tFrom: t1.toCircuitInput(),
+                tTo: t2.toCircuitInput(),
+                uFrom: u1.toCircuitInput(),
+                uTo: u2.toCircuitInput(),
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("0"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("passes if resource management rules hold, taking unowned", async () => {
+        const p = new Player("A", BigInt("0xfff"));
+        const t1 = Tile.genOwned(p, { r: 123, c: 321 }, 9);
+        const t2 = Tile.genUnowned({ r: 124, c: 321 });
+        const u1 = Tile.genOwned(p, { r: 123, c: 321 }, 2);
+        const u2 = Tile.genOwned(p, { r: 124, c: 321 }, 7);
+
+        const w = await circuit.calculateWitness(
+            {
+                tFrom: t1.toCircuitInput(),
+                tTo: t2.toCircuitInput(),
+                uFrom: u1.toCircuitInput(),
+                uTo: u2.toCircuitInput(),
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("1"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("passes if resource management rules hold, battling enemy", async () => {
+        const p1 = new Player("A", BigInt("0xfff"));
+        const p2 = new Player("B", BigInt("0xddd"));
+        const t1 = Tile.genOwned(p1, { r: 123, c: 321 }, 15);
+        const t2 = Tile.genOwned(p2, { r: 124, c: 321 }, 33);
+        const u1 = Tile.genOwned(p1, { r: 123, c: 321 }, 10);
+        const u2 = Tile.genOwned(p2, { r: 124, c: 321 }, 28);
+
+        const w = await circuit.calculateWitness(
+            {
+                tFrom: t1.toCircuitInput(),
+                tTo: t2.toCircuitInput(),
+                uFrom: u1.toCircuitInput(),
+                uTo: u2.toCircuitInput(),
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("1"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("passes if resource management rules hold, taking enemy", async () => {
+        const p1 = new Player("A", BigInt("0xfff"));
+        const p2 = new Player("B", BigInt("0xddd"));
+        const t1 = Tile.genOwned(p1, { r: 123, c: 321 }, 33);
+        const t2 = Tile.genOwned(p2, { r: 124, c: 321 }, 15);
+        const u1 = Tile.genOwned(p1, { r: 123, c: 321 }, 3);
+        const u2 = Tile.genOwned(p1, { r: 124, c: 321 }, 15);
+        
+        const w = await circuit.calculateWitness(
+            {
+                tFrom: t1.toCircuitInput(),
+                tTo: t2.toCircuitInput(),
+                uFrom: u1.toCircuitInput(),
+                uTo: u2.toCircuitInput(),
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("1"));
+        await circuit.checkConstraints(w);
+    });
+});
