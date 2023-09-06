@@ -24,7 +24,8 @@ yarn run snarkjs zkey export verificationkey ${NAME}.zkey \
                                              ${NAME}.vkey.json
 
 # Compute witness, used as smoke test for circuit
-node ${NAME}_js/generate_witness.js \
+mv ${NAME}_js/generate_witness.js ${NAME}_js/generate_witness.cjs
+node ${NAME}_js/generate_witness.cjs \
      ${NAME}_js/${NAME}.wasm \
      ${NAME}/${NAME}.smoke.json \
      ${NAME}.wtns
