@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "main": "index.js",
   "license": "BSD-4-Clause",
-  "type": "module",
   "scripts": {
     "dev:move": "bash dev.sh move artifacts/powersOfTau28_hez_final_17.ptau",
     "test": "mocha -r ts-node/register 'test/**/*.ts'"
