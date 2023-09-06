@@ -95,7 +95,6 @@ export class Utils {
         const numLeaves = mTree.leavesPerNode ** mTree.depth;
 
         let leafIndex: number | undefined;
-        console.log(leafIndex);
         for (let i = 0; i < numLeaves; i++) {
             if (h.eq(mTree.getNode(i))) {
                 leafIndex = i;
