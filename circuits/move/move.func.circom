@@ -227,6 +227,7 @@ template Move() {
 
     signal resourcesCorrect <== CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, 
         PUBY_IDX, UNOWNED, SYS_BITS)(tFrom, tTo, uFrom, uTo);
+    resourcesCorrect === 1;
 
     signal merkleProofCorrect <== CheckMerkleInclusion(N_TL_ATRS,
         MERKLE_TREE_DEPTH)(root, tFrom, tFromPathIndices, tFromPathElements,
