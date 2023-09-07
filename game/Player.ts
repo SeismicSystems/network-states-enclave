@@ -7,9 +7,12 @@ import {
     sign,
     verifySignature,
     hash2,
-    
+    hashOne,
 } from "maci-crypto";
 import { Location } from "./Tile";
+
+const UNOWNED_PUB_X = hashOne(BigInt(0));
+const UNOWNED_PUB_Y = hashOne(BigInt(0));
 
 export class Player {
     symbol: string;
@@ -34,7 +37,7 @@ export class Player {
 
         // If player is the UNOWNED player, then give the designated pub-keys
         if (symb === "_") {
-            this.bjjPub = new PubKey([BigInt(0), BigInt(0)]);
+            this.bjjPub = new PubKey([UNOWNED_PUB_X, UNOWNED_PUB_Y]);
         }
     }
 
@@ -52,7 +55,7 @@ export class Player {
     }
 
     /*
-     * Signs message (Babyjubjub field element) using EDDSA. Player instance 
+     * Signs message (Babyjubjub field element) using EDDSA. Player instance
      * must already have a derived private key.
      */
     public genSig(h: BigInt): Signature {

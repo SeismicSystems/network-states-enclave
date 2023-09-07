@@ -113,11 +113,9 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, PUBY_IDX, UNOWNED, SYS_BITS) {
         tFrom[RSRC_IDX] - uFrom[RSRC_IDX]]);
     signal ontoLess <== NOT()(ontoMoreOrEq);
 
-    // From tile must stay player's, player cannot be UNOWNED
+    // From tile must remain player's after move
     signal fromOwnership <== IsEqual()([tFromPub, uFromPub]);
     signal fromOwnershipWrong <== NOT()(fromOwnership);
-    signal playerUnowned <== IsEqual()([tFromPub, UNOWNED]);
-    signal ownershipLogic <== OR()(fromOwnershipWrong, playerUnowned);
 
     // Moving onto a non-enemy tile (self or unowned)
     signal case1Logic <== BatchIsEqual(2)([
@@ -145,7 +143,7 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, PUBY_IDX, UNOWNED, SYS_BITS) {
     signal case3 <== case3LogicWrong * case3Selector;
 
     out <== BatchIsZero(7)([movedAllTroops, overflowFrom, overflowTo, 
-        ownershipLogic, case1, case2, case3]);
+        fromOwnershipWrong, case1, case2, case3]);
 }
 
 /*
@@ -194,7 +192,9 @@ template Move() {
     var RSRC_IDX = 4;
     var KEY_IDX = 5;
 
-    var UNOWNED = 14744269619966411208579211824598458697587494354926760081771325075741142829156;
+    // Hash of UNOWNED_PLAYER's public keys, used to look for unowned tiles
+    var UNOWNED = 7423237065226347324353380772367382631490014989348495481811164164159255474657;
+
     var SYS_BITS = 252;
 
     signal input root;

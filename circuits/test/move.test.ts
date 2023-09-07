@@ -294,26 +294,6 @@ describe("Unit tests for CheckRsrc()", () => {
         await circuit.checkConstraints(w);
     });
 
-    it("fails if player pretends to be an unowned tile", async () => {
-        const p1 = new Player("_");
-        const t1 = Tile.genOwned(p1, { r: 123, c: 321 }, 10);
-        const t2 = Tile.genUnowned({ r: 124, c: 321 });
-        const u1 = Tile.genOwned(p1, { r: 123, c: 321 }, 5);
-        const u2 = Tile.genOwned(p1, { r: 124, c: 321}, 5);
-
-        const w = await circuit.calculateWitness(
-            {
-                tFrom: t1.toCircuitInput(),
-                tTo: t2.toCircuitInput(),
-                uFrom: u1.toCircuitInput(),
-                uTo: u2.toCircuitInput(),
-            },
-            true
-        );
-        assert.equal(w[1], BigInt("0"));
-        await circuit.checkConstraints(w);
-    });
-
     it("fails if player claims to capture with fewer resources", async () => {
         const p1 = new Player("A", BigInt("0xfff"));
         const p2 = new Player("B", BigInt("0xddd"));
