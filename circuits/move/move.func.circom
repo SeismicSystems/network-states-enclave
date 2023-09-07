@@ -110,34 +110,42 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, PUBY_IDX, UNOWNED, SYS_BITS) {
     signal ontoSelfOrUnowned <== OR()(ontoSelf, ontoUnowned);
     signal ontoEnemy <== NOT()(ontoSelfOrUnowned);
     signal ontoMoreOrEq <== GreaterEqThan(SYS_BITS)([tTo[RSRC_IDX], 
-        uFrom[RSRC_IDX] - tFrom[RSRC_IDX]]);
+        tFrom[RSRC_IDX] - uFrom[RSRC_IDX]]);
     signal ontoLess <== NOT()(ontoMoreOrEq);
 
+    // From tile must stay player's, player cannot be UNOWNED
+    signal fromOwnership <== IsEqual()([tFromPub, uFromPub]);
+    signal fromOwnershipWrong <== NOT()(fromOwnership);
+    signal playerUnowned <== IsEqual()([tFromPub, UNOWNED]);
+    signal ownershipLogic <== OR()(fromOwnershipWrong, playerUnowned);
+
     // Moving onto a non-enemy tile (self or unowned)
-    signal case1Logic <== BatchIsEqual(3)([[tFrom[RSRC_IDX] + tTo[RSRC_IDX], 
-        uFrom[RSRC_IDX] + uTo[RSRC_IDX]], [tFromPub, uFromPub],
-        [tToPub, uToPub]]);
+    signal case1Logic <== BatchIsEqual(2)([
+        [tFrom[RSRC_IDX] + tTo[RSRC_IDX], uFrom[RSRC_IDX] + uTo[RSRC_IDX]],
+        [uToPub, uFromPub]
+    ]);
     signal case1LogicWrong <== NOT()(case1Logic);
     signal case1 <== case1LogicWrong * ontoSelfOrUnowned;
 
     // Moving onto enemy tile that has more or eq resource vs what's being sent
-    signal case2Logic <== BatchIsEqual(3)([[tFrom[RSRC_IDX] - uFrom[RSRC_IDX], 
-        tTo[RSRC_IDX] - uTo[RSRC_IDX]], [tFromPub, uFromPub],
-        [tToPub, uToPub]]);
+    signal case2Logic <== BatchIsEqual(2)([
+        [tFrom[RSRC_IDX] - uFrom[RSRC_IDX], tTo[RSRC_IDX] - uTo[RSRC_IDX]],
+        [uToPub, tToPub]
+    ]);
     signal case2LogicWrong <== NOT()(case2Logic);
     signal case2Selector <== AND()(ontoEnemy, ontoMoreOrEq);
     signal case2 <== case2LogicWrong * case2Selector;
 
     // Moving onto enemy tile that has less resource vs what's being sent
-    signal case3Logic <== BatchIsEqual(3)([[tFrom[RSRC_IDX] - uFrom[RSRC_IDX], 
-        tTo[RSRC_IDX] + uTo[RSRC_IDX]], [tFromPub, uFromPub],
-        [tFromPub, uToPub]]);
+    signal case3Logic <== BatchIsEqual(2)([
+        [tFrom[RSRC_IDX] - uFrom[RSRC_IDX], tTo[RSRC_IDX] + uTo[RSRC_IDX]],
+        [uToPub, uFromPub]]);
     signal case3LogicWrong <== NOT()(case3Logic);
     signal case3Selector <== AND()(ontoEnemy, ontoLess);
     signal case3 <== case3LogicWrong * case3Selector;
 
-    out <== BatchIsZero(6)([movedAllTroops, overflowFrom, overflowTo, case1,
-        case2, case3]);
+    out <== BatchIsZero(7)([movedAllTroops, overflowFrom, overflowTo, 
+        ownershipLogic, case1, case2, case3]);
 }
 
 /*
@@ -186,7 +194,7 @@ template Move() {
     var RSRC_IDX = 4;
     var KEY_IDX = 5;
 
-    var UNOWNED = 95;
+    var UNOWNED = 14744269619966411208579211824598458697587494354926760081771325075741142829156;
     var SYS_BITS = 252;
 
     signal input root;

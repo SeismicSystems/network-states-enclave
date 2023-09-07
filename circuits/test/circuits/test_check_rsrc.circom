@@ -2,4 +2,4 @@ pragma circom 2.1.1;
 
 include "../../move/move.func.circom";
 
-component main = CheckRsrc(6, 4, 0, 1, 95, 252);
+component main = CheckRsrc(6, 4, 0, 1, 14744269619966411208579211824598458697587494354926760081771325075741142829156, 252);

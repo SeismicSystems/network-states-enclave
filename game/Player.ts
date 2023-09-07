@@ -31,6 +31,11 @@ export class Player {
             this.bjjPub = new PubKey(genPubKey(this.bjjPriv.rawPrivKey));
             this.bjjPrivHash = formatPrivKeyForBabyJub(this.bjjPriv.rawPrivKey);
         }
+
+        // If player is the UNOWNED player, then give the designated pub-keys
+        if (symb === "_") {
+            this.bjjPub = new PubKey([BigInt(0), BigInt(0)]);
+        }
     }
 
     static fromPubString(p: string): Player {
