@@ -109,31 +109,20 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, PUBY_IDX, TRP_UPD_IDX, UNOWNED
     // Not allowed to move all troops off of tile
     signal movedAllTroops <== IsZero()(uFrom[RSRC_IDX]);
 
-    // Make sure updated troop counts are computed correctly
-    signal fromCorrectTroops <== tFrom[RSRC_IDX] + currentTroopInterval 
-        - tFrom[TRP_UPD_IDX];
-    signal toCorrectTroops <== (tTo[RSRC_IDX] + currentTroopInterval
-        - tTo[TRP_UPD_IDX]) * ontoSelfOrEnemy;
-    signal troopRsrcCorrect <== BatchIsEqual(2)([
-        [fromCorrectTroops, fromUpdatedTroops],
-        [toCorrectTroops, toUpdatedTroops]]);
-
-    // Troop updates should be accounted for in new tile states
-    signal troopsCounted <== BatchIsEqual(2)([
-        [currentTroopInterval, uFrom[TRP_UPD_IDX]],
-        [currentTroopInterval, uTo[TRP_UPD_IDX]]]);
-
-    signal troopUpdateCorrect <== AND()(troopRsrcCorrect, troopsCounted);
+    signal troopUpdateCorrect <== CheckTroopUpdates()(currentTroopInterval, 
+        tFrom[RSRC_IDX], tFrom[TRP_UPD_IDX], tTo[RSRC_IDX], tTo[TRP_UPD_IDX], 
+        uFrom[TRP_UPD_IDX], uTo[TRP_UPD_IDX], ontoSelfOrEnemy, 
+        fromUpdatedTroops, toUpdatedTroops);
     signal troopUpdateIncorrect <== NOT()(troopUpdateCorrect);
 
     // Make sure resource management can't be broken via overflow
     signal overflowFrom <== GreaterEqThan(SYS_BITS)([uFrom[RSRC_IDX], 
-        fromCorrectTroops]);
+        fromUpdatedTroops]);
     signal overflowTo <== GreaterEqThan(SYS_BITS)([uTo[RSRC_IDX], 
-        fromCorrectTroops + toCorrectTroops]);
+        fromUpdatedTroops + toUpdatedTroops]);
 
-    signal ontoMoreOrEq <== GreaterEqThan(SYS_BITS)([toCorrectTroops, 
-        fromCorrectTroops - uFrom[RSRC_IDX]]);
+    signal ontoMoreOrEq <== GreaterEqThan(SYS_BITS)([toUpdatedTroops, 
+        fromUpdatedTroops - uFrom[RSRC_IDX]]);
     signal ontoLess <== NOT()(ontoMoreOrEq);
 
     // From tile must remain player's after move
@@ -142,7 +131,7 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, PUBY_IDX, TRP_UPD_IDX, UNOWNED
 
     // Moving onto a non-enemy tile (self or unowned)
     signal case1Logic <== BatchIsEqual(2)([
-        [fromCorrectTroops + toCorrectTroops, uFrom[RSRC_IDX] + uTo[RSRC_IDX]],
+        [fromUpdatedTroops + toUpdatedTroops, uFrom[RSRC_IDX] + uTo[RSRC_IDX]],
         [uToPub, uFromPub]
     ]);
     signal case1LogicWrong <== NOT()(case1Logic);
@@ -150,7 +139,7 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, PUBY_IDX, TRP_UPD_IDX, UNOWNED
 
     // Moving onto enemy tile that has more or eq resource vs what's being sent
     signal case2Logic <== BatchIsEqual(2)([
-        [fromCorrectTroops - uFrom[RSRC_IDX], toCorrectTroops - uTo[RSRC_IDX]],
+        [fromUpdatedTroops - uFrom[RSRC_IDX], toUpdatedTroops - uTo[RSRC_IDX]],
         [uToPub, tToPub]
     ]);
     signal case2LogicWrong <== NOT()(case2Logic);
@@ -159,7 +148,7 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, PUBY_IDX, TRP_UPD_IDX, UNOWNED
 
     // Moving onto enemy tile that has less resource vs what's being sent
     signal case3Logic <== BatchIsEqual(2)([
-        [fromCorrectTroops - uFrom[RSRC_IDX], toCorrectTroops + uTo[RSRC_IDX]],
+        [fromUpdatedTroops - uFrom[RSRC_IDX], toUpdatedTroops + uTo[RSRC_IDX]],
         [uToPub, uFromPub]]);
     signal case3LogicWrong <== NOT()(case3Logic);
     signal case3Selector <== AND()(ontoEnemy, ontoLess);
@@ -167,6 +156,38 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, PUBY_IDX, TRP_UPD_IDX, UNOWNED
 
     out <== BatchIsZero(8)([movedAllTroops, troopUpdateIncorrect, overflowFrom, 
         overflowTo, fromOwnershipWrong, case1, case2, case3]);
+}
+
+template CheckTroopUpdates() {
+    signal input currentTroopInterval;
+
+    signal input tFromTroops;
+    signal input tFromLastUpdate;
+    signal input tToTroops;
+    signal input tToLastUpdate;
+    signal input uFromLastUpdate;
+    signal input uToLastUpdate;
+    signal input ontoSelfOrEnemy;
+    signal input fromUpdatedTroops;
+    signal input toUpdatedTroops;
+
+    signal output out;
+
+    // Make sure updated troop counts are computed correctly
+    signal fromCorrectTroops <== tFromTroops + currentTroopInterval 
+        - tFromLastUpdate;
+    signal toCorrectTroops <== (tToTroops + currentTroopInterval
+        - tToLastUpdate) * ontoSelfOrEnemy;
+    signal troopRsrcCorrect <== BatchIsEqual(2)([
+        [fromCorrectTroops, fromUpdatedTroops],
+        [toCorrectTroops, toUpdatedTroops]]);
+
+    // Troop updates should be accounted for in new tile states
+    signal troopsCounted <== BatchIsEqual(2)([
+        [currentTroopInterval, uFromLastUpdate],
+        [currentTroopInterval, uToLastUpdate]]);
+
+    out <== AND()(troopRsrcCorrect, troopsCounted);
 }
 
 /*

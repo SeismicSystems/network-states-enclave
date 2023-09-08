@@ -428,7 +428,7 @@ describe("Unit tests for CheckRsrc()", () => {
         const t2 = Tile.genOwned(p2, { r: 124, c: 321 }, 15, 0);
         const u1 = Tile.genOwned(p1, { r: 123, c: 321 }, 3, 0);
         const u2 = Tile.genOwned(p1, { r: 124, c: 321 }, 15, 0);
-        
+
         const w = await circuit.calculateWitness(
             {
                 currentTroopInterval: "0",
@@ -438,6 +438,218 @@ describe("Unit tests for CheckRsrc()", () => {
                 uTo: u2.toCircuitInput(),
                 fromUpdatedTroops: "33",
                 toUpdatedTroops: "15",
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("1"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("passes if player can capture enemy because of a troop update", async () => {
+        const p1 = new Player("A", BigInt("0xfff"));
+        const p2 = new Player("B", BigInt("0xddd"));
+        const t1 = Tile.genOwned(p1, { r: 123, c: 321 }, 30, 0);
+        const t2 = Tile.genOwned(p2, { r: 124, c: 321 }, 30, 2);
+        const u1 = Tile.genOwned(p1, { r: 123, c: 321 }, 1, 2);
+        const u2 = Tile.genOwned(p1, { r: 124, c: 321 }, 1, 2);
+
+        const w = await circuit.calculateWitness(
+            {
+                currentTroopInterval: "2",
+                tFrom: t1.toCircuitInput(),
+                tTo: t2.toCircuitInput(),
+                uFrom: u1.toCircuitInput(),
+                uTo: u2.toCircuitInput(),
+                fromUpdatedTroops: "32",
+                toUpdatedTroops: "30",
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("1"));
+        await circuit.checkConstraints(w);
+    });
+});
+
+describe("Unit tests for CheckTroopUpdates()", () => {
+    let circuit;
+
+    beforeEach(async () => {
+        circuit = await wasm("test/circuits/test_check_trp_updates.circom");
+    });
+
+    it("fails if player adds troops when they do not deserve to", async () => {
+        const w = await circuit.calculateWitness(
+            {
+                currentTroopInterval: "1",
+                tFromTroops: "10",
+                tFromLastUpdate: "1",
+                tToTroops: "20",
+                tToLastUpdate: "0",
+                uFromLastUpdate: "1",
+                uToLastUpdate: "1",
+                ontoSelfOrEnemy: "1",
+                fromUpdatedTroops: "11",
+                toUpdatedTroops: "21",
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("0"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails if player does not add more troops during a troop updates", async () => {
+        const w = await circuit.calculateWitness(
+            {
+                currentTroopInterval: "1",
+                tFromTroops: "10",
+                tFromLastUpdate: "0",
+                tToTroops: "0",
+                tToLastUpdate: "0",
+                uFromLastUpdate: "1",
+                uToLastUpdate: "1",
+                ontoSelfOrEnemy: "0",
+                fromUpdatedTroops: "10",
+                toUpdatedTroops: "0",
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("0"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails if player does not update their latest troop update number", async () => {
+        const w = await circuit.calculateWitness(
+            {
+                currentTroopInterval: "1",
+                tFromTroops: "10",
+                tFromLastUpdate: "0",
+                tToTroops: "0",
+                tToLastUpdate: "0",
+                uFromLastUpdate: "0",
+                uToLastUpdate: "1",
+                ontoSelfOrEnemy: "0",
+                fromUpdatedTroops: "11",
+                toUpdatedTroops: "0",
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("0"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails if enemy does not update their latest troop update number", async () => {
+        const w = await circuit.calculateWitness(
+            {
+                currentTroopInterval: "1",
+                tFromTroops: "10",
+                tFromLastUpdate: "0",
+                tToTroops: "10",
+                tToLastUpdate: "0",
+                uFromLastUpdate: "1",
+                uToLastUpdate: "0",
+                ontoSelfOrEnemy: "1",
+                fromUpdatedTroops: "11",
+                toUpdatedTroops: "11",
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("0"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails if player only updates their troops partway", async () => {
+        const w = await circuit.calculateWitness(
+            {
+                currentTroopInterval: "2",
+                tFromTroops: "10",
+                tFromLastUpdate: "0",
+                tToTroops: "0",
+                tToLastUpdate: "0",
+                uFromLastUpdate: "1",
+                uToLastUpdate: "1",
+                ontoSelfOrEnemy: "0",
+                fromUpdatedTroops: "11",
+                toUpdatedTroops: "0",
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("0"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails if enemy's troop updates are not counted", async () => {
+        const w = await circuit.calculateWitness(
+            {
+                currentTroopInterval: "1",
+                tFromTroops: "10",
+                tFromLastUpdate: "0",
+                tToTroops: "20",
+                tToLastUpdate: "0",
+                uFromLastUpdate: "1",
+                uToLastUpdate: "1",
+                ontoSelfOrEnemy: "1",
+                fromUpdatedTroops: "11",
+                toUpdatedTroops: "20",
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("0"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails if unowned tile receives troop update", async () => {
+        const w = await circuit.calculateWitness(
+            {
+                currentTroopInterval: "1",
+                tFromTroops: "10",
+                tFromLastUpdate: "1",
+                tToTroops: "0",
+                tToLastUpdate: "0",
+                uFromLastUpdate: "1",
+                uToLastUpdate: "1",
+                ontoSelfOrEnemy: "0",
+                fromUpdatedTroops: "10",
+                toUpdatedTroops: "1",
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("0"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("passes if player gains the correct number of troops after troop update", async () => {
+        const w = await circuit.calculateWitness(
+            {
+                currentTroopInterval: "2",
+                tFromTroops: "10",
+                tFromLastUpdate: "1",
+                tToTroops: "0",
+                tToLastUpdate: "0",
+                uFromLastUpdate: "2",
+                uToLastUpdate: "2",
+                ontoSelfOrEnemy: "0",
+                fromUpdatedTroops: "11",
+                toUpdatedTroops: "0",
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("1"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("passes if both players' troop updates are counted", async () => {
+        const w = await circuit.calculateWitness(
+            {
+                currentTroopInterval: "1",
+                tFromTroops: "10",
+                tFromLastUpdate: "0",
+                tToTroops: "20",
+                tToLastUpdate: "0",
+                uFromLastUpdate: "1",
+                uToLastUpdate: "1",
+                ontoSelfOrEnemy: "1",
+                fromUpdatedTroops: "11",
+                toUpdatedTroops: "21",
             },
             true
         );
