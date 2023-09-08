@@ -158,6 +158,10 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, PUBY_IDX, TRP_UPD_IDX, UNOWNED
         overflowTo, fromOwnershipWrong, case1, case2, case3]);
 }
 
+/*
+ * Asserts that the attacker's and defender's resources prior to moving reflect
+ * any troop updates that should have occurred.
+ */
 template CheckTroopUpdates() {
     signal input currentTroopInterval;
 

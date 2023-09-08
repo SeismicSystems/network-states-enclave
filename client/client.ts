@@ -33,14 +33,6 @@ const MOVE_KEYS: Record<string, number[]> = {
 };
 
 /*
- * Game parameters
- */
-const TROOP_UPDATE_INTERVAL: number = parseInt(
-    <string>process.env.TROOP_UPDATE_INTERVAL,
-    10
-);
-
-/*
  * Boot up interface with 1) Network States contract and 2) the CLI.
  */
 const signer = new ethers.Wallet(
@@ -108,13 +100,10 @@ async function move(inp: string) {
     const mRoot = mTree.root;
 
     // Get the current troop interval.
-    const currentBlockNumber: number = await nStates.provider.getBlockNumber();
-    const currentTroopInterval =
-        Math.floor(currentBlockNumber / TROOP_UPDATE_INTERVAL) *
-        TROOP_UPDATE_INTERVAL;
+    const currentTroopInterval = (await nStates.currentTroopInterval()).toNumber();
 
     if (PLAYER.bjjPrivHash === undefined) {
-        throw Error("Can't move without a baby jubjub private key.");
+        throw Error("Can't move without a Baby Jubjub private key.");
     }
 
     const [tFrom, tTo, uFrom, uTo, prf] = await b.constructMove(
@@ -138,6 +127,7 @@ async function move(inp: string) {
     // Submit move to chain
     const formattedProof = await Utils.exportCallDataGroth16(prf, [
         mRoot.toString(),
+        currentTroopInterval.toString(),
         uFrom.hash(),
         uTo.hash(),
         tFrom.nullifier(),
@@ -145,6 +135,7 @@ async function move(inp: string) {
     ]);
     await nStates.move(
         mRoot.toString(),
+        currentTroopInterval.toString(),
         uFrom.hash(),
         uTo.hash(),
         tFrom.nullifier(),

@@ -250,26 +250,6 @@ export class Board {
         const mProofFrom = Utils.generateMerkleProof(tFrom.hash(), mTree);
         const mProofTo = Utils.generateMerkleProof(tTo.hash(), mTree);
 
-        console.log('proof data: ', {
-            root: mTree.root.toString(),
-            currentTroopInterval: currentTroopInterval.toString(),
-            hUFrom: uFrom.hash(),
-            hUTo: uTo.hash(),
-            rhoFrom: tFrom.nullifier(),
-            rhoTo: tTo.nullifier(),
-            tFrom: tFrom.toCircuitInput(),
-            tFromPathIndices: mProofFrom.indices,
-            tFromPathElements: mProofFrom.pathElements,
-            tTo: tTo.toCircuitInput(),
-            tToPathIndices: mProofTo.indices,
-            tToPathElements: mProofTo.pathElements,
-            uFrom: uFrom.toCircuitInput(),
-            uTo: uTo.toCircuitInput(),
-            fromUpdatedTroops: fromUpdatedTroops.toString(),
-            toUpdatedTroops: toUpdatedTroops.toString(),
-            privKeyHash: bjjPrivKeyHash.toString(),
-        });
-
         const { proof, publicSignals } = await groth16.fullProve(
             {
                 root: mTree.root.toString(),
