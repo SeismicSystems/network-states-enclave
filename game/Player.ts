@@ -7,9 +7,13 @@ import {
     sign,
     verifySignature,
     hash2,
-    
+    hashOne,
 } from "maci-crypto";
 import { Location } from "./Tile";
+
+// Public key values that signify an unowned tile.
+const UNOWNED_PUB_X = hashOne(BigInt(0));
+const UNOWNED_PUB_Y = hashOne(BigInt(0));
 
 export class Player {
     symbol: string;
@@ -31,6 +35,11 @@ export class Player {
             this.bjjPub = new PubKey(genPubKey(this.bjjPriv.rawPrivKey));
             this.bjjPrivHash = formatPrivKeyForBabyJub(this.bjjPriv.rawPrivKey);
         }
+
+        // If player is the UNOWNED player, then give the designated pub-keys
+        if (symb === "_") {
+            this.bjjPub = new PubKey([UNOWNED_PUB_X, UNOWNED_PUB_Y]);
+        }
     }
 
     static fromPubString(p: string): Player {
@@ -47,7 +56,7 @@ export class Player {
     }
 
     /*
-     * Signs message (Babyjubjub field element) using EDDSA. Player instance 
+     * Signs message (Babyjubjub field element) using EDDSA. Player instance
      * must already have a derived private key.
      */
     public genSig(h: BigInt): Signature {

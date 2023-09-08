@@ -58,6 +58,25 @@ export class Utils {
     }
 
     /*
+     * Wrapper for turning string into type compatible with IncrementalQuinTree
+     */ 
+    static intoBigNumber(hash: string): BigNumber {
+        return BigNumber.from(hash);
+     }
+
+    /*
+     * Wrapper function for instantiating a new Merkle Tree.
+     */
+    static newTree(treeDepth: number): IncrementalQuinTree {
+        return new IncrementalQuinTree(
+            treeDepth,
+            NOTHING_UP_MY_SLEEVE,
+            2,
+            hash2
+        );
+    }
+
+    /*
      * Use all emitted NewLeaf() events from contract to reconstruct on-chain
      * merkle tree.
      * 
@@ -71,12 +90,8 @@ export class Utils {
             nStates.filters.NewLeaf()
         );
         const leaves = newLeafEvents.map((e) => e.args?.h);
-        let tree = new IncrementalQuinTree(
-            treeDepth,
-            NOTHING_UP_MY_SLEEVE,
-            2,
-            hash2
-        );
+        let tree = Utils.newTree(treeDepth);
+
         leaves.forEach((lh: BigInt) => {
             tree.insert(lh);
         });
@@ -91,11 +106,10 @@ export class Utils {
         tileHash: string,
         mTree: IncrementalQuinTree
     ) {
-        const h = BigNumber.from(tileHash);
+        const h = Utils.intoBigNumber(tileHash);
         const numLeaves = mTree.leavesPerNode ** mTree.depth;
 
         let leafIndex: number | undefined;
-        console.log(leafIndex);
         for (let i = 0; i < numLeaves; i++) {
             if (h.eq(mTree.getNode(i))) {
                 leafIndex = i;
