@@ -100,16 +100,16 @@ export class Board {
                 let tl: Tile = this.getTile({ r: i, c: j });
                 let color;
                 const reset = "\x1b[0m";
-                if (tl.owner.symbol === "A") {
+                if (tl.owner.symbol === "~") {
+                    color = "\x1b[36m";
+                } else if (tl.owner.symbol === "^") {
+                    color = "\x1b[90m";
+                } else if (tl.owner.symbol === "A") {
                     color = "\x1b[32m";
                 } else if (tl.owner.symbol === "B") {
                     color = "\x1b[31m";
                 } else if (tl.owner.symbol === "C") {
                     color = "\x1b[44m";
-                } else if (tl.owner.symbol === "~") {
-                    color = "\x1b[36m";
-                } else if (tl.owner.symbol === "^") {
-                    color = "\x1b[90m";
                 } else {
                     color = "\x1b[37m";
                 }
@@ -227,7 +227,8 @@ export class Board {
         from: Location,
         to: Location,
         nMobilize: number,
-        currentTroopInterval: number
+        currentTroopInterval: number,
+        currentWaterInterval: number,
     ): Promise<[Tile, Tile, Tile, Tile, Groth16Proof]> {
         const tFrom: Tile = this.getTile(from);
         const tTo: Tile = this.getTile(to);
@@ -265,6 +266,7 @@ export class Board {
             {
                 root: mTree.root.toString(),
                 currentTroopInterval: currentTroopInterval.toString(),
+                currentWaterInterval: currentWaterInterval.toString(),
                 hUFrom: uFrom.hash(),
                 hUTo: uTo.hash(),
                 rhoFrom: tFrom.nullifier(),

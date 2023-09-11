@@ -32,15 +32,18 @@ contract NStates is IncrementalMerkleTree {
 
     address public owner;
     uint256 public numBlocksInTroopUpdate;
+    uint256 public numBlocksInWaterUpdate;
     mapping(uint256 => bool) public nullifiers;
 
     constructor(
         uint8 treeDepth,
         uint256 nothingUpMySleeve,
-        uint256 nBlocksInTroopUpdate
+        uint256 nBlocksInTroopUpdate,
+        uint256 nBlocksInWaterUpdate
     ) IncrementalMerkleTree(treeDepth, nothingUpMySleeve) {
         owner = msg.sender;
         numBlocksInTroopUpdate = nBlocksInTroopUpdate;
+        numBlocksInWaterUpdate = nBlocksInWaterUpdate;
     }
 
     /*
@@ -135,7 +138,18 @@ contract NStates is IncrementalMerkleTree {
         return hasherT3.poseidon([l, r]);
     }
 
+    /*
+     * Troop updates are counted in intervals, where the current interval is
+     * the current block height divided by interval length.
+     */
     function currentTroopInterval() public view returns (uint256) {
         return block.number / numBlocksInTroopUpdate;
+    }
+
+    /*
+     * Same as troop updates, but how when players lose troops on water tiles.
+     */
+    function currentWaterInterval() public view returns (uint256) {
+        return block.number / numBlocksInWaterUpdate;
     }
 }

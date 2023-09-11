@@ -253,6 +253,7 @@ template Move() {
 
     signal input root;
     signal input currentTroopInterval;
+    signal input currentWaterInterval;
     signal input hUFrom;
     signal input hUTo;
     signal input rhoFrom;
