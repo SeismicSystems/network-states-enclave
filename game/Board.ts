@@ -236,12 +236,12 @@ export class Board {
         const fromUpdatedTroops: number =
             tFrom.resources +
             currentTroopInterval -
-            tFrom.lastTroopUpdateInterval;
+            tFrom.latestTroopUpdateInterval;
         const toUpdatedTroops: number = tTo.isUnowned()
             ? 0
             : tTo.resources +
               currentTroopInterval -
-              tTo.lastTroopUpdateInterval;
+              tTo.latestTroopUpdateInterval;
 
         const uFrom: Tile = Tile.genOwned(
             tFrom.owner,

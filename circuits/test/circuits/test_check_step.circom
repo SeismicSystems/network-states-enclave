@@ -4,4 +4,4 @@ include "../../move/move.func.circom";
 
 component main = CheckStep(
     [[0, 1], [0, -1], [1, 0], [-1, 0]], 
-    4, 8, 2, 3, 7, 2);
+    4, 8, 1, 2, 7, 2);

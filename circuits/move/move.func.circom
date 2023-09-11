@@ -29,7 +29,7 @@ template CheckNullifiers() {
  * 2) the player owns the 'from' tile, which is true when the player's 
  * private key corresponds to the tile's public keys.
  */
-template CheckLeaves(N_TL_ATRS, PUBX_IDX, PUBY_IDX) {
+template CheckLeaves(N_TL_ATRS, PK_HASH_IDX) {
     signal input uFrom[N_TL_ATRS];
     signal input uTo[N_TL_ATRS];
     signal input hUFrom;
@@ -45,10 +45,10 @@ template CheckLeaves(N_TL_ATRS, PUBX_IDX, PUBY_IDX) {
 
     signal circuitHFrom <== Poseidon(N_TL_ATRS)(uFrom);
     signal circuitHTo <== Poseidon(N_TL_ATRS)(uTo);
+    signal pkHash <== Poseidon(2)([bjj.Ax, bjj.Ay]);
 
-    out <== BatchIsEqual(4)([
-        [uFrom[PUBX_IDX], bjj.Ax],
-        [uFrom[PUBY_IDX], bjj.Ay],
+    out <== BatchIsEqual(3)([
+        [uFrom[PK_HASH_IDX], pkHash],
         [hUFrom, circuitHFrom], 
         [hUTo, circuitHTo]]);
 }
@@ -85,7 +85,7 @@ template CheckStep(VALID_MOVES, N_VALID_MOVES, N_TL_ATRS, ROW_IDX, COL_IDX,
  * Must preserve resource management logic- what happens when armies expand to
  * unowned or enemy territories. 
  */
-template CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, PUBY_IDX, TRP_UPD_IDX, 
+template CheckRsrc(N_TL_ATRS, RSRC_IDX, PK_HASH_IDX, TRP_UPD_IDX, 
     UNOWNED, SYS_BITS) {
     signal input currentTroopInterval;
 
@@ -98,15 +98,9 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, PUBY_IDX, TRP_UPD_IDX,
 
     signal output out;
 
-    // Hash public keys so we can compare single field elements
-    signal tFromPub <== Poseidon(2)([tFrom[PUBX_IDX], tFrom[PUBY_IDX]]);
-    signal tToPub <== Poseidon(2)([tTo[PUBX_IDX], tTo[PUBY_IDX]]);
-    signal uFromPub <== Poseidon(2)([uFrom[PUBX_IDX], uFrom[PUBY_IDX]]);
-    signal uToPub <== Poseidon(2)([uTo[PUBX_IDX], uTo[PUBY_IDX]]);
-
     // Properties we need to know regarding `to` tile relative to `from` tile
-    signal ontoSelf <== IsEqual()([tFromPub, tToPub]);
-    signal ontoUnowned <== IsEqual()([tToPub, UNOWNED]);
+    signal ontoSelf <== IsEqual()([tFrom[PK_HASH_IDX], tTo[PK_HASH_IDX]]);
+    signal ontoUnowned <== IsEqual()([tTo[PK_HASH_IDX], UNOWNED]);
     signal ontoSelfOrEnemy <== NOT()(ontoUnowned);
     signal ontoSelfOrUnowned <== OR()(ontoSelf, ontoUnowned);
     signal ontoEnemy <== NOT()(ontoSelfOrUnowned);
@@ -131,13 +125,14 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, PUBY_IDX, TRP_UPD_IDX,
     signal ontoLess <== NOT()(ontoMoreOrEq);
 
     // From tile must remain player's after move
-    signal fromOwnership <== IsEqual()([tFromPub, uFromPub]);
+    signal fromOwnership <== IsEqual()(
+        [tFrom[PK_HASH_IDX], uFrom[PK_HASH_IDX]]);
     signal fromOwnershipWrong <== NOT()(fromOwnership);
 
     // Moving onto a non-enemy tile (self or unowned)
     signal case1Logic <== BatchIsEqual(2)([
         [fromUpdatedTroops + toUpdatedTroops, uFrom[RSRC_IDX] + uTo[RSRC_IDX]],
-        [uToPub, uFromPub]
+        [uTo[PK_HASH_IDX], uFrom[PK_HASH_IDX]]
     ]);
     signal case1LogicWrong <== NOT()(case1Logic);
     signal case1 <== case1LogicWrong * ontoSelfOrUnowned;
@@ -145,7 +140,7 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, PUBY_IDX, TRP_UPD_IDX,
     // Moving onto enemy tile that has more or eq resource vs what's being sent
     signal case2Logic <== BatchIsEqual(2)([
         [fromUpdatedTroops - uFrom[RSRC_IDX], toUpdatedTroops - uTo[RSRC_IDX]],
-        [uToPub, tToPub]
+        [uTo[PK_HASH_IDX], tTo[PK_HASH_IDX]]
     ]);
     signal case2LogicWrong <== NOT()(case2Logic);
     signal case2Selector <== AND()(ontoEnemy, ontoMoreOrEq);
@@ -154,7 +149,7 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, PUBY_IDX, TRP_UPD_IDX,
     // Moving onto enemy tile that has less resource vs what's being sent
     signal case3Logic <== BatchIsEqual(2)([
         [fromUpdatedTroops - uFrom[RSRC_IDX], toUpdatedTroops + uTo[RSRC_IDX]],
-        [uToPub, uFromPub]]);
+        [uTo[PK_HASH_IDX], uFrom[PK_HASH_IDX]]]);
     signal case3LogicWrong <== NOT()(case3Logic);
     signal case3Selector <== AND()(ontoEnemy, ontoLess);
     signal case3 <== case3LogicWrong * case3Selector;
@@ -238,13 +233,13 @@ template Move() {
     var MERKLE_TREE_DEPTH = 8;
 
     var N_TL_ATRS = 8;
-    var PUBX_IDX = 0;
-    var PUBY_IDX = 1;
-    var ROW_IDX = 2;
-    var COL_IDX = 3;
-    var RSRC_IDX = 4;
-    var KEY_IDX = 5;
-    var TRP_UPD_IDX = 6;
+    var PK_HASH_IDX = 0;
+    var ROW_IDX = 1;
+    var COL_IDX = 2;
+    var RSRC_IDX = 3;
+    var KEY_IDX = 4;
+    var TRP_UPD_IDX = 5;
+    var WTR_UPD_IDX = 6;
     var TYPE_IDX = 7;
 
     // Hash of UNOWNED_PLAYER's public keys, used to look for unowned tiles
@@ -275,7 +270,7 @@ template Move() {
     signal input toUpdatedTroops;
     signal input privKeyHash;
 
-    signal leavesCorrect <== CheckLeaves(N_TL_ATRS, PUBX_IDX, PUBY_IDX)(uFrom, 
+    signal leavesCorrect <== CheckLeaves(N_TL_ATRS, PK_HASH_IDX)(uFrom, 
         uTo, hUFrom, hUTo, privKeyHash);
     leavesCorrect === 1;
 
@@ -287,8 +282,8 @@ template Move() {
         ROW_IDX, COL_IDX, TYPE_IDX, HILL_ID)(tFrom, tTo, uFrom, uTo);
     stepCorrect === 1;
 
-    signal resourcesCorrect <== CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, 
-        PUBY_IDX, TRP_UPD_IDX, UNOWNED, SYS_BITS)(currentTroopInterval, tFrom, 
+    signal resourcesCorrect <== CheckRsrc(N_TL_ATRS, RSRC_IDX, PK_HASH_IDX, 
+        TRP_UPD_IDX, UNOWNED, SYS_BITS)(currentTroopInterval, tFrom, 
         tTo, uFrom, uTo, fromUpdatedTroops, toUpdatedTroops);
     resourcesCorrect === 1;
 
