@@ -81,7 +81,8 @@ template CheckStep(VALID_MOVES, N_VALID_MOVES, N_TL_ATRS, ROW_IDX, COL_IDX) {
  * Must preserve resource management logic- what happens when armies expand to
  * unowned or enemy territories. 
  */
-template CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, PUBY_IDX, TRP_UPD_IDX, UNOWNED, SYS_BITS) {
+template CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, PUBY_IDX, TRP_UPD_IDX, 
+    UNOWNED, SYS_BITS) {
     signal input currentTroopInterval;
 
     signal input tFrom[N_TL_ATRS];
@@ -166,11 +167,11 @@ template CheckTroopUpdates() {
     signal input currentTroopInterval;
 
     signal input tFromTroops;
-    signal input tFromLastUpdate;
+    signal input tFromLatestUpdate;
     signal input tToTroops;
-    signal input tToLastUpdate;
-    signal input uFromLastUpdate;
-    signal input uToLastUpdate;
+    signal input tToLatestUpdate;
+    signal input uFromLatestUpdate;
+    signal input uToLatestUpdate;
     signal input ontoSelfOrEnemy;
     signal input fromUpdatedTroops;
     signal input toUpdatedTroops;
@@ -178,18 +179,18 @@ template CheckTroopUpdates() {
     signal output out;
 
     // Make sure updated troop counts are computed correctly
-    signal fromCorrectTroops <== tFromTroops + currentTroopInterval 
-        - tFromLastUpdate;
-    signal toCorrectTroops <== (tToTroops + currentTroopInterval
-        - tToLastUpdate) * ontoSelfOrEnemy;
+    signal circuitFromUpdatedTroops <== tFromTroops + currentTroopInterval 
+        - tFromLatestUpdate;
+    signal circuitToUpdatedTroops <== (tToTroops + currentTroopInterval
+        - tToLatestUpdate) * ontoSelfOrEnemy;
     signal troopRsrcCorrect <== BatchIsEqual(2)([
-        [fromCorrectTroops, fromUpdatedTroops],
-        [toCorrectTroops, toUpdatedTroops]]);
+        [circuitFromUpdatedTroops, fromUpdatedTroops],
+        [circuitToUpdatedTroops, toUpdatedTroops]]);
 
     // Troop updates should be accounted for in new tile states
     signal troopsCounted <== BatchIsEqual(2)([
-        [currentTroopInterval, uFromLastUpdate],
-        [currentTroopInterval, uToLastUpdate]]);
+        [currentTroopInterval, uFromLatestUpdate],
+        [currentTroopInterval, uToLatestUpdate]]);
 
     out <== AND()(troopRsrcCorrect, troopsCounted);
 }
@@ -265,8 +266,8 @@ template Move() {
     signal input toUpdatedTroops;
     signal input privKeyHash;
 
-    signal leavesCorrect <== CheckLeaves(N_TL_ATRS, PUBX_IDX, PUBY_IDX)(uFrom, uTo, hUFrom, 
-        hUTo, privKeyHash);
+    signal leavesCorrect <== CheckLeaves(N_TL_ATRS, PUBX_IDX, PUBY_IDX)(uFrom, 
+        uTo, hUFrom, hUTo, privKeyHash);
     leavesCorrect === 1;
 
     signal nullifiersCorrect <== CheckNullifiers()(tFrom[KEY_IDX], 
