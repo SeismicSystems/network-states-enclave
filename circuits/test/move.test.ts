@@ -205,6 +205,26 @@ describe("Unit tests for CheckStep()", () => {
         await circuit.checkConstraints(w);
     });
 
+    it("fails if player tries to move onto a hill tile", async () => {
+        const t1 = Tile.genUnowned({ r: 12, c: 15 });
+        const t2 = Tile.hill({ r: 11, c: 15 });
+
+        const u1 = Tile.genUnowned({ r: 12, c: 15 });
+        const u2 = Tile.genUnowned({ r: 11, c: 15 });
+
+        const w = await circuit.calculateWitness(
+            {
+                tFrom: t1.toCircuitInput(),
+                tTo: t2.toCircuitInput(),
+                uFrom: u1.toCircuitInput(),
+                uTo: u2.toCircuitInput(),
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("0"));
+        await circuit.checkConstraints(w);
+    });
+
     it("passes if state updated in unit cardinal plane", async () => {
         const t1 = Tile.genUnowned({ r: 12, c: 15 });
         const t2 = Tile.genUnowned({ r: 11, c: 15 });

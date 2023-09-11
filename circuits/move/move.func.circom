@@ -55,10 +55,11 @@ template CheckLeaves(N_TL_ATRS, PUBX_IDX, PUBY_IDX) {
 
 /*
  * A valid step entails 1) new tile states must have the same coordinates as 
- * the old states they are replacing and 2) the movement is one tile in one of
- * the cardinal directions.  
+ * the old states they are replacing, 2) the movement is one tile in one of
+ * the cardinal directions, and 3) the to tile is not a hill tile.
  */
-template CheckStep(VALID_MOVES, N_VALID_MOVES, N_TL_ATRS, ROW_IDX, COL_IDX) {
+template CheckStep(VALID_MOVES, N_VALID_MOVES, N_TL_ATRS, ROW_IDX, COL_IDX, 
+    TYPE_IDX, HILL_ID) {
     signal input tFrom[N_TL_ATRS];
     signal input tTo[N_TL_ATRS];
     signal input uFrom[N_TL_ATRS];
@@ -73,8 +74,11 @@ template CheckStep(VALID_MOVES, N_VALID_MOVES, N_TL_ATRS, ROW_IDX, COL_IDX) {
     signal step[2] <== [tTo[ROW_IDX] - tFrom[ROW_IDX], 
         tTo[COL_IDX] - tFrom[COL_IDX]];
     signal stepValid <== PairArrayContains(N_VALID_MOVES)(VALID_MOVES, step);
+
+    signal ontoHill <== IsEqual()([tTo[TYPE_IDX], HILL_ID]);
+    signal notOntoHill <== NOT()(ontoHill);
     
-    out <== AND()(positionsConsistent, stepValid);
+    out <== AND()((AND()(positionsConsistent, stepValid)), notOntoHill);
 }
 
 /*
@@ -233,7 +237,7 @@ template Move() {
 
     var MERKLE_TREE_DEPTH = 8;
 
-    var N_TL_ATRS = 7;
+    var N_TL_ATRS = 8;
     var PUBX_IDX = 0;
     var PUBY_IDX = 1;
     var ROW_IDX = 2;
@@ -241,9 +245,14 @@ template Move() {
     var RSRC_IDX = 4;
     var KEY_IDX = 5;
     var TRP_UPD_IDX = 6;
+    var TYPE_IDX = 7;
 
     // Hash of UNOWNED_PLAYER's public keys, used to look for unowned tiles
     var UNOWNED = 7423237065226347324353380772367382631490014989348495481811164164159255474657;
+
+    // Id's used to check for water and hill tiles
+    var WATER_ID = 1;
+    var HILL_ID = 2;
 
     var SYS_BITS = 252;
 
@@ -275,7 +284,7 @@ template Move() {
     nullifiersCorrect === 1;
 
     signal stepCorrect <== CheckStep(VALID_MOVES, N_VALID_MOVES, N_TL_ATRS, 
-        ROW_IDX, COL_IDX)(tFrom, tTo, uFrom, uTo);
+        ROW_IDX, COL_IDX, TYPE_IDX, HILL_ID)(tFrom, tTo, uFrom, uTo);
     stepCorrect === 1;
 
     signal resourcesCorrect <== CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, 
