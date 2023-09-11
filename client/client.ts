@@ -98,16 +98,24 @@ async function move(inp: string) {
         nStates
     );
     const mRoot = mTree.root;
- 
+
+    // Get the current troop interval.
+    const currentTroopInterval = (await nStates.currentTroopInterval()).toNumber();
+
+    if (PLAYER.bjjPrivHash === undefined) {
+        throw Error("Can't move without a Baby Jubjub private key.");
+    }
+
     const [tFrom, tTo, uFrom, uTo, prf] = await b.constructMove(
         mTree,
         PLAYER.bjjPrivHash,
         cursor,
         { r: nr, c: nc },
-        b.getTile(cursor).resources - 1
+        b.getTile(cursor).resources - 1,
+        currentTroopInterval
     );
 
-    // Alert enclave of intended move 
+    // Alert enclave of intended move
     socket.emit(
         "move",
         tFrom.toJSON(),
@@ -116,9 +124,10 @@ async function move(inp: string) {
         uTo.toJSON()
     );
 
-    // Submit move to chain 
+    // Submit move to chain
     const formattedProof = await Utils.exportCallDataGroth16(prf, [
         mRoot.toString(),
+        currentTroopInterval.toString(),
         uFrom.hash(),
         uTo.hash(),
         tFrom.nullifier(),
@@ -126,6 +135,7 @@ async function move(inp: string) {
     ]);
     await nStates.move(
         mRoot.toString(),
+        currentTroopInterval.toString(),
         uFrom.hash(),
         uTo.hash(),
         tFrom.nullifier(),

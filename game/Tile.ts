@@ -17,12 +17,14 @@ export class Tile {
     loc: Location;
     resources: number;
     key: BigInt;
+    lastTroopUpdateInterval: number;
 
-    constructor(o_: Player, l_: Location, r_: number, k_: BigInt) {
+    constructor(o_: Player, l_: Location, r_: number, k_: BigInt, i_: number) {
         this.owner = o_;
         this.loc = l_;
         this.resources = r_;
         this.key = k_;
+        this.lastTroopUpdateInterval = i_;
     }
 
     /*
@@ -36,6 +38,7 @@ export class Tile {
             this.loc.c.toString(),
             this.resources.toString(),
             this.key.toString(),
+            this.lastTroopUpdateInterval.toString(),
         ];
     }
 
@@ -65,7 +68,15 @@ export class Tile {
             c: this.loc.c.toString(),
             resources: this.resources.toString(),
             key: this.key.toString(10),
+            lastTroopUpdateInterval: this.lastTroopUpdateInterval.toString(),
         };
+    }
+
+    /*
+     * Return true if this Tile is not owned by any player.
+     */
+    isUnowned(): boolean {
+        return this.owner.symbol === Tile.UNOWNED.symbol;
     }
 
     /*
@@ -83,7 +94,8 @@ export class Tile {
             new Player(obj.symbol, undefined, PubKey.unserialize(obj.bjjPub)),
             { r: parseInt(obj.r, 10), c: parseInt(obj.c, 10) },
             parseInt(obj.resources, 10),
-            BigInt(obj.key)
+            BigInt(obj.key),
+            parseInt(obj.lastTroopUpdateInterval, 10)
         );
     }
 
@@ -91,20 +103,20 @@ export class Tile {
      * Meant to represent a tile in the fog of war.
      */
     static mystery(l: Location): Tile {
-        return new Tile(Tile.MYSTERY, l, 0, BigInt(0));
+        return new Tile(Tile.MYSTERY, l, 0, BigInt(0), 0);
     }
 
     /*
      * New unowned tile with random salt as the access key.
      */
     static genUnowned(l: Location): Tile {
-        return new Tile(Tile.UNOWNED, l, 0, genRandomSalt());
+        return new Tile(Tile.UNOWNED, l, 0, genRandomSalt(), 0);
     }
 
     /*
      * New owned tile with random salt as the access key.
      */
-    static genOwned(o_: Player, l_: Location, r_: number): Tile {
-        return new Tile(o_, l_, r_, genRandomSalt());
+    static genOwned(o_: Player, l_: Location, r_: number, i_: number): Tile {
+        return new Tile(o_, l_, r_, genRandomSalt(), i_);
     }
 }

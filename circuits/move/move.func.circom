@@ -81,22 +81,18 @@ template CheckStep(VALID_MOVES, N_VALID_MOVES, N_TL_ATRS, ROW_IDX, COL_IDX) {
  * Must preserve resource management logic- what happens when armies expand to
  * unowned or enemy territories. 
  */
-template CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, PUBY_IDX, UNOWNED, SYS_BITS) {
+template CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, PUBY_IDX, TRP_UPD_IDX, 
+    UNOWNED, SYS_BITS) {
+    signal input currentTroopInterval;
+
     signal input tFrom[N_TL_ATRS];
     signal input tTo[N_TL_ATRS];
     signal input uFrom[N_TL_ATRS];
     signal input uTo[N_TL_ATRS];
+    signal input fromUpdatedTroops;
+    signal input toUpdatedTroops;
 
     signal output out;
-
-    // Not allowed to move all troops off of tile
-    signal movedAllTroops <== IsZero()(uFrom[RSRC_IDX]);
-
-    // Make sure resource management can't be broken via overflow
-    signal overflowFrom <== GreaterEqThan(SYS_BITS)([uFrom[RSRC_IDX], 
-        tFrom[RSRC_IDX]]);
-    signal overflowTo <== GreaterEqThan(SYS_BITS)([uTo[RSRC_IDX], 
-        tFrom[RSRC_IDX] + tTo[RSRC_IDX]]);
 
     // Hash public keys so we can compare single field elements
     signal tFromPub <== Poseidon(2)([tFrom[PUBX_IDX], tFrom[PUBY_IDX]]);
@@ -107,10 +103,27 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, PUBY_IDX, UNOWNED, SYS_BITS) {
     // Properties we need to know regarding `to` tile relative to `from` tile
     signal ontoSelf <== IsEqual()([tFromPub, tToPub]);
     signal ontoUnowned <== IsEqual()([tToPub, UNOWNED]);
+    signal ontoSelfOrEnemy <== NOT()(ontoUnowned);
     signal ontoSelfOrUnowned <== OR()(ontoSelf, ontoUnowned);
     signal ontoEnemy <== NOT()(ontoSelfOrUnowned);
-    signal ontoMoreOrEq <== GreaterEqThan(SYS_BITS)([tTo[RSRC_IDX], 
-        tFrom[RSRC_IDX] - uFrom[RSRC_IDX]]);
+
+    // Not allowed to move all troops off of tile
+    signal movedAllTroops <== IsZero()(uFrom[RSRC_IDX]);
+
+    signal troopUpdateCorrect <== CheckTroopUpdates()(currentTroopInterval, 
+        tFrom[RSRC_IDX], tFrom[TRP_UPD_IDX], tTo[RSRC_IDX], tTo[TRP_UPD_IDX], 
+        uFrom[TRP_UPD_IDX], uTo[TRP_UPD_IDX], ontoSelfOrEnemy, 
+        fromUpdatedTroops, toUpdatedTroops);
+    signal troopUpdateIncorrect <== NOT()(troopUpdateCorrect);
+
+    // Make sure resource management can't be broken via overflow
+    signal overflowFrom <== GreaterEqThan(SYS_BITS)([uFrom[RSRC_IDX], 
+        fromUpdatedTroops]);
+    signal overflowTo <== GreaterEqThan(SYS_BITS)([uTo[RSRC_IDX], 
+        fromUpdatedTroops + toUpdatedTroops]);
+
+    signal ontoMoreOrEq <== GreaterEqThan(SYS_BITS)([toUpdatedTroops, 
+        fromUpdatedTroops - uFrom[RSRC_IDX]]);
     signal ontoLess <== NOT()(ontoMoreOrEq);
 
     // From tile must remain player's after move
@@ -119,7 +132,7 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, PUBY_IDX, UNOWNED, SYS_BITS) {
 
     // Moving onto a non-enemy tile (self or unowned)
     signal case1Logic <== BatchIsEqual(2)([
-        [tFrom[RSRC_IDX] + tTo[RSRC_IDX], uFrom[RSRC_IDX] + uTo[RSRC_IDX]],
+        [fromUpdatedTroops + toUpdatedTroops, uFrom[RSRC_IDX] + uTo[RSRC_IDX]],
         [uToPub, uFromPub]
     ]);
     signal case1LogicWrong <== NOT()(case1Logic);
@@ -127,7 +140,7 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, PUBY_IDX, UNOWNED, SYS_BITS) {
 
     // Moving onto enemy tile that has more or eq resource vs what's being sent
     signal case2Logic <== BatchIsEqual(2)([
-        [tFrom[RSRC_IDX] - uFrom[RSRC_IDX], tTo[RSRC_IDX] - uTo[RSRC_IDX]],
+        [fromUpdatedTroops - uFrom[RSRC_IDX], toUpdatedTroops - uTo[RSRC_IDX]],
         [uToPub, tToPub]
     ]);
     signal case2LogicWrong <== NOT()(case2Logic);
@@ -136,14 +149,50 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, PUBY_IDX, UNOWNED, SYS_BITS) {
 
     // Moving onto enemy tile that has less resource vs what's being sent
     signal case3Logic <== BatchIsEqual(2)([
-        [tFrom[RSRC_IDX] - uFrom[RSRC_IDX], tTo[RSRC_IDX] + uTo[RSRC_IDX]],
+        [fromUpdatedTroops - uFrom[RSRC_IDX], toUpdatedTroops + uTo[RSRC_IDX]],
         [uToPub, uFromPub]]);
     signal case3LogicWrong <== NOT()(case3Logic);
     signal case3Selector <== AND()(ontoEnemy, ontoLess);
     signal case3 <== case3LogicWrong * case3Selector;
 
-    out <== BatchIsZero(7)([movedAllTroops, overflowFrom, overflowTo, 
-        fromOwnershipWrong, case1, case2, case3]);
+    out <== BatchIsZero(8)([movedAllTroops, troopUpdateIncorrect, overflowFrom, 
+        overflowTo, fromOwnershipWrong, case1, case2, case3]);
+}
+
+/*
+ * Asserts that the attacker's and defender's resources prior to moving reflect
+ * any troop updates that should have occurred.
+ */
+template CheckTroopUpdates() {
+    signal input currentTroopInterval;
+
+    signal input tFromTroops;
+    signal input tFromLatestUpdate;
+    signal input tToTroops;
+    signal input tToLatestUpdate;
+    signal input uFromLatestUpdate;
+    signal input uToLatestUpdate;
+    signal input ontoSelfOrEnemy;
+    signal input fromUpdatedTroops;
+    signal input toUpdatedTroops;
+
+    signal output out;
+
+    // Make sure updated troop counts are computed correctly
+    signal circuitFromUpdatedTroops <== tFromTroops + currentTroopInterval 
+        - tFromLatestUpdate;
+    signal circuitToUpdatedTroops <== (tToTroops + currentTroopInterval
+        - tToLatestUpdate) * ontoSelfOrEnemy;
+    signal troopRsrcCorrect <== BatchIsEqual(2)([
+        [circuitFromUpdatedTroops, fromUpdatedTroops],
+        [circuitToUpdatedTroops, toUpdatedTroops]]);
+
+    // Troop updates should be accounted for in new tile states
+    signal troopsCounted <== BatchIsEqual(2)([
+        [currentTroopInterval, uFromLatestUpdate],
+        [currentTroopInterval, uToLatestUpdate]]);
+
+    out <== AND()(troopRsrcCorrect, troopsCounted);
 }
 
 /*
@@ -184,13 +233,14 @@ template Move() {
 
     var MERKLE_TREE_DEPTH = 8;
 
-    var N_TL_ATRS = 6;
+    var N_TL_ATRS = 7;
     var PUBX_IDX = 0;
     var PUBY_IDX = 1;
     var ROW_IDX = 2;
     var COL_IDX = 3;
     var RSRC_IDX = 4;
     var KEY_IDX = 5;
+    var TRP_UPD_IDX = 6;
 
     // Hash of UNOWNED_PLAYER's public keys, used to look for unowned tiles
     var UNOWNED = 7423237065226347324353380772367382631490014989348495481811164164159255474657;
@@ -198,6 +248,7 @@ template Move() {
     var SYS_BITS = 252;
 
     signal input root;
+    signal input currentTroopInterval;
     signal input hUFrom;
     signal input hUTo;
     signal input rhoFrom;
@@ -211,10 +262,12 @@ template Move() {
     signal input tToPathElements[MERKLE_TREE_DEPTH][1];
     signal input uFrom[N_TL_ATRS];
     signal input uTo[N_TL_ATRS];
+    signal input fromUpdatedTroops;
+    signal input toUpdatedTroops;
     signal input privKeyHash;
 
-    signal leavesCorrect <== CheckLeaves(N_TL_ATRS, PUBX_IDX, PUBY_IDX)(uFrom, uTo, hUFrom, 
-        hUTo, privKeyHash);
+    signal leavesCorrect <== CheckLeaves(N_TL_ATRS, PUBX_IDX, PUBY_IDX)(uFrom, 
+        uTo, hUFrom, hUTo, privKeyHash);
     leavesCorrect === 1;
 
     signal nullifiersCorrect <== CheckNullifiers()(tFrom[KEY_IDX], 
@@ -226,7 +279,8 @@ template Move() {
     stepCorrect === 1;
 
     signal resourcesCorrect <== CheckRsrc(N_TL_ATRS, RSRC_IDX, PUBX_IDX, 
-        PUBY_IDX, UNOWNED, SYS_BITS)(tFrom, tTo, uFrom, uTo);
+        PUBY_IDX, TRP_UPD_IDX, UNOWNED, SYS_BITS)(currentTroopInterval, tFrom, 
+        tTo, uFrom, uTo, fromUpdatedTroops, toUpdatedTroops);
     resourcesCorrect === 1;
 
     signal merkleProofCorrect <== CheckMerkleInclusion(N_TL_ATRS,

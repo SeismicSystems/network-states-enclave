@@ -11,7 +11,7 @@ interface IVerifier {
         uint256[2] memory a,
         uint256[2][2] memory b,
         uint256[2] memory c,
-        uint256[5] memory input
+        uint256[6] memory input
     ) external view returns (bool);
 }
 
@@ -31,13 +31,16 @@ contract NStates is IncrementalMerkleTree {
     event NewNullifier(uint256 rho);
 
     address public owner;
+    uint256 public numBlocksInTroopUpdate;
     mapping(uint256 => bool) public nullifiers;
 
     constructor(
         uint8 treeDepth,
-        uint256 nothingUpMySleeve
+        uint256 nothingUpMySleeve,
+        uint256 nBlocksInTroopUpdate
     ) IncrementalMerkleTree(treeDepth, nothingUpMySleeve) {
         owner = msg.sender;
+        numBlocksInTroopUpdate = nBlocksInTroopUpdate;
     }
 
     /*
@@ -74,6 +77,7 @@ contract NStates is IncrementalMerkleTree {
      */
     function move(
         uint256 root,
+        uint256 troopInterval,
         uint256 hUFrom,
         uint256 hUTo,
         uint256 rhoFrom,
@@ -84,6 +88,10 @@ contract NStates is IncrementalMerkleTree {
     ) public {
         require(rootHistory[root], "Root must be in root history");
         require(
+            currentTroopInterval() >= troopInterval,
+            "Move is too far into the future, change currentTroopInterval value"
+        );
+        require(
             !nullifiers[rhoFrom] && !nullifiers[rhoTo],
             "Move has already been made"
         );
@@ -92,7 +100,7 @@ contract NStates is IncrementalMerkleTree {
                 a,
                 b,
                 c,
-                [root, hUFrom, hUTo, rhoFrom, rhoTo]
+                [root, troopInterval, hUFrom, hUTo, rhoFrom, rhoTo]
             ),
             "Invalid move proof"
         );
@@ -125,5 +133,9 @@ contract NStates is IncrementalMerkleTree {
         uint256 r
     ) internal view override returns (uint256) {
         return hasherT3.poseidon([l, r]);
+    }
+
+    function currentTroopInterval() public view returns (uint256) {
+        return block.number / numBlocksInTroopUpdate;
     }
 }

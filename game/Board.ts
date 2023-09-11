@@ -57,9 +57,14 @@ export class Board {
     }
 
     /*
-     * Spawn Player at a Location. Used for development. Enclave only func. 
+     * Spawn Player at a Location. Used for development. Enclave only func.
      */
-    public async spawn(l: Location, pl: Player, resource: number, nStates: any) {
+    public async spawn(
+        l: Location,
+        pl: Player,
+        resource: number,
+        nStates: any
+    ) {
         this.assertBounds(l);
 
         let r = l.r,
@@ -71,7 +76,7 @@ export class Board {
         // Before tile is changed, we need the nullifier.
         const nullifier = this.t[r][c].nullifier();
 
-        this.t[r][c] = Tile.genOwned(pl, { r: r, c: c }, resource);
+        this.t[r][c] = Tile.genOwned(pl, { r: r, c: c }, resource, 0);
 
         // Update the merkle root on-chain.
         await nStates.spawn(this.t[r][c].hash(), nullifier);
@@ -79,7 +84,7 @@ export class Board {
     }
 
     /*
-     * Displays colored gameboard. Local belief of what the gameboard is from 
+     * Displays colored gameboard. Local belief of what the gameboard is from
      * the perspective of the client.
      */
     public printView(): void {
@@ -164,13 +169,35 @@ export class Board {
         tTo: Tile,
         tFrom: Tile,
         uFrom: Tile,
-        nMobilize: number
+        updatedTroops: number,
+        nMobilize: number,
+        currentTroopInterval: number
     ): Tile {
+        if (nMobilize < 1) {
+            throw Error("Cannot move without mobilizing at least 1 troop.");
+        }
         let uTo: Tile;
         if (tTo.owner === tFrom.owner) {
-            uTo = Tile.genOwned(tTo.owner, tTo.loc, tTo.resources + nMobilize);
+            uTo = Tile.genOwned(
+                tTo.owner,
+                tTo.loc,
+                updatedTroops + nMobilize,
+                currentTroopInterval
+            );
+        } else if (tTo.isUnowned()) {
+            uTo = Tile.genOwned(
+                tFrom.owner,
+                tTo.loc,
+                nMobilize,
+                currentTroopInterval
+            );
         } else {
-            uTo = Tile.genOwned(tTo.owner, tTo.loc, tTo.resources - nMobilize);
+            uTo = Tile.genOwned(
+                tTo.owner,
+                tTo.loc,
+                updatedTroops - nMobilize,
+                currentTroopInterval
+            );
             if (uTo.resources < 0) {
                 uTo.owner = uFrom.owner;
                 uTo.resources *= -1;
@@ -180,30 +207,45 @@ export class Board {
     }
 
     /*
-     * Generates state transition, nullifier combo, and ZKP needed to move 
+     * Generates state transition, nullifier combo, and ZKP needed to move
      * troops from one tile to another.
      */
     public async constructMove(
         mTree: IncrementalQuinTree,
-        bjjPrivKeyHash: BigInt | undefined,
+        bjjPrivKeyHash: BigInt,
         from: Location,
         to: Location,
-        nMobilize: number
+        nMobilize: number,
+        currentTroopInterval: number
     ): Promise<[Tile, Tile, Tile, Tile, Groth16Proof]> {
         const tFrom: Tile = this.getTile(from);
         const tTo: Tile = this.getTile(to);
+
+        // Most recent troop counts
+        const fromUpdatedTroops: number =
+            tFrom.resources +
+            currentTroopInterval -
+            tFrom.lastTroopUpdateInterval;
+        const toUpdatedTroops: number = tTo.isUnowned()
+            ? 0
+            : tTo.resources +
+              currentTroopInterval -
+              tTo.lastTroopUpdateInterval;
+
         const uFrom: Tile = Tile.genOwned(
             tFrom.owner,
             tFrom.loc,
-            tFrom.resources - nMobilize
+            fromUpdatedTroops - nMobilize,
+            currentTroopInterval
         );
-        const uTo: Tile = Board.computeOntoTile(tTo, tFrom, uFrom, nMobilize);
-
-        if (bjjPrivKeyHash === undefined) {
-            throw Error(
-                "Can't move without a baby jubjub private key."
-            )
-        }
+        const uTo: Tile = Board.computeOntoTile(
+            tTo,
+            tFrom,
+            uFrom,
+            toUpdatedTroops,
+            nMobilize,
+            currentTroopInterval
+        );
 
         const mProofFrom = Utils.generateMerkleProof(tFrom.hash(), mTree);
         const mProofTo = Utils.generateMerkleProof(tTo.hash(), mTree);
@@ -211,7 +253,7 @@ export class Board {
         const { proof, publicSignals } = await groth16.fullProve(
             {
                 root: mTree.root.toString(),
-                privKeyHash: bjjPrivKeyHash.toString(),
+                currentTroopInterval: currentTroopInterval.toString(),
                 hUFrom: uFrom.hash(),
                 hUTo: uTo.hash(),
                 rhoFrom: tFrom.nullifier(),
@@ -221,9 +263,12 @@ export class Board {
                 tFromPathElements: mProofFrom.pathElements,
                 tTo: tTo.toCircuitInput(),
                 tToPathIndices: mProofTo.indices,
-                tToPathElements:mProofTo.pathElements,
+                tToPathElements: mProofTo.pathElements,
                 uFrom: uFrom.toCircuitInput(),
                 uTo: uTo.toCircuitInput(),
+                fromUpdatedTroops: fromUpdatedTroops.toString(),
+                toUpdatedTroops: toUpdatedTroops.toString(),
+                privKeyHash: bjjPrivKeyHash.toString(),
             },
             Board.MOVE_WASM,
             Board.MOVE_PROVKEY
