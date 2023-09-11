@@ -28,7 +28,14 @@ export class Board {
             let row: Tile[] = new Array<Tile>();
             for (let j = 0; j < sz; j++) {
                 if (isInit) {
-                    let tl: Tile = Tile.genUnowned({ r: i, c: j });
+                    let tl: Tile;
+                    if (i === 0 && j === 1) {
+                        tl = Tile.hill({ r: i, c: j});
+                    } else if (i === 1 && j === 1) {
+                        tl = Tile.water({ r: i, c: j });
+                    } else {
+                        tl = Tile.genUnowned({ r: i, c: j });
+                    }
                     await nStates.set(tl.hash());
                     await Utils.sleep(200);
                     row.push(tl);
@@ -99,6 +106,10 @@ export class Board {
                     color = "\x1b[31m";
                 } else if (tl.owner.symbol === "C") {
                     color = "\x1b[44m";
+                } else if (tl.owner.symbol === "~") {
+                    color = "\x1b[36m";
+                } else if (tl.owner.symbol === "^") {
+                    color = "\x1b[90m";
                 } else {
                     color = "\x1b[37m";
                 }
