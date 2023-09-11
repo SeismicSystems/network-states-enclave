@@ -85,9 +85,10 @@ template CheckStep(VALID_MOVES, N_VALID_MOVES, N_TL_ATRS, ROW_IDX, COL_IDX,
  * Must preserve resource management logic- what happens when armies expand to
  * unowned or enemy territories. 
  */
-template CheckRsrc(N_TL_ATRS, RSRC_IDX, PK_HASH_IDX, TRP_UPD_IDX, 
+template CheckRsrc(N_TL_ATRS, RSRC_IDX, PK_HASH_IDX, TRP_UPD_IDX, WTR_UPD_IDX, 
     UNOWNED, SYS_BITS) {
     signal input currentTroopInterval;
+    signal input currentWaterInterval;
 
     signal input tFrom[N_TL_ATRS];
     signal input tTo[N_TL_ATRS];
@@ -108,10 +109,18 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PK_HASH_IDX, TRP_UPD_IDX,
     // Not allowed to move all troops off of tile
     signal movedAllTroops <== IsZero()(uFrom[RSRC_IDX]);
 
-    signal troopUpdateCorrect <== CheckTroopUpdates()(currentTroopInterval, 
-        tFrom[RSRC_IDX], tFrom[TRP_UPD_IDX], tTo[RSRC_IDX], tTo[TRP_UPD_IDX], 
-        uFrom[TRP_UPD_IDX], uTo[TRP_UPD_IDX], ontoSelfOrEnemy, 
-        fromUpdatedTroops, toUpdatedTroops);
+    signal troopUpdateCorrect <== CheckTroopUpdates()(
+        currentTroopInterval, 
+        currentWaterInterval, 
+        tFrom[RSRC_IDX], 
+        tFrom[TRP_UPD_IDX], 
+        tTo[RSRC_IDX], 
+        tTo[TRP_UPD_IDX], 
+        uFrom[TRP_UPD_IDX], 
+        uTo[TRP_UPD_IDX], 
+        ontoSelfOrEnemy, 
+        fromUpdatedTroops, 
+        toUpdatedTroops);
     signal troopUpdateIncorrect <== NOT()(troopUpdateCorrect);
 
     // Make sure resource management can't be broken via overflow
@@ -164,6 +173,7 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PK_HASH_IDX, TRP_UPD_IDX,
  */
 template CheckTroopUpdates() {
     signal input currentTroopInterval;
+    signal input currentWaterInterval;
 
     signal input tFromTroops;
     signal input tFromLatestUpdate;
@@ -284,8 +294,9 @@ template Move() {
     stepCorrect === 1;
 
     signal resourcesCorrect <== CheckRsrc(N_TL_ATRS, RSRC_IDX, PK_HASH_IDX, 
-        TRP_UPD_IDX, UNOWNED, SYS_BITS)(currentTroopInterval, tFrom, 
-        tTo, uFrom, uTo, fromUpdatedTroops, toUpdatedTroops);
+        TRP_UPD_IDX, WTR_UPD_IDX, UNOWNED, SYS_BITS)(currentTroopInterval, 
+        currentWaterInterval, tFrom, tTo, uFrom, uTo, fromUpdatedTroops, 
+        toUpdatedTroops);
     resourcesCorrect === 1;
 
     signal merkleProofCorrect <== CheckMerkleInclusion(N_TL_ATRS,

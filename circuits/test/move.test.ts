@@ -263,6 +263,7 @@ describe("Unit tests for CheckRsrc()", () => {
         const w = await circuit.calculateWitness(
             {
                 currentTroopInterval: "0",
+                currentWaterInterval: "0",
                 tFrom: t1.toCircuitInput(),
                 tTo: t2.toCircuitInput(),
                 uFrom: u1.toCircuitInput(),
@@ -286,6 +287,7 @@ describe("Unit tests for CheckRsrc()", () => {
         const w = await circuit.calculateWitness(
             {
                 currentTroopInterval: "0",
+                currentWaterInterval: "0",
                 tFrom: t1.toCircuitInput(),
                 tTo: t2.toCircuitInput(),
                 uFrom: u1.toCircuitInput(),
@@ -310,6 +312,7 @@ describe("Unit tests for CheckRsrc()", () => {
         const w = await circuit.calculateWitness(
             {
                 currentTroopInterval: "0",
+                currentWaterInterval: "0",
                 tFrom: t1.toCircuitInput(),
                 tTo: t2.toCircuitInput(),
                 uFrom: u1.toCircuitInput(),
@@ -334,6 +337,7 @@ describe("Unit tests for CheckRsrc()", () => {
         const w = await circuit.calculateWitness(
             {
                 currentTroopInterval: "0",
+                currentWaterInterval: "0",
                 tFrom: t1.toCircuitInput(),
                 tTo: t2.toCircuitInput(),
                 uFrom: u1.toCircuitInput(),
@@ -357,6 +361,7 @@ describe("Unit tests for CheckRsrc()", () => {
         const w = await circuit.calculateWitness(
             {
                 currentTroopInterval: "0",
+                currentWaterInterval: "0",
                 tFrom: t1.toCircuitInput(),
                 tTo: t2.toCircuitInput(),
                 uFrom: u1.toCircuitInput(),
@@ -381,6 +386,7 @@ describe("Unit tests for CheckRsrc()", () => {
         const w = await circuit.calculateWitness(
             {
                 currentTroopInterval: "0",
+                currentWaterInterval: "0",
                 tFrom: t1.toCircuitInput(),
                 tTo: t2.toCircuitInput(),
                 uFrom: u1.toCircuitInput(),
@@ -404,6 +410,7 @@ describe("Unit tests for CheckRsrc()", () => {
         const w = await circuit.calculateWitness(
             {
                 currentTroopInterval: "0",
+                currentWaterInterval: "0",
                 tFrom: t1.toCircuitInput(),
                 tTo: t2.toCircuitInput(),
                 uFrom: u1.toCircuitInput(),
@@ -428,6 +435,7 @@ describe("Unit tests for CheckRsrc()", () => {
         const w = await circuit.calculateWitness(
             {
                 currentTroopInterval: "0",
+                currentWaterInterval: "0",
                 tFrom: t1.toCircuitInput(),
                 tTo: t2.toCircuitInput(),
                 uFrom: u1.toCircuitInput(),
@@ -452,6 +460,7 @@ describe("Unit tests for CheckRsrc()", () => {
         const w = await circuit.calculateWitness(
             {
                 currentTroopInterval: "0",
+                currentWaterInterval: "0",
                 tFrom: t1.toCircuitInput(),
                 tTo: t2.toCircuitInput(),
                 uFrom: u1.toCircuitInput(),
@@ -476,6 +485,7 @@ describe("Unit tests for CheckRsrc()", () => {
         const w = await circuit.calculateWitness(
             {
                 currentTroopInterval: "2",
+                currentWaterInterval: "0",
                 tFrom: t1.toCircuitInput(),
                 tTo: t2.toCircuitInput(),
                 uFrom: u1.toCircuitInput(),
@@ -501,6 +511,7 @@ describe("Unit tests for CheckTroopUpdates()", () => {
         const w = await circuit.calculateWitness(
             {
                 currentTroopInterval: "1",
+                currentWaterInterval: "0",
                 tFromTroops: "10",
                 tFromLatestUpdate: "1",
                 tToTroops: "20",
@@ -521,6 +532,7 @@ describe("Unit tests for CheckTroopUpdates()", () => {
         const w = await circuit.calculateWitness(
             {
                 currentTroopInterval: "1",
+                currentWaterInterval: "0",
                 tFromTroops: "10",
                 tFromLatestUpdate: "0",
                 tToTroops: "0",
@@ -541,6 +553,7 @@ describe("Unit tests for CheckTroopUpdates()", () => {
         const w = await circuit.calculateWitness(
             {
                 currentTroopInterval: "1",
+                currentWaterInterval: "0",
                 tFromTroops: "10",
                 tFromLatestUpdate: "0",
                 tToTroops: "0",
@@ -561,6 +574,7 @@ describe("Unit tests for CheckTroopUpdates()", () => {
         const w = await circuit.calculateWitness(
             {
                 currentTroopInterval: "1",
+                currentWaterInterval: "0",
                 tFromTroops: "10",
                 tFromLatestUpdate: "0",
                 tToTroops: "10",
@@ -581,6 +595,7 @@ describe("Unit tests for CheckTroopUpdates()", () => {
         const w = await circuit.calculateWitness(
             {
                 currentTroopInterval: "2",
+                currentWaterInterval: "0",
                 tFromTroops: "10",
                 tFromLatestUpdate: "0",
                 tToTroops: "0",
@@ -601,6 +616,7 @@ describe("Unit tests for CheckTroopUpdates()", () => {
         const w = await circuit.calculateWitness(
             {
                 currentTroopInterval: "1",
+                currentWaterInterval: "0",
                 tFromTroops: "10",
                 tFromLatestUpdate: "0",
                 tToTroops: "20",
@@ -621,6 +637,7 @@ describe("Unit tests for CheckTroopUpdates()", () => {
         const w = await circuit.calculateWitness(
             {
                 currentTroopInterval: "1",
+                currentWaterInterval: "0",
                 tFromTroops: "10",
                 tFromLatestUpdate: "1",
                 tToTroops: "0",
@@ -641,6 +658,7 @@ describe("Unit tests for CheckTroopUpdates()", () => {
         const w = await circuit.calculateWitness(
             {
                 currentTroopInterval: "2",
+                currentWaterInterval: "0",
                 tFromTroops: "10",
                 tFromLatestUpdate: "1",
                 tToTroops: "0",
@@ -661,6 +679,7 @@ describe("Unit tests for CheckTroopUpdates()", () => {
         const w = await circuit.calculateWitness(
             {
                 currentTroopInterval: "1",
+                currentWaterInterval: "0",
                 tFromTroops: "10",
                 tFromLatestUpdate: "0",
                 tToTroops: "20",
