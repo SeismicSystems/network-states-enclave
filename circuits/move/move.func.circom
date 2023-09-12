@@ -2,6 +2,8 @@ pragma circom 2.1.1;
 
 include "../node_modules/maci-circuits/node_modules/circomlib/circuits/poseidon.circom";
 include "../node_modules/maci-circuits/node_modules/circomlib/circuits/comparators.circom";
+include "../node_modules/maci-circuits/node_modules/circomlib/circuits/mux1.circom";
+include "../node_modules/maci-circuits/node_modules/circomlib/circuits/mux2.circom";
 include "../node_modules/maci-circuits/node_modules/circomlib/circuits/babyjub.circom";
 include "../node_modules/maci-circuits/circom/trees/IncrementalMerkleTree.circom";
 include "../utils/utils.circom";
@@ -86,7 +88,7 @@ template CheckStep(VALID_MOVES, N_VALID_MOVES, N_TL_ATRS, ROW_IDX, COL_IDX,
  * unowned or enemy territories. 
  */
 template CheckRsrc(N_TL_ATRS, RSRC_IDX, PK_HASH_IDX, TRP_UPD_IDX, WTR_UPD_IDX, 
-    UNOWNED, SYS_BITS) {
+    TYPE_IDX, WATER_ID, UNOWNED, SYS_BITS) {
     signal input currentTroopInterval;
     signal input currentWaterInterval;
 
@@ -104,24 +106,34 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PK_HASH_IDX, TRP_UPD_IDX, WTR_UPD_IDX,
     signal ontoUnowned <== IsEqual()([tTo[PK_HASH_IDX], UNOWNED]);
     signal ontoSelfOrEnemy <== NOT()(ontoUnowned);
     signal ontoSelfOrUnowned <== OR()(ontoSelf, ontoUnowned);
-    signal ontoEnemy <== NOT()(ontoSelfOrUnowned);
+    signal playerOnWater <== IsEqual()([tFrom[TYPE_IDX], WATER_ID]);
+    signal enemyOnWater <== IsEqual()([tTo[TYPE_IDX], WATER_ID]);
 
     // Not allowed to move all troops off of tile
     signal movedAllTroops <== IsZero()(uFrom[RSRC_IDX]);
 
-    signal troopUpdateCorrect <== CheckTroopUpdates()(
-        currentTroopInterval, 
-        currentWaterInterval, 
-        tFrom[RSRC_IDX], 
-        tFrom[TRP_UPD_IDX], 
-        tTo[RSRC_IDX], 
-        tTo[TRP_UPD_IDX], 
-        uFrom[TRP_UPD_IDX], 
-        uTo[TRP_UPD_IDX], 
-        ontoSelfOrEnemy, 
-        fromUpdatedTroops, 
-        toUpdatedTroops);
-    signal troopUpdateIncorrect <== NOT()(troopUpdateCorrect);
+    // Troop updates for water and land tiles
+    signal fromCheckWaterUpdates <== CheckWaterUpdates(SYS_BITS)(
+        currentWaterInterval, tFrom[RSRC_IDX], tFrom[WTR_UPD_IDX], 
+        uFrom[WTR_UPD_IDX], fromUpdatedTroops);
+    signal fromCheckTroopUpdates <== CheckTroopUpdates()(
+        currentTroopInterval, tFrom[RSRC_IDX], 1, tFrom[TRP_UPD_IDX], 
+        uFrom[TRP_UPD_IDX], fromUpdatedTroops);
+    signal toCheckWaterUpdates <== CheckWaterUpdates(SYS_BITS)(
+        currentWaterInterval, tTo[RSRC_IDX], tTo[WTR_UPD_IDX], 
+        uTo[WTR_UPD_IDX], toUpdatedTroops);
+    signal toCheckTroopUpdates <== CheckTroopUpdates()(
+        currentTroopInterval, tTo[RSRC_IDX], ontoSelfOrEnemy, tTo[TRP_UPD_IDX], 
+        uTo[TRP_UPD_IDX], toUpdatedTroops);
+
+    signal fromTroopUpdateCorrect <== Mux1()([fromCheckTroopUpdates, 
+        fromCheckWaterUpdates], playerOnWater);
+    signal toTroopUpdateCorrect <== Mux1()([toCheckTroopUpdates, 
+        toCheckWaterUpdates], enemyOnWater);
+
+    signal troopUpdatesCorrect <== AND()(fromTroopUpdateCorrect, 
+        toTroopUpdateCorrect);
+    signal troopUpdatesIncorrect <== NOT()(troopUpdatesCorrect);
 
     // Make sure resource management can't be broken via overflow
     signal overflowFrom <== GreaterEqThan(SYS_BITS)([uFrom[RSRC_IDX], 
@@ -129,42 +141,37 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PK_HASH_IDX, TRP_UPD_IDX, WTR_UPD_IDX,
     signal overflowTo <== GreaterEqThan(SYS_BITS)([uTo[RSRC_IDX], 
         fromUpdatedTroops + toUpdatedTroops]);
 
-    signal ontoMoreOrEq <== GreaterEqThan(SYS_BITS)([toUpdatedTroops, 
-        fromUpdatedTroops - uFrom[RSRC_IDX]]);
-    signal ontoLess <== NOT()(ontoMoreOrEq);
-
     // From tile must remain player's after move
     signal fromOwnership <== IsEqual()(
         [tFrom[PK_HASH_IDX], uFrom[PK_HASH_IDX]]);
     signal fromOwnershipWrong <== NOT()(fromOwnership);
 
-    // Moving onto a non-enemy tile (self or unowned)
-    signal case1Logic <== BatchIsEqual(2)([
-        [fromUpdatedTroops + toUpdatedTroops, uFrom[RSRC_IDX] + uTo[RSRC_IDX]],
-        [uTo[PK_HASH_IDX], uFrom[PK_HASH_IDX]]
-    ]);
-    signal case1LogicWrong <== NOT()(case1Logic);
-    signal case1 <== case1LogicWrong * ontoSelfOrUnowned;
+    signal ontoMoreOrEq <== GreaterEqThan(SYS_BITS)([toUpdatedTroops, 
+        fromUpdatedTroops - uFrom[RSRC_IDX]]);
+
+    // Moving onto enemy tile that has less resource vs what's being sent
+    signal case1 <== BatchIsEqual(2)([
+        [fromUpdatedTroops - uFrom[RSRC_IDX], toUpdatedTroops + uTo[RSRC_IDX]],
+        [uTo[PK_HASH_IDX], uFrom[PK_HASH_IDX]]]);
 
     // Moving onto enemy tile that has more or eq resource vs what's being sent
-    signal case2Logic <== BatchIsEqual(2)([
+    signal case2 <== BatchIsEqual(2)([
         [fromUpdatedTroops - uFrom[RSRC_IDX], toUpdatedTroops - uTo[RSRC_IDX]],
         [uTo[PK_HASH_IDX], tTo[PK_HASH_IDX]]
     ]);
-    signal case2LogicWrong <== NOT()(case2Logic);
-    signal case2Selector <== AND()(ontoEnemy, ontoMoreOrEq);
-    signal case2 <== case2LogicWrong * case2Selector;
 
-    // Moving onto enemy tile that has less resource vs what's being sent
-    signal case3Logic <== BatchIsEqual(2)([
-        [fromUpdatedTroops - uFrom[RSRC_IDX], toUpdatedTroops + uTo[RSRC_IDX]],
-        [uTo[PK_HASH_IDX], uFrom[PK_HASH_IDX]]]);
-    signal case3LogicWrong <== NOT()(case3Logic);
-    signal case3Selector <== AND()(ontoEnemy, ontoLess);
-    signal case3 <== case3LogicWrong * case3Selector;
+    // Moving onto a non-enemy tile (self or unowned)
+    signal case3 <== BatchIsEqual(2)([
+        [fromUpdatedTroops + toUpdatedTroops, uFrom[RSRC_IDX] + uTo[RSRC_IDX]],
+        [uTo[PK_HASH_IDX], uFrom[PK_HASH_IDX]]
+    ]);
 
-    out <== BatchIsZero(8)([movedAllTroops, troopUpdateIncorrect, overflowFrom, 
-        overflowTo, fromOwnershipWrong, case1, case2, case3]);
+    signal moveLogic <== Mux2()([case1, case2, case3, case3], [ontoMoreOrEq, 
+        ontoSelfOrUnowned]);
+    signal moveLogicIncorrect <== NOT()(moveLogic);
+
+    out <== BatchIsZero(6)([movedAllTroops, troopUpdatesIncorrect, overflowFrom, 
+        overflowTo, fromOwnershipWrong, moveLogicIncorrect]);
 }
 
 /*
@@ -173,33 +180,51 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PK_HASH_IDX, TRP_UPD_IDX, WTR_UPD_IDX,
  */
 template CheckTroopUpdates() {
     signal input currentTroopInterval;
-    signal input currentWaterInterval;
 
-    signal input tFromTroops;
-    signal input tFromLatestUpdate;
-    signal input tToTroops;
-    signal input tToLatestUpdate;
-    signal input uFromLatestUpdate;
-    signal input uToLatestUpdate;
-    signal input ontoSelfOrEnemy;
-    signal input fromUpdatedTroops;
-    signal input toUpdatedTroops;
+    signal input tTroops;
+    signal input isSelfOrEnemy;
+    signal input tLatestUpdate;
+    signal input uLatestUpdate;
+    signal input updatedTroops;
 
     signal output out;
 
     // Make sure updated troop counts are computed correctly
-    signal circuitFromUpdatedTroops <== tFromTroops + currentTroopInterval 
-        - tFromLatestUpdate;
-    signal circuitToUpdatedTroops <== (tToTroops + currentTroopInterval
-        - tToLatestUpdate) * ontoSelfOrEnemy;
-    signal troopRsrcCorrect <== BatchIsEqual(2)([
-        [circuitFromUpdatedTroops, fromUpdatedTroops],
-        [circuitToUpdatedTroops, toUpdatedTroops]]);
+    signal circuitUpdatedTroops <== (tTroops + currentTroopInterval 
+        - tLatestUpdate) * isSelfOrEnemy;
+    signal troopRsrcCorrect <== IsEqual()(
+        [circuitUpdatedTroops, updatedTroops]);
 
     // Troop updates should be accounted for in new tile states
-    signal troopsCounted <== BatchIsEqual(2)([
-        [currentTroopInterval, uFromLatestUpdate],
-        [currentTroopInterval, uToLatestUpdate]]);
+    signal troopsCounted <== IsEqual()([currentTroopInterval, uLatestUpdate]);
+
+    out <== AND()(troopRsrcCorrect, troopsCounted);
+}
+
+/*
+ * If a player is on the water, they should lose troops. Water updates and troop
+ * updates are mutually exclusive events, and updatedTroops reflects the 
+ * player's troop count post updates (both water or troop).
+ */
+template CheckWaterUpdates(SYS_BITS) {
+    signal input currentWaterInterval;
+
+    signal input tTroops;
+    signal input tLatestUpdate;
+    signal input uLatestUpdate;
+    signal input updatedTroops;
+
+    signal output out;
+
+    signal notAllDead <== GreaterEqThan(SYS_BITS)([tTroops, 
+        currentWaterInterval - tLatestUpdate]);
+
+    signal circuitUpdatedTroops <== notAllDead * (tTroops +
+        tLatestUpdate - currentWaterInterval);
+    signal troopRsrcCorrect <== IsEqual()(
+        [circuitUpdatedTroops, updatedTroops]);
+
+    signal troopsCounted <== IsEqual()([currentWaterInterval, uLatestUpdate]);
 
     out <== AND()(troopRsrcCorrect, troopsCounted);
 }
@@ -294,9 +319,9 @@ template Move() {
     stepCorrect === 1;
 
     signal resourcesCorrect <== CheckRsrc(N_TL_ATRS, RSRC_IDX, PK_HASH_IDX, 
-        TRP_UPD_IDX, WTR_UPD_IDX, UNOWNED, SYS_BITS)(currentTroopInterval, 
-        currentWaterInterval, tFrom, tTo, uFrom, uTo, fromUpdatedTroops, 
-        toUpdatedTroops);
+        TRP_UPD_IDX, WTR_UPD_IDX, TYPE_IDX, WATER_ID, UNOWNED, SYS_BITS)(
+        currentTroopInterval, currentWaterInterval, tFrom, tTo, uFrom, uTo, 
+        fromUpdatedTroops, toUpdatedTroops);
     resourcesCorrect === 1;
 
     signal merkleProofCorrect <== CheckMerkleInclusion(N_TL_ATRS,
