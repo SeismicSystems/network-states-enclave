@@ -189,7 +189,6 @@ export class Board {
         currentWaterInterval: number
     ): number {
         const isUnowned: number = tTile.isUnowned() ? 0 : 1;
-        console.log(isUnowned);
         const deltaTroops: number = tTile.isWater()
             ? tTile.latestWaterUpdateInterval - currentWaterInterval
             : currentTroopInterval - tTile.latestTroopUpdateInterval;

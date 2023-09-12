@@ -117,7 +117,7 @@ async function move(inp: string) {
         cursor,
         { r: nr, c: nc },
         currentTroopInterval,
-        currentWaterInterval,
+        currentWaterInterval
     );
 
     // Alert enclave of intended move
@@ -139,12 +139,15 @@ async function move(inp: string) {
         tTo.nullifier(),
     ]);
     await nStates.move(
-        mRoot.toString(),
-        currentTroopInterval.toString(),
-        uFrom.hash(),
-        uTo.hash(),
-        tFrom.nullifier(),
-        tTo.nullifier(),
+        [
+            mRoot.toString(),
+            currentTroopInterval.toString(),
+            currentWaterInterval.toString(),
+            uFrom.hash(),
+            uTo.hash(),
+            tFrom.nullifier(),
+            tTo.nullifier(),
+        ],
         formattedProof.a,
         formattedProof.b,
         formattedProof.c
