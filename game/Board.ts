@@ -107,9 +107,9 @@ export class Board {
                 let tl: Tile = this.getTile({ r: i, c: j });
                 let color;
                 const reset = "\x1b[0m";
-                if (tl.owner.symbol === "~") {
+                if (tl.tileType === Tile.WATER_TILE) {
                     color = "\x1b[36m";
-                } else if (tl.owner.symbol === "^") {
+                } else if (tl.tileType === Tile.HILL_TILE) {
                     color = "\x1b[90m";
                 } else if (tl.owner.symbol === "A") {
                     color = "\x1b[32m";

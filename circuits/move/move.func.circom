@@ -82,6 +82,7 @@ template CheckStep(VALID_MOVES, N_VALID_MOVES, N_TL_ATRS, ROW_IDX, COL_IDX,
     signal typesConsistent <== BatchIsEqual(2)([
         [tFrom[TYPE_IDX], uFrom[TYPE_IDX]],
         [tTo[TYPE_IDX], uTo[TYPE_IDX]]]);
+        
     signal ontoHill <== IsEqual()([tTo[TYPE_IDX], HILL_ID]);
     signal notOntoHill <== NOT()(ontoHill);
 
