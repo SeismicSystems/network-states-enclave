@@ -50,8 +50,7 @@ template CheckLeaves(N_TL_ATRS, PK_HASH_IDX) {
     signal pkHash <== Poseidon(2)([bjj.Ax, bjj.Ay]);
 
     out <== BatchIsEqual(3)([
-        [uFrom[PK_HASH_IDX], pkHash],
-        [hUFrom, circuitHFrom], 
+        [uFrom[PK_HASH_IDX], pkHash], [hUFrom, circuitHFrom], 
         [hUTo, circuitHTo]]);
 }
 
@@ -69,9 +68,9 @@ template CheckStep(VALID_MOVES, N_VALID_MOVES, N_TL_ATRS, ROW_IDX, COL_IDX,
 
     signal output out;
 
-    signal positionsConsistent <== BatchIsEqual(4)([[tFrom[ROW_IDX], 
-        uFrom[ROW_IDX]], [tFrom[COL_IDX], uFrom[COL_IDX]], [tTo[ROW_IDX], 
-        uTo[ROW_IDX]], [tTo[COL_IDX], uTo[COL_IDX]]]);
+    signal positionsConsistent <== BatchIsEqual(4)([
+        [tFrom[ROW_IDX], uFrom[ROW_IDX]], [tFrom[COL_IDX], uFrom[COL_IDX]], 
+        [tTo[ROW_IDX], uTo[ROW_IDX]], [tTo[COL_IDX], uTo[COL_IDX]]]);
 
     signal step[2] <== [tTo[ROW_IDX] - tFrom[ROW_IDX], 
         tTo[COL_IDX] - tFrom[COL_IDX]];
@@ -113,18 +112,18 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PK_HASH_IDX, TRP_UPD_IDX, WTR_UPD_IDX,
     signal movedAllTroops <== IsZero()(uFrom[RSRC_IDX]);
 
     // Troop updates for water and land tiles
-    signal fromCheckWaterUpdates <== CheckWaterUpdates(SYS_BITS)(
-        currentWaterInterval, tFrom[RSRC_IDX], tFrom[WTR_UPD_IDX], 
-        uFrom[WTR_UPD_IDX], fromUpdatedTroops);
     signal fromCheckTroopUpdates <== CheckTroopUpdates()(
         currentTroopInterval, tFrom[RSRC_IDX], 1, tFrom[TRP_UPD_IDX], 
         uFrom[TRP_UPD_IDX], fromUpdatedTroops);
-    signal toCheckWaterUpdates <== CheckWaterUpdates(SYS_BITS)(
-        currentWaterInterval, tTo[RSRC_IDX], tTo[WTR_UPD_IDX], 
-        uTo[WTR_UPD_IDX], toUpdatedTroops);
     signal toCheckTroopUpdates <== CheckTroopUpdates()(
         currentTroopInterval, tTo[RSRC_IDX], ontoSelfOrEnemy, tTo[TRP_UPD_IDX], 
         uTo[TRP_UPD_IDX], toUpdatedTroops);
+    signal fromCheckWaterUpdates <== CheckWaterUpdates(SYS_BITS)(
+        currentWaterInterval, tFrom[RSRC_IDX], tFrom[WTR_UPD_IDX], 
+        uFrom[WTR_UPD_IDX], fromUpdatedTroops);
+    signal toCheckWaterUpdates <== CheckWaterUpdates(SYS_BITS)(
+        currentWaterInterval, tTo[RSRC_IDX], 
+        tTo[WTR_UPD_IDX], uTo[WTR_UPD_IDX], toUpdatedTroops);
 
     signal fromTroopUpdateCorrect <== Mux1()([fromCheckTroopUpdates, 
         fromCheckWaterUpdates], playerOnWater);
@@ -157,14 +156,12 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PK_HASH_IDX, TRP_UPD_IDX, WTR_UPD_IDX,
     // Moving onto enemy tile that has more or eq resource vs what's being sent
     signal case2 <== BatchIsEqual(2)([
         [fromUpdatedTroops - uFrom[RSRC_IDX], toUpdatedTroops - uTo[RSRC_IDX]],
-        [uTo[PK_HASH_IDX], tTo[PK_HASH_IDX]]
-    ]);
+        [uTo[PK_HASH_IDX], tTo[PK_HASH_IDX]]]);
 
     // Moving onto a non-enemy tile (self or unowned)
     signal case3 <== BatchIsEqual(2)([
         [fromUpdatedTroops + toUpdatedTroops, uFrom[RSRC_IDX] + uTo[RSRC_IDX]],
-        [uTo[PK_HASH_IDX], uFrom[PK_HASH_IDX]]
-    ]);
+        [uTo[PK_HASH_IDX], uFrom[PK_HASH_IDX]]]);
 
     signal moveLogic <== Mux2()([case1, case2, case3, case3], [ontoMoreOrEq, 
         ontoSelfOrUnowned]);
@@ -216,11 +213,12 @@ template CheckWaterUpdates(SYS_BITS) {
 
     signal output out;
 
+    // Forces updatedTroops to be 0 when all troops die
     signal notAllDead <== GreaterEqThan(SYS_BITS)([tTroops, 
         currentWaterInterval - tLatestUpdate]);
 
-    signal circuitUpdatedTroops <== notAllDead * (tTroops +
-        tLatestUpdate - currentWaterInterval);
+    signal circuitUpdatedTroops <== (tTroops + tLatestUpdate - 
+        currentWaterInterval) * notAllDead;
     signal troopRsrcCorrect <== IsEqual()(
         [circuitUpdatedTroops, updatedTroops]);
 
