@@ -116,7 +116,6 @@ async function move(inp: string) {
         PLAYER.bjjPrivHash,
         cursor,
         { r: nr, c: nc },
-        b.getTile(cursor).resources - 1,
         currentTroopInterval,
         currentWaterInterval,
     );

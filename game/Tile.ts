@@ -12,8 +12,6 @@ export type Location = {
 export class Tile {
     static UNOWNED: Player = new Player("_");
     static MYSTERY: Player = new Player("?");
-    static WATER: Player = new Player("~");
-    static HILL: Player = new Player("^");
 
     static NORMAL_TILE: number = 0;
     static WATER_TILE: number = 1;
@@ -114,6 +112,13 @@ export class Tile {
     }
 
     /*
+     * Return true if this Tile is a water tile.
+     */
+    isWater(): boolean {
+        return this.tileType === Tile.WATER_TILE;
+    }
+
+    /*
      * Convert JSON object to Tile.
      */
     static fromJSON(obj: any): Tile {
@@ -139,7 +144,7 @@ export class Tile {
      * Hill tile. Players cannot move onto a hill tile.
      */
     static hill(l: Location): Tile {
-        return new Tile(this.HILL, l, 0, genRandomSalt(), 0, 0, this.HILL_TILE);
+        return new Tile(Tile.UNOWNED, l, 0, genRandomSalt(), 0, 0, this.HILL_TILE);
     }
 
     /*
@@ -160,8 +165,8 @@ export class Tile {
     /*
      * New owned tile with random salt as the access key.
      */
-    static genOwned(o_: Player, l_: Location, r_: number, i_: number): Tile {
-        return new Tile(o_, l_, r_, genRandomSalt(), i_, 0, this.NORMAL_TILE);
+    static genOwned(o_: Player, l_: Location, r_: number, i_: number, w_: number, t_: number): Tile {
+        return new Tile(o_, l_, r_, genRandomSalt(), i_, w_, t_);
     }
 
     /*
@@ -169,7 +174,7 @@ export class Tile {
      */
     static water(l_: Location): Tile {
         return new Tile(
-            Tile.WATER,
+            Tile.UNOWNED,
             l_,
             0,
             genRandomSalt(),
