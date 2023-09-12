@@ -57,7 +57,8 @@ template CheckLeaves(N_TL_ATRS, PK_HASH_IDX) {
 /*
  * A valid step entails 1) new tile states must have the same coordinates as 
  * the old states they are replacing, 2) the movement is one tile in one of
- * the cardinal directions, and 3) the to tile is not a hill tile.
+ * the cardinal directions, and 3) the to tile keeps the same type which cannot
+ * be a hill.
  */
 template CheckStep(VALID_MOVES, N_VALID_MOVES, N_TL_ATRS, ROW_IDX, COL_IDX, 
     TYPE_IDX, HILL_ID) {
@@ -76,10 +77,17 @@ template CheckStep(VALID_MOVES, N_VALID_MOVES, N_TL_ATRS, ROW_IDX, COL_IDX,
         tTo[COL_IDX] - tFrom[COL_IDX]];
     signal stepValid <== PairArrayContains(N_VALID_MOVES)(VALID_MOVES, step);
 
+    signal moveLogic <== AND()(positionsConsistent, stepValid);
+
+    signal typesConsistent <== BatchIsEqual(2)([
+        [tFrom[TYPE_IDX], uFrom[TYPE_IDX]],
+        [tTo[TYPE_IDX], uTo[TYPE_IDX]]]);
     signal ontoHill <== IsEqual()([tTo[TYPE_IDX], HILL_ID]);
     signal notOntoHill <== NOT()(ontoHill);
+
+    signal typeLogic <== AND()(typesConsistent, notOntoHill);
     
-    out <== AND()((AND()(positionsConsistent, stepValid)), notOntoHill);
+    out <== AND()(moveLogic, typeLogic);
 }
 
 /*
