@@ -28,7 +28,14 @@ export class Board {
             let row: Tile[] = new Array<Tile>();
             for (let j = 0; j < sz; j++) {
                 if (isInit) {
-                    let tl: Tile = Tile.genUnowned({ r: i, c: j });
+                    let tl: Tile;
+                    if (i === 0 && j === 1) {
+                        tl = Tile.hill({ r: i, c: j });
+                    } else if (i === 1 && j === 1) {
+                        tl = Tile.water({ r: i, c: j });
+                    } else {
+                        tl = Tile.genUnowned({ r: i, c: j });
+                    }
                     await nStates.set(tl.hash());
                     await Utils.sleep(200);
                     row.push(tl);
@@ -76,7 +83,14 @@ export class Board {
         // Before tile is changed, we need the nullifier.
         const nullifier = this.t[r][c].nullifier();
 
-        this.t[r][c] = Tile.genOwned(pl, { r: r, c: c }, resource, 0);
+        this.t[r][c] = Tile.genOwned(
+            pl,
+            { r: r, c: c },
+            resource,
+            0,
+            0,
+            Tile.NORMAL_TILE
+        );
 
         // Update the merkle root on-chain.
         await nStates.spawn(this.t[r][c].hash(), nullifier);
@@ -93,7 +107,11 @@ export class Board {
                 let tl: Tile = this.getTile({ r: i, c: j });
                 let color;
                 const reset = "\x1b[0m";
-                if (tl.owner.symbol === "A") {
+                if (tl.tileType === Tile.WATER_TILE) {
+                    color = "\x1b[36m";
+                } else if (tl.tileType === Tile.HILL_TILE) {
+                    color = "\x1b[90m";
+                } else if (tl.owner.symbol === "A") {
                     color = "\x1b[32m";
                 } else if (tl.owner.symbol === "B") {
                     color = "\x1b[31m";
@@ -162,6 +180,23 @@ export class Board {
     }
 
     /*
+     * Computes the number of troops on tile after considering troop/water
+     * updates.
+     */
+    static computeUpdatedTroops(
+        tTile: Tile,
+        currentTroopInterval: number,
+        currentWaterInterval: number
+    ): number {
+        const isUnowned: number = tTile.isUnowned() ? 0 : 1;
+        const deltaTroops: number = tTile.isWater()
+            ? tTile.latestWaterUpdateInterval - currentWaterInterval
+            : currentTroopInterval - tTile.latestTroopUpdateInterval;
+
+        return (tTile.resources + deltaTroops) * isUnowned;
+    }
+
+    /*
      * Computes proper state of tile an army is about to move onto. Goes through
      * game logic of what happens during a battle.
      */
@@ -171,7 +206,8 @@ export class Board {
         uFrom: Tile,
         updatedTroops: number,
         nMobilize: number,
-        currentTroopInterval: number
+        currentTroopInterval: number,
+        currentWaterInterval: number
     ): Tile {
         if (nMobilize < 1) {
             throw Error("Cannot move without mobilizing at least 1 troop.");
@@ -182,21 +218,27 @@ export class Board {
                 tTo.owner,
                 tTo.loc,
                 updatedTroops + nMobilize,
-                currentTroopInterval
+                currentTroopInterval,
+                currentWaterInterval,
+                tTo.tileType
             );
         } else if (tTo.isUnowned()) {
             uTo = Tile.genOwned(
                 tFrom.owner,
                 tTo.loc,
                 nMobilize,
-                currentTroopInterval
+                currentTroopInterval,
+                currentWaterInterval,
+                tTo.tileType
             );
         } else {
             uTo = Tile.genOwned(
                 tTo.owner,
                 tTo.loc,
                 updatedTroops - nMobilize,
-                currentTroopInterval
+                currentTroopInterval,
+                currentWaterInterval,
+                tTo.tileType
             );
             if (uTo.resources < 0) {
                 uTo.owner = uFrom.owner;
@@ -208,35 +250,40 @@ export class Board {
 
     /*
      * Generates state transition, nullifier combo, and ZKP needed to move
-     * troops from one tile to another.
+     * troops from one tile to another. Moves all but one troop for development.
      */
     public async constructMove(
         mTree: IncrementalQuinTree,
         bjjPrivKeyHash: BigInt,
         from: Location,
         to: Location,
-        nMobilize: number,
-        currentTroopInterval: number
+        currentTroopInterval: number,
+        currentWaterInterval: number
     ): Promise<[Tile, Tile, Tile, Tile, Groth16Proof]> {
         const tFrom: Tile = this.getTile(from);
         const tTo: Tile = this.getTile(to);
 
         // Most recent troop counts
-        const fromUpdatedTroops: number =
-            tFrom.resources +
-            currentTroopInterval -
-            tFrom.lastTroopUpdateInterval;
-        const toUpdatedTroops: number = tTo.isUnowned()
-            ? 0
-            : tTo.resources +
-              currentTroopInterval -
-              tTo.lastTroopUpdateInterval;
+        const fromUpdatedTroops = Board.computeUpdatedTroops(
+            tFrom,
+            currentTroopInterval,
+            currentWaterInterval
+        );
+        const toUpdatedTroops = Board.computeUpdatedTroops(
+            tTo,
+            currentTroopInterval,
+            currentWaterInterval
+        );
+
+        const nMobilize = fromUpdatedTroops - 1;
 
         const uFrom: Tile = Tile.genOwned(
             tFrom.owner,
             tFrom.loc,
             fromUpdatedTroops - nMobilize,
-            currentTroopInterval
+            currentTroopInterval,
+            currentWaterInterval,
+            tFrom.tileType
         );
         const uTo: Tile = Board.computeOntoTile(
             tTo,
@@ -244,7 +291,8 @@ export class Board {
             uFrom,
             toUpdatedTroops,
             nMobilize,
-            currentTroopInterval
+            currentTroopInterval,
+            currentWaterInterval
         );
 
         const mProofFrom = Utils.generateMerkleProof(tFrom.hash(), mTree);
@@ -254,6 +302,7 @@ export class Board {
             {
                 root: mTree.root.toString(),
                 currentTroopInterval: currentTroopInterval.toString(),
+                currentWaterInterval: currentWaterInterval.toString(),
                 hUFrom: uFrom.hash(),
                 hUTo: uTo.hash(),
                 rhoFrom: tFrom.nullifier(),

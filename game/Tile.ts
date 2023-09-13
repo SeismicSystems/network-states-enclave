@@ -13,32 +13,53 @@ export class Tile {
     static UNOWNED: Player = new Player("_");
     static MYSTERY: Player = new Player("?");
 
+    static NORMAL_TILE: number = 0;
+    static WATER_TILE: number = 1;
+    static HILL_TILE: number = 2;
+
     owner: Player;
     loc: Location;
     resources: number;
     key: BigInt;
-    lastTroopUpdateInterval: number;
+    latestTroopUpdateInterval: number;
+    latestWaterUpdateInterval: number;
+    tileType: number;
 
-    constructor(o_: Player, l_: Location, r_: number, k_: BigInt, i_: number) {
+    constructor(
+        o_: Player,
+        l_: Location,
+        r_: number,
+        k_: BigInt,
+        i_: number,
+        w_: number,
+        t_: number
+    ) {
         this.owner = o_;
         this.loc = l_;
         this.resources = r_;
         this.key = k_;
-        this.lastTroopUpdateInterval = i_;
+        this.latestTroopUpdateInterval = i_;
+        this.latestWaterUpdateInterval = w_;
+        this.tileType = t_;
     }
 
     /*
      * Represent Tile as an array of BigInt values to pass into the circuit.
+     * The bjj pub keys are hashed together to keep # inputs to Poseidon <= 8.
      */
     toCircuitInput(): string[] {
         return [
-            this.owner.bjjPub.rawPubKey[0].toString(),
-            this.owner.bjjPub.rawPubKey[1].toString(),
+            poseidon([
+                BigInt(this.owner.bjjPub.rawPubKey[0].toString()),
+                BigInt(this.owner.bjjPub.rawPubKey[1].toString()),
+            ]).toString(),
             this.loc.r.toString(),
             this.loc.c.toString(),
             this.resources.toString(),
             this.key.toString(),
-            this.lastTroopUpdateInterval.toString(),
+            this.latestTroopUpdateInterval.toString(),
+            this.latestWaterUpdateInterval.toString(),
+            this.tileType.toString(),
         ];
     }
 
@@ -68,7 +89,11 @@ export class Tile {
             c: this.loc.c.toString(),
             resources: this.resources.toString(),
             key: this.key.toString(10),
-            lastTroopUpdateInterval: this.lastTroopUpdateInterval.toString(),
+            latestTroopUpdateInterval:
+                this.latestTroopUpdateInterval.toString(),
+            latestWaterUpdateInterval:
+                this.latestWaterUpdateInterval.toString(),
+            tileType: this.tileType.toString(),
         };
     }
 
@@ -87,6 +112,13 @@ export class Tile {
     }
 
     /*
+     * Return true if this Tile is a water tile.
+     */
+    isWater(): boolean {
+        return this.tileType === Tile.WATER_TILE;
+    }
+
+    /*
      * Convert JSON object to Tile.
      */
     static fromJSON(obj: any): Tile {
@@ -95,7 +127,9 @@ export class Tile {
             { r: parseInt(obj.r, 10), c: parseInt(obj.c, 10) },
             parseInt(obj.resources, 10),
             BigInt(obj.key),
-            parseInt(obj.lastTroopUpdateInterval, 10)
+            parseInt(obj.latestTroopUpdateInterval, 10),
+            parseInt(obj.latestWaterUpdateInterval, 10),
+            parseInt(obj.tileType, 10)
         );
     }
 
@@ -103,20 +137,50 @@ export class Tile {
      * Meant to represent a tile in the fog of war.
      */
     static mystery(l: Location): Tile {
-        return new Tile(Tile.MYSTERY, l, 0, BigInt(0), 0);
+        return new Tile(Tile.MYSTERY, l, 0, BigInt(0), 0, 0, this.NORMAL_TILE);
+    }
+
+    /*
+     * Hill tile. Players cannot move onto a hill tile.
+     */
+    static hill(l: Location): Tile {
+        return new Tile(Tile.UNOWNED, l, 0, genRandomSalt(), 0, 0, this.HILL_TILE);
     }
 
     /*
      * New unowned tile with random salt as the access key.
      */
     static genUnowned(l: Location): Tile {
-        return new Tile(Tile.UNOWNED, l, 0, genRandomSalt(), 0);
+        return new Tile(
+            Tile.UNOWNED,
+            l,
+            0,
+            genRandomSalt(),
+            0,
+            0,
+            this.NORMAL_TILE
+        );
     }
 
     /*
      * New owned tile with random salt as the access key.
      */
-    static genOwned(o_: Player, l_: Location, r_: number, i_: number): Tile {
-        return new Tile(o_, l_, r_, genRandomSalt(), i_);
+    static genOwned(o_: Player, l_: Location, r_: number, i_: number, w_: number, t_: number): Tile {
+        return new Tile(o_, l_, r_, genRandomSalt(), i_, w_, t_);
+    }
+
+    /*
+     * Unowned water tile. Players can move troops onto water tiles
+     */
+    static water(l_: Location): Tile {
+        return new Tile(
+            Tile.UNOWNED,
+            l_,
+            0,
+            genRandomSalt(),
+            0,
+            0,
+            this.WATER_TILE
+        );
     }
 }

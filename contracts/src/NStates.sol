@@ -11,7 +11,7 @@ interface IVerifier {
         uint256[2] memory a,
         uint256[2][2] memory b,
         uint256[2] memory c,
-        uint256[6] memory input
+        uint256[7] memory input
     ) external view returns (bool);
 }
 
@@ -32,15 +32,18 @@ contract NStates is IncrementalMerkleTree {
 
     address public owner;
     uint256 public numBlocksInTroopUpdate;
+    uint256 public numBlocksInWaterUpdate;
     mapping(uint256 => bool) public nullifiers;
 
     constructor(
         uint8 treeDepth,
         uint256 nothingUpMySleeve,
-        uint256 nBlocksInTroopUpdate
+        uint256 nBlocksInTroopUpdate,
+        uint256 nBlocksInWaterUpdate
     ) IncrementalMerkleTree(treeDepth, nothingUpMySleeve) {
         owner = msg.sender;
         numBlocksInTroopUpdate = nBlocksInTroopUpdate;
+        numBlocksInWaterUpdate = nBlocksInWaterUpdate;
     }
 
     /*
@@ -76,32 +79,34 @@ contract NStates is IncrementalMerkleTree {
      * anchored to a historical merkle root to be accepted.
      */
     function move(
-        uint256 root,
-        uint256 troopInterval,
-        uint256 hUFrom,
-        uint256 hUTo,
-        uint256 rhoFrom,
-        uint256 rhoTo,
+        uint256[7] memory pubSignals,
         uint256[2] memory a,
         uint256[2][2] memory b,
         uint256[2] memory c
     ) public {
+        uint256 root = pubSignals[0];
+        uint256 troopInterval = pubSignals[1];
+        uint256 waterInterval = pubSignals[2];
+        uint256 hUFrom = pubSignals[3];
+        uint256 hUTo = pubSignals[4];
+        uint256 rhoFrom = pubSignals[5];
+        uint256 rhoTo = pubSignals[6];
+
         require(rootHistory[root], "Root must be in root history");
         require(
             currentTroopInterval() >= troopInterval,
             "Move is too far into the future, change currentTroopInterval value"
         );
         require(
+            currentWaterInterval() >= waterInterval,
+            "Move is too far into the future, change currentWaterInterval value"
+        );
+        require(
             !nullifiers[rhoFrom] && !nullifiers[rhoTo],
             "Move has already been made"
         );
         require(
-            verifierContract.verifyProof(
-                a,
-                b,
-                c,
-                [root, troopInterval, hUFrom, hUTo, rhoFrom, rhoTo]
-            ),
+            verifierContract.verifyProof(a, b, c, pubSignals),
             "Invalid move proof"
         );
 
@@ -135,7 +140,18 @@ contract NStates is IncrementalMerkleTree {
         return hasherT3.poseidon([l, r]);
     }
 
+    /*
+     * Troop updates are counted in intervals, where the current interval is
+     * the current block height divided by interval length.
+     */
     function currentTroopInterval() public view returns (uint256) {
         return block.number / numBlocksInTroopUpdate;
+    }
+
+    /*
+     * Same as troop updates, but how when players lose troops on water tiles.
+     */
+    function currentWaterInterval() public view returns (uint256) {
+        return block.number / numBlocksInWaterUpdate;
     }
 }

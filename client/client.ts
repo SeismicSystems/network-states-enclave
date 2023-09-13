@@ -99,8 +99,13 @@ async function move(inp: string) {
     );
     const mRoot = mTree.root;
 
-    // Get the current troop interval.
-    const currentTroopInterval = (await nStates.currentTroopInterval()).toNumber();
+    // Get the current troop/water interval.
+    const currentTroopInterval = (
+        await nStates.currentTroopInterval()
+    ).toNumber();
+    const currentWaterInterval = (
+        await nStates.currentWaterInterval()
+    ).toNumber();
 
     if (PLAYER.bjjPrivHash === undefined) {
         throw Error("Can't move without a Baby Jubjub private key.");
@@ -111,8 +116,8 @@ async function move(inp: string) {
         PLAYER.bjjPrivHash,
         cursor,
         { r: nr, c: nc },
-        b.getTile(cursor).resources - 1,
-        currentTroopInterval
+        currentTroopInterval,
+        currentWaterInterval
     );
 
     // Alert enclave of intended move
@@ -134,12 +139,15 @@ async function move(inp: string) {
         tTo.nullifier(),
     ]);
     await nStates.move(
-        mRoot.toString(),
-        currentTroopInterval.toString(),
-        uFrom.hash(),
-        uTo.hash(),
-        tFrom.nullifier(),
-        tTo.nullifier(),
+        [
+            mRoot.toString(),
+            currentTroopInterval.toString(),
+            currentWaterInterval.toString(),
+            uFrom.hash(),
+            uTo.hash(),
+            tFrom.nullifier(),
+            tTo.nullifier(),
+        ],
         formattedProof.a,
         formattedProof.b,
         formattedProof.c
