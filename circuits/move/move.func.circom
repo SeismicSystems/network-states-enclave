@@ -29,7 +29,7 @@ template CheckNullifiers() {
  * Asserts 1) the hashes of the new tile states were computed correctly. 
  * It's this hiding commitment that's added to the on-chain merkle tree. 
  * 2) the player owns the 'from' tile, which is true when the player's 
- * private key corresponds to the tile's public keys.
+ * private key corresponds to the tile's public key hash.
  */
 template CheckLeaves(N_TL_ATRS, PK_HASH_IDX) {
     signal input uFrom[N_TL_ATRS];
