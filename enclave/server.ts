@@ -1,7 +1,7 @@
 import express from "express";
 import http from "http";
 import { Server, Socket } from "socket.io";
-import { ethers } from "ethers";
+import { ethers, utils } from "ethers";
 import dotenv from "dotenv";
 dotenv.config({ path: "../.env" });
 import {
@@ -64,6 +64,33 @@ function move(tFrom: any, tTo: any, uFrom: any, uTo: any) {
     b.setTile(Tile.fromJSON(uFrom));
     b.setTile(Tile.fromJSON(uTo));
     io.sockets.emit("updateDisplay");
+
+    console.log(Tile.fromJSON(uFrom).hash());
+}
+
+/*
+ * Propse move to enclave. In order for the move to be solidified, the enclave
+ * must respond to a leaf event.
+ */
+async function propose(
+    socket: Socket,
+    uFrom: any,
+    uTo: any
+) {
+    const uFromAsTile = Tile.fromJSON(uFrom);
+    const hUFrom = uFromAsTile.hash();
+    const uToAsTile = Tile.fromJSON(uTo);
+    const hUTo = uToAsTile.hash();
+
+    const digest = utils.solidityKeccak256(
+        ["uint256", "uint256"],
+        [hUFrom, hUTo]
+    );
+
+    socket.emit(
+        "proposeResponse",
+        await signer.signMessage(utils.arrayify(digest))
+    );
 }
 
 /*
@@ -91,8 +118,18 @@ function decrypt(
  */
 async function spawnPlayers() {
     await b.spawn({ r: 0, c: 0 }, PLAYER_A, START_RESOURCES, nStates);
-    await b.spawn({ r: 0, c: BOARD_SIZE - 1 }, PLAYER_B, START_RESOURCES, nStates);
-    await b.spawn({ r: BOARD_SIZE - 1, c: 0 }, PLAYER_C, START_RESOURCES, nStates);
+    await b.spawn(
+        { r: 0, c: BOARD_SIZE - 1 },
+        PLAYER_B,
+        START_RESOURCES,
+        nStates
+    );
+    await b.spawn(
+        { r: BOARD_SIZE - 1, c: 0 },
+        PLAYER_C,
+        START_RESOURCES,
+        nStates
+    );
 }
 
 /*
@@ -102,6 +139,9 @@ io.on("connection", (socket: Socket) => {
     console.log("Client connected: ", socket.id);
 
     socket.on("move", move);
+    socket.on("propose", (uFrom: any, uTo: any) => {
+        propose(socket, uFrom, uTo);
+    });
     socket.on("decrypt", (l: Location, pubkey: string, sig: string) => {
         decrypt(socket, l, Player.fromPubString(pubkey), sig);
     });

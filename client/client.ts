@@ -120,6 +120,12 @@ async function move(inp: string) {
         currentWaterInterval
     );
 
+    socket.emit(
+        "propose",
+        uFrom.toJSON(),
+        uTo.toJSON()
+    );
+
     // Alert enclave of intended move
     socket.emit(
         "move",
@@ -165,6 +171,14 @@ function decryptResponse(t: any) {
 }
 
 /*
+ * Get signature for move proposal. This signature and the queued move will be
+ * sent to the chain for approval.
+ */
+function proposeResponse(sig: any) {
+    console.log(sig);
+}
+
+/*
  * Refreshes the user's game board view. Done in response to enclave ping that
  * a relevant move was made.
  */
@@ -205,4 +219,5 @@ socket.on("connect", async () => {
  * Attach event handlers.
  */
 socket.on("decryptResponse", decryptResponse);
+socket.on("proposeResponse", proposeResponse);
 socket.on("updateDisplay", updateDisplay);
