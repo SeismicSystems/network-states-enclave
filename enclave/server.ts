@@ -64,8 +64,6 @@ function move(tFrom: any, tTo: any, uFrom: any, uTo: any) {
     b.setTile(Tile.fromJSON(uFrom));
     b.setTile(Tile.fromJSON(uTo));
     io.sockets.emit("updateDisplay");
-
-    console.log(Tile.fromJSON(uFrom).hash());
 }
 
 /*
@@ -91,6 +89,47 @@ async function propose(
         "proposeResponse",
         await signer.signMessage(utils.arrayify(digest))
     );
+}
+
+/*
+ * Alert enclave that solidity accepted new states into the global state.
+ * Enclave should confirm by checking NewLeaf events and change it's own belief.
+ * 
+ * [TODO]: automate this with an Alchemy node.
+ */
+async function ping(
+    socket: Socket,
+    uFrom: any,
+    uTo: any
+) {
+    const uFromAsTile = Tile.fromJSON(uFrom);
+    const hUFrom = BigInt(uFromAsTile.hash());
+    const uToAsTile = Tile.fromJSON(uTo);
+    const hUTo = BigInt(uToAsTile.hash());
+
+    const newLeafEvents = await nStates.queryFilter(
+        nStates.filters.NewLeaf()
+    );
+    const leaves: ethers.BigNumber[] = newLeafEvents.map((e) => e.args?.h);
+
+    let hUFromFound, hUToFound = false;
+    for (let i = 0; i < leaves.length; i++) {
+        const leaf = leaves[i].toBigInt();
+        if (leaf === hUFrom) {
+            hUFromFound = true;
+        }
+        if (leaf === hUTo) {
+            hUToFound = true
+        }
+    }
+    
+    if (hUFromFound && hUToFound) {
+        b.setTile(uFromAsTile);
+        b.setTile(uToAsTile);
+        socket.emit("pingResponse", true);
+        return;
+    }
+    socket.emit("pingResponse", false);
 }
 
 /*
@@ -141,6 +180,9 @@ io.on("connection", (socket: Socket) => {
     socket.on("move", move);
     socket.on("propose", (uFrom: any, uTo: any) => {
         propose(socket, uFrom, uTo);
+    });
+    socket.on("ping", (uFrom: any, uTo: any) => {
+        ping(socket, uFrom, uTo);
     });
     socket.on("decrypt", (l: Location, pubkey: string, sig: string) => {
         decrypt(socket, l, Player.fromPubString(pubkey), sig);

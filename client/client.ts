@@ -56,6 +56,11 @@ let cursor = PLAYER_START;
 let b: Board;
 
 /*
+ * Whether client should wait for move to be finalized.
+ */
+let moving: boolean;
+
+/*
  * Using Socket.IO to manage communication with enclave.
  */
 const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
@@ -120,13 +125,16 @@ async function move(inp: string) {
         currentWaterInterval
     );
 
+    // Alert enclave of intended move
     socket.emit(
         "propose",
         uFrom.toJSON(),
         uTo.toJSON()
     );
 
-    // Alert enclave of intended move
+    moving = false;
+
+    // This commits a move to to the enclave, whether it is valid or not
     socket.emit(
         "move",
         tFrom.toJSON(),
@@ -159,6 +167,12 @@ async function move(inp: string) {
         formattedProof.c
     );
 
+    socket.emit(
+        "ping",
+        uFrom.toJSON(),
+        uTo.toJSON()
+    );
+
     // Update player position
     cursor = { r: nr, c: nc };
 }
@@ -178,6 +192,20 @@ function proposeResponse(sig: any) {
     console.log(sig);
 }
 
+async function pingResponse(b: boolean, uFrom: any, uTo: any) {
+    if (b) {
+        moving = true;
+        await updatePlayerView();
+        await Utils.sleep(UPDATE_MLS);
+    } else {
+        socket.emit(
+            "ping",
+            uFrom,
+            uTo
+        );
+    }
+}
+
 /*
  * Refreshes the user's game board view. Done in response to enclave ping that
  * a relevant move was made.
@@ -194,11 +222,16 @@ async function updateDisplay() {
  * Repeatedly ask user for next move until exit.
  */
 async function gameLoop() {
-    rl.question(MOVE_PROMPT, async (ans) => {
-        await move(ans);
+    if (moving) {
+        rl.question(MOVE_PROMPT, async (ans) => {
+            await move(ans);
+            await Utils.sleep(UPDATE_MLS * 2);
+            gameLoop();
+        });
+    } else {
         await Utils.sleep(UPDATE_MLS * 2);
         gameLoop();
-    });
+    }
 }
 
 /*
@@ -212,6 +245,7 @@ socket.on("connect", async () => {
     updatePlayerView();
     await Utils.sleep(UPDATE_MLS);
     b.printView();
+    moving = true;
     gameLoop();
 });
 
@@ -220,4 +254,5 @@ socket.on("connect", async () => {
  */
 socket.on("decryptResponse", decryptResponse);
 socket.on("proposeResponse", proposeResponse);
+socket.on("pingResponse", pingResponse);
 socket.on("updateDisplay", updateDisplay);
