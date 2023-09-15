@@ -4,7 +4,7 @@ import { io, Socket } from "socket.io-client";
 import dotenv from "dotenv";
 dotenv.config({ path: "../.env" });
 import { ServerToClientEvents, ClientToServerEvents } from "../enclave/socket";
-import { Player, Tile, Board, Location, Utils } from "../game";
+import { Player, Tile, Board, Location, Utils, Groth16ProofCalldata } from "../game";
 
 /*
  * Conditions depend on which player is currently active.
@@ -59,6 +59,12 @@ let b: Board;
  * Whether client should wait for move to be finalized.
  */
 let moving: boolean;
+
+/*
+ * Store pending move.
+ */
+let pubSignals: string[];
+let formattedProof: Groth16ProofCalldata;
 
 /*
  * Using Socket.IO to manage communication with enclave.
@@ -125,56 +131,28 @@ async function move(inp: string) {
         currentWaterInterval
     );
 
+    pubSignals = [
+        mRoot.toString(),
+        currentTroopInterval.toString(),
+        currentWaterInterval.toString(),
+        uFrom.hash(),
+        uTo.hash(),
+        tFrom.nullifier(),
+        tTo.nullifier(),
+    ];
+    formattedProof = await Utils.exportCallDataGroth16(prf, pubSignals);
+
+    moving = false;
+
+    // Update player position
+    cursor = { r: nr, c: nc };
+
     // Alert enclave of intended move
     socket.emit(
         "propose",
         uFrom.toJSON(),
         uTo.toJSON()
     );
-
-    moving = false;
-
-    // This commits a move to to the enclave, whether it is valid or not
-    socket.emit(
-        "move",
-        tFrom.toJSON(),
-        tTo.toJSON(),
-        uFrom.toJSON(),
-        uTo.toJSON()
-    );
-
-    // Submit move to chain
-    const formattedProof = await Utils.exportCallDataGroth16(prf, [
-        mRoot.toString(),
-        currentTroopInterval.toString(),
-        uFrom.hash(),
-        uTo.hash(),
-        tFrom.nullifier(),
-        tTo.nullifier(),
-    ]);
-    await nStates.move(
-        [
-            mRoot.toString(),
-            currentTroopInterval.toString(),
-            currentWaterInterval.toString(),
-            uFrom.hash(),
-            uTo.hash(),
-            tFrom.nullifier(),
-            tTo.nullifier(),
-        ],
-        formattedProof.a,
-        formattedProof.b,
-        formattedProof.c
-    );
-
-    socket.emit(
-        "ping",
-        uFrom.toJSON(),
-        uTo.toJSON()
-    );
-
-    // Update player position
-    cursor = { r: nr, c: nc };
 }
 
 /*
@@ -188,14 +166,27 @@ function decryptResponse(t: any) {
  * Get signature for move proposal. This signature and the queued move will be
  * sent to the chain for approval.
  */
-function proposeResponse(sig: any) {
+async function proposeResponse(sig: any, uFrom: any, uTo: any) {
     console.log(sig);
+
+    await nStates.move(
+        [...pubSignals],
+        formattedProof.a,
+        formattedProof.b,
+        formattedProof.c
+    );
+
+    socket.emit(
+        "ping",
+        uFrom,
+        uTo
+    );
 }
 
 async function pingResponse(b: boolean, uFrom: any, uTo: any) {
     if (b) {
         moving = true;
-        await updatePlayerView();
+        await updateDisplay();
         await Utils.sleep(UPDATE_MLS);
     } else {
         socket.emit(

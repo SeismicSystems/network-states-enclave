@@ -2,7 +2,7 @@ import { Location } from "../game";
 
 interface ServerToClientEvents {
     decryptResponse: (t: any) => void;
-    proposeResponse: (sig: any) => void;
+    proposeResponse: (sig: any, uFrom: any, uTo: any) => void;
     pingResponse: (b: boolean, uFrom: any, uTo: any) => void;
     updateDisplay: () => void;
 }

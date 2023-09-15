@@ -87,7 +87,9 @@ async function propose(
 
     socket.emit(
         "proposeResponse",
-        await signer.signMessage(utils.arrayify(digest))
+        await signer.signMessage(utils.arrayify(digest)),
+        uFrom,
+        uTo
     );
 }
 
@@ -126,10 +128,10 @@ async function ping(
     if (hUFromFound && hUToFound) {
         b.setTile(uFromAsTile);
         b.setTile(uToAsTile);
-        socket.emit("pingResponse", true);
+        socket.emit("pingResponse", true, uFrom, uTo);
         return;
     }
-    socket.emit("pingResponse", false);
+    socket.emit("pingResponse", false, uFrom, uTo);
 }
 
 /*
