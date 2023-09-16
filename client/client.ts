@@ -244,3 +244,4 @@ socket.on("connect", async () => {
 socket.on("decryptResponse", decryptResponse);
 socket.on("proposeResponse", proposeResponse);
 socket.on("pingResponse", pingResponse);
+socket.on("updateDisplay", updateDisplay);
