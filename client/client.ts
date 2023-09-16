@@ -186,11 +186,9 @@ async function proposeResponse(sig: string, uFrom: any, uTo: any) {
     socket.emit("ping", uFrom, uTo);
 }
 
-async function pingResponse(b: boolean, uFrom: any, uTo: any) {
-    if (b) {
+function pingResponse(move: boolean, uFrom: any, uTo: any) {
+    if (move) {
         moving = true;
-        await updateDisplay();
-        await Utils.sleep(UPDATE_MLS);
     } else {
         socket.emit("ping", uFrom, uTo);
     }
@@ -213,13 +211,16 @@ async function updateDisplay() {
  */
 async function gameLoop() {
     if (moving) {
+        updatePlayerView();
+        await Utils.sleep(UPDATE_MLS);
+        b.printView();
         rl.question(MOVE_PROMPT, async (ans) => {
             await move(ans);
             await Utils.sleep(UPDATE_MLS * 2);
             gameLoop();
         });
     } else {
-        await Utils.sleep(UPDATE_MLS * 2);
+        await Utils.sleep(UPDATE_MLS);
         gameLoop();
     }
 }
@@ -232,9 +233,7 @@ socket.on("connect", async () => {
 
     b = new Board();
     await b.seed(BOARD_SIZE, false, nStates);
-    updatePlayerView();
-    await Utils.sleep(UPDATE_MLS);
-    b.printView();
+
     moving = true;
     gameLoop();
 });
@@ -245,4 +244,3 @@ socket.on("connect", async () => {
 socket.on("decryptResponse", decryptResponse);
 socket.on("proposeResponse", proposeResponse);
 socket.on("pingResponse", pingResponse);
-socket.on("updateDisplay", updateDisplay);

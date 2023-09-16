@@ -57,16 +57,6 @@ const nStates = new ethers.Contract(
 let b: Board;
 
 /*
- * Adjust internal state based on claimed move & notifies all users to
- * update their local views.
- */
-function move(tFrom: any, tTo: any, uFrom: any, uTo: any) {
-    b.setTile(Tile.fromJSON(uFrom));
-    b.setTile(Tile.fromJSON(uTo));
-    io.sockets.emit("updateDisplay");
-}
-
-/*
  * Propose move to enclave. In order for the move to be solidified, the enclave
  * must respond to a leaf event.
  */
@@ -167,7 +157,6 @@ async function spawnPlayers() {
 io.on("connection", (socket: Socket) => {
     console.log("Client connected: ", socket.id);
 
-    socket.on("move", move);
     socket.on("propose", (uFrom: any, uTo: any) => {
         propose(socket, uFrom, uTo);
     });
