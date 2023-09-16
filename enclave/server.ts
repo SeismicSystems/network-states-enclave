@@ -67,14 +67,10 @@ function move(tFrom: any, tTo: any, uFrom: any, uTo: any) {
 }
 
 /*
- * Propse move to enclave. In order for the move to be solidified, the enclave
+ * Propose move to enclave. In order for the move to be solidified, the enclave
  * must respond to a leaf event.
  */
-async function propose(
-    socket: Socket,
-    uFrom: any,
-    uTo: any
-) {
+async function propose(socket: Socket, uFrom: any, uTo: any) {
     const uFromAsTile = Tile.fromJSON(uFrom);
     const hUFrom = uFromAsTile.hash();
     const uToAsTile = Tile.fromJSON(uTo);
@@ -84,48 +80,40 @@ async function propose(
         ["uint256", "uint256"],
         [hUFrom, hUTo]
     );
+    const sig = await signer.signMessage(utils.arrayify(digest));
 
-    socket.emit(
-        "proposeResponse",
-        await signer.signMessage(utils.arrayify(digest)),
-        uFrom,
-        uTo
-    );
+    socket.emit("proposeResponse", sig, uFrom, uTo);
 }
 
 /*
  * Alert enclave that solidity accepted new states into the global state.
  * Enclave should confirm by checking NewLeaf events and change it's own belief.
- * 
+ *
  * [TODO]: automate this with an Alchemy node.
  */
-async function ping(
-    socket: Socket,
-    uFrom: any,
-    uTo: any
-) {
+async function ping(socket: Socket, uFrom: any, uTo: any) {
     const uFromAsTile = Tile.fromJSON(uFrom);
     const hUFrom = BigInt(uFromAsTile.hash());
     const uToAsTile = Tile.fromJSON(uTo);
     const hUTo = BigInt(uToAsTile.hash());
 
-    const newLeafEvents = await nStates.queryFilter(
-        nStates.filters.NewLeaf()
-    );
+    const newLeafEvents = await nStates.queryFilter(nStates.filters.NewLeaf());
     const leaves: ethers.BigNumber[] = newLeafEvents.map((e) => e.args?.h);
 
-    let hUFromFound, hUToFound = false;
+    let hUFromFound,
+        hUToFound = false;
     for (let i = 0; i < leaves.length; i++) {
         const leaf = leaves[i].toBigInt();
         if (leaf === hUFrom) {
             hUFromFound = true;
         }
         if (leaf === hUTo) {
-            hUToFound = true
+            hUToFound = true;
         }
     }
-    
+
     if (hUFromFound && hUToFound) {
+        // Update enclave belief
         b.setTile(uFromAsTile);
         b.setTile(uToAsTile);
         socket.emit("pingResponse", true, uFrom, uTo);

@@ -1,10 +1,17 @@
 import readline from "readline";
-import { ethers } from "ethers";
+import { ethers, Signature } from "ethers";
 import { io, Socket } from "socket.io-client";
 import dotenv from "dotenv";
 dotenv.config({ path: "../.env" });
 import { ServerToClientEvents, ClientToServerEvents } from "../enclave/socket";
-import { Player, Tile, Board, Location, Utils, Groth16ProofCalldata } from "../game";
+import {
+    Player,
+    Tile,
+    Board,
+    Location,
+    Utils,
+    Groth16ProofCalldata,
+} from "../game";
 
 /*
  * Conditions depend on which player is currently active.
@@ -63,7 +70,6 @@ let moving: boolean;
 /*
  * Store pending move.
  */
-let pubSignals: string[];
 let formattedProof: Groth16ProofCalldata;
 
 /*
@@ -131,7 +137,7 @@ async function move(inp: string) {
         currentWaterInterval
     );
 
-    pubSignals = [
+    formattedProof = await Utils.exportCallDataGroth16(prf, [
         mRoot.toString(),
         currentTroopInterval.toString(),
         currentWaterInterval.toString(),
@@ -139,8 +145,7 @@ async function move(inp: string) {
         uTo.hash(),
         tFrom.nullifier(),
         tTo.nullifier(),
-    ];
-    formattedProof = await Utils.exportCallDataGroth16(prf, pubSignals);
+    ]);
 
     moving = false;
 
@@ -148,11 +153,7 @@ async function move(inp: string) {
     cursor = { r: nr, c: nc };
 
     // Alert enclave of intended move
-    socket.emit(
-        "propose",
-        uFrom.toJSON(),
-        uTo.toJSON()
-    );
+    socket.emit("propose", uFrom.toJSON(), uTo.toJSON());
 }
 
 /*
@@ -166,21 +167,23 @@ function decryptResponse(t: any) {
  * Get signature for move proposal. This signature and the queued move will be
  * sent to the chain for approval.
  */
-async function proposeResponse(sig: any, uFrom: any, uTo: any) {
-    console.log(sig);
+async function proposeResponse(sig: string, uFrom: any, uTo: any) {
+    const unpackedSig: Signature = ethers.utils.splitSignature(sig);
 
     await nStates.move(
-        [...pubSignals],
-        formattedProof.a,
-        formattedProof.b,
-        formattedProof.c
+        formattedProof.input,
+        [
+            ...formattedProof.a,
+            ...formattedProof.b[0],
+            ...formattedProof.b[1],
+            ...formattedProof.c,
+        ],
+        unpackedSig.v,
+        unpackedSig.r,
+        unpackedSig.s
     );
 
-    socket.emit(
-        "ping",
-        uFrom,
-        uTo
-    );
+    socket.emit("ping", uFrom, uTo);
 }
 
 async function pingResponse(b: boolean, uFrom: any, uTo: any) {
@@ -189,11 +192,7 @@ async function pingResponse(b: boolean, uFrom: any, uTo: any) {
         await updateDisplay();
         await Utils.sleep(UPDATE_MLS);
     } else {
-        socket.emit(
-            "ping",
-            uFrom,
-            uTo
-        );
+        socket.emit("ping", uFrom, uTo);
     }
 }
 

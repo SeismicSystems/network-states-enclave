@@ -80,46 +80,58 @@ contract NStates is IncrementalMerkleTree {
      */
     function move(
         uint256[7] memory pubSignals,
-        uint256[2] memory a,
-        uint256[2][2] memory b,
-        uint256[2] memory c
+        uint256[8] memory formattedProof,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
     ) public {
-        uint256 root = pubSignals[0];
-        uint256 troopInterval = pubSignals[1];
-        uint256 waterInterval = pubSignals[2];
-        uint256 hUFrom = pubSignals[3];
-        uint256 hUTo = pubSignals[4];
-        uint256 rhoFrom = pubSignals[5];
-        uint256 rhoTo = pubSignals[6];
-
-        require(rootHistory[root], "Root must be in root history");
+        // root = pubSignals[0];
+        // troopInterval = pubSignals[1];
+        // waterInterval = pubSignals[2];
+        // hUFrom = pubSignals[3];
+        // hUTo = pubSignals[4];
+        // rhoFrom = pubSignals[5];
+        // rhoTo = pubSignals[6];
+        require(rootHistory[pubSignals[0]], "Root must be in root history");
         require(
-            currentTroopInterval() >= troopInterval,
+            currentTroopInterval() >= pubSignals[1],
             "Move is too far into the future, change currentTroopInterval value"
         );
         require(
-            currentWaterInterval() >= waterInterval,
+            currentWaterInterval() >= pubSignals[2],
             "Move is too far into the future, change currentWaterInterval value"
         );
         require(
-            !nullifiers[rhoFrom] && !nullifiers[rhoTo],
+            !nullifiers[pubSignals[5]] && !nullifiers[pubSignals[6]],
             "Move has already been made"
         );
         require(
-            verifierContract.verifyProof(a, b, c, pubSignals),
+            getSigner(pubSignals[3], pubSignals[4], v, r, s) == owner,
+            "Enclave signature is incorrect"
+        );
+        require(
+            verifierContract.verifyProof(
+                [formattedProof[0], formattedProof[1]],
+                [
+                    [formattedProof[2], formattedProof[3]],
+                    [formattedProof[4], formattedProof[5]]
+                ],
+                [formattedProof[6], formattedProof[7]],
+                pubSignals
+            ),
             "Invalid move proof"
         );
 
-        nullifiers[rhoFrom] = true;
-        nullifiers[rhoTo] = true;
+        nullifiers[pubSignals[5]] = true;
+        nullifiers[pubSignals[6]] = true;
 
-        insertLeaf(hUFrom);
-        insertLeaf(hUTo);
+        insertLeaf(pubSignals[3]);
+        insertLeaf(pubSignals[4]);
 
-        emit NewLeaf(hUFrom);
-        emit NewLeaf(hUTo);
-        emit NewNullifier(rhoFrom);
-        emit NewNullifier(rhoTo);
+        emit NewLeaf(pubSignals[3]);
+        emit NewLeaf(pubSignals[4]);
+        emit NewNullifier(pubSignals[5]);
+        emit NewNullifier(pubSignals[6]);
     }
 
     /*
@@ -153,5 +165,23 @@ contract NStates is IncrementalMerkleTree {
      */
     function currentWaterInterval() public view returns (uint256) {
         return block.number / numBlocksInWaterUpdate;
+    }
+
+    /*
+     * From a signature obtain the address that signed. This should
+     * be the enclave's address whenever a player submits a move.
+     */
+    function getSigner(
+        uint256 hUFrom,
+        uint256 hUTo,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) public pure returns (address) {
+        bytes32 hash = keccak256(abi.encode(hUFrom, hUTo));
+        bytes32 prefixedHash = keccak256(
+            abi.encodePacked("\x19Ethereum Signed Message:\n32", hash)
+        );
+        return ecrecover(prefixedHash, v, r, s);
     }
 }
