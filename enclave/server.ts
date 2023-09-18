@@ -51,10 +51,22 @@ const nStates = new ethers.Contract(
     signer
 );
 
+type ClaimMoves = {
+    uFrom: Tile,
+    uto: Tile,
+    hUFrom: string,
+    hUTo: string
+}
+
 /*
  * Enclave's internal belief on game state stored in Board object.
  */
 let b: Board;
+
+/*
+ * List of claimed moves, pend for contract to emit event.
+ */
+let claimedMoves: ClaimMoves[] = [];
 
 /*
  * Propose move to enclave. In order for the move to be solidified, the enclave
@@ -65,6 +77,8 @@ async function getSignature(socket: Socket, uFrom: any, uTo: any) {
     const hUFrom = uFromAsTile.hash();
     const uToAsTile = Tile.fromJSON(uTo);
     const hUTo = uToAsTile.hash();
+
+    claimedMoves.push({ uFrom: uFromAsTile, uto: uToAsTile, hUFrom, hUTo });
 
     const digest = utils.solidityKeccak256(
         ["uint256", "uint256"],
@@ -165,6 +179,11 @@ io.on("connection", (socket: Socket) => {
     });
     socket.on("decrypt", (l: Location, pubkey: string, sig: string) => {
         decrypt(socket, l, Player.fromPubString(pubkey), sig);
+    });
+    
+    nStates.on(nStates.filters.NewLeaf(), (log, event) => {
+        console.log(log);
+        console.log(event);
     });
 });
 
