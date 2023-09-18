@@ -1,7 +1,7 @@
 import express from "express";
 import http from "http";
 import { Server, Socket } from "socket.io";
-import { ethers } from "ethers";
+import { ethers, utils } from "ethers";
 import dotenv from "dotenv";
 dotenv.config({ path: "../.env" });
 import {
@@ -57,13 +57,59 @@ const nStates = new ethers.Contract(
 let b: Board;
 
 /*
- * Adjust internal state based on claimed move & notifies all users to
- * update their local views.
+ * Propose move to enclave. In order for the move to be solidified, the enclave
+ * must respond to a leaf event.
  */
-function move(tFrom: any, tTo: any, uFrom: any, uTo: any) {
-    b.setTile(Tile.fromJSON(uFrom));
-    b.setTile(Tile.fromJSON(uTo));
-    io.sockets.emit("updateDisplay");
+async function getSignature(socket: Socket, uFrom: any, uTo: any) {
+    const uFromAsTile = Tile.fromJSON(uFrom);
+    const hUFrom = uFromAsTile.hash();
+    const uToAsTile = Tile.fromJSON(uTo);
+    const hUTo = uToAsTile.hash();
+
+    const digest = utils.solidityKeccak256(
+        ["uint256", "uint256"],
+        [hUFrom, hUTo]
+    );
+    const sig = await signer.signMessage(utils.arrayify(digest));
+
+    socket.emit("getSignatureResponse", sig, uFrom, uTo);
+}
+
+/*
+ * Alert enclave that solidity accepted new states into the global state.
+ * Enclave should confirm by checking NewLeaf events and change it's own belief.
+ *
+ * [TMP]: automate this with an Alchemy node.
+ */
+async function ping(socket: Socket, uFrom: any, uTo: any) {
+    const uFromAsTile = Tile.fromJSON(uFrom);
+    const hUFrom = BigInt(uFromAsTile.hash());
+    const uToAsTile = Tile.fromJSON(uTo);
+    const hUTo = BigInt(uToAsTile.hash());
+
+    const newLeafEvents = await nStates.queryFilter(nStates.filters.NewLeaf());
+    const leaves: ethers.BigNumber[] = newLeafEvents.map((e) => e.args?.h);
+
+    let hUFromFound,
+        hUToFound = false;
+    for (let i = 0; i < leaves.length; i++) {
+        const leaf = leaves[i].toBigInt();
+        if (leaf === hUFrom) {
+            hUFromFound = true;
+        }
+        if (leaf === hUTo) {
+            hUToFound = true;
+        }
+    }
+
+    if (hUFromFound && hUToFound) {
+        // Update enclave belief
+        b.setTile(uFromAsTile);
+        b.setTile(uToAsTile);
+        socket.emit("pingResponse", true, uFrom, uTo);
+        return;
+    }
+    socket.emit("pingResponse", false, uFrom, uTo);
 }
 
 /*
@@ -91,8 +137,18 @@ function decrypt(
  */
 async function spawnPlayers() {
     await b.spawn({ r: 0, c: 0 }, PLAYER_A, START_RESOURCES, nStates);
-    await b.spawn({ r: 0, c: BOARD_SIZE - 1 }, PLAYER_B, START_RESOURCES, nStates);
-    await b.spawn({ r: BOARD_SIZE - 1, c: 0 }, PLAYER_C, START_RESOURCES, nStates);
+    await b.spawn(
+        { r: 0, c: BOARD_SIZE - 1 },
+        PLAYER_B,
+        START_RESOURCES,
+        nStates
+    );
+    await b.spawn(
+        { r: BOARD_SIZE - 1, c: 0 },
+        PLAYER_C,
+        START_RESOURCES,
+        nStates
+    );
 }
 
 /*
@@ -101,7 +157,12 @@ async function spawnPlayers() {
 io.on("connection", (socket: Socket) => {
     console.log("Client connected: ", socket.id);
 
-    socket.on("move", move);
+    socket.on("getSignature", (uFrom: any, uTo: any) => {
+        getSignature(socket, uFrom, uTo);
+    });
+    socket.on("ping", (uFrom: any, uTo: any) => {
+        ping(socket, uFrom, uTo);
+    });
     socket.on("decrypt", (l: Location, pubkey: string, sig: string) => {
         decrypt(socket, l, Player.fromPubString(pubkey), sig);
     });

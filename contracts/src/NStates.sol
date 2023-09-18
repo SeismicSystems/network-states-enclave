@@ -22,6 +22,28 @@ interface IHasherT3 {
     function poseidon(uint256[2] memory input) external pure returns (uint256);
 }
 
+struct MoveInputs {
+    uint256 root;
+    uint256 troopInterval;
+    uint256 waterInterval;
+    uint256 hUFrom;
+    uint256 hUTo;
+    uint256 rhoFrom;
+    uint256 rhoTo;
+}
+
+struct ProofInputs {
+    uint256[2] a;
+    uint256[2][2] b;
+    uint256[2] c;
+}
+
+struct SignatureInputs {
+    uint8 v;
+    bytes32 r;
+    bytes32 s;
+}
+
 contract NStates is IncrementalMerkleTree {
     IHasherT3 hasherT3 = IHasherT3(0x5FbDB2315678afecb367f032d93F642f64180aa3);
     IVerifier verifierContract =
@@ -36,12 +58,13 @@ contract NStates is IncrementalMerkleTree {
     mapping(uint256 => bool) public nullifiers;
 
     constructor(
+        address contractOwner,
         uint8 treeDepth,
         uint256 nothingUpMySleeve,
         uint256 nBlocksInTroopUpdate,
         uint256 nBlocksInWaterUpdate
     ) IncrementalMerkleTree(treeDepth, nothingUpMySleeve) {
-        owner = msg.sender;
+        owner = contractOwner;
         numBlocksInTroopUpdate = nBlocksInTroopUpdate;
         numBlocksInWaterUpdate = nBlocksInWaterUpdate;
     }
@@ -79,47 +102,47 @@ contract NStates is IncrementalMerkleTree {
      * anchored to a historical merkle root to be accepted.
      */
     function move(
-        uint256[7] memory pubSignals,
-        uint256[2] memory a,
-        uint256[2][2] memory b,
-        uint256[2] memory c
+        MoveInputs memory moveInputs,
+        ProofInputs memory moveProof,
+        SignatureInputs memory sig
     ) public {
-        uint256 root = pubSignals[0];
-        uint256 troopInterval = pubSignals[1];
-        uint256 waterInterval = pubSignals[2];
-        uint256 hUFrom = pubSignals[3];
-        uint256 hUTo = pubSignals[4];
-        uint256 rhoFrom = pubSignals[5];
-        uint256 rhoTo = pubSignals[6];
-
-        require(rootHistory[root], "Root must be in root history");
+        require(rootHistory[moveInputs.root], "Root must be in root history");
         require(
-            currentTroopInterval() >= troopInterval,
+            currentTroopInterval() >= moveInputs.troopInterval,
             "Move is too far into the future, change currentTroopInterval value"
         );
         require(
-            currentWaterInterval() >= waterInterval,
+            currentWaterInterval() >= moveInputs.waterInterval,
             "Move is too far into the future, change currentWaterInterval value"
         );
         require(
-            !nullifiers[rhoFrom] && !nullifiers[rhoTo],
+            !nullifiers[moveInputs.rhoFrom] && !nullifiers[moveInputs.rhoTo],
             "Move has already been made"
         );
         require(
-            verifierContract.verifyProof(a, b, c, pubSignals),
+            getSigner(moveInputs.hUFrom, moveInputs.hUTo, sig) == owner,
+            "Enclave signature is incorrect"
+        );
+        require(
+            verifierContract.verifyProof(
+                moveProof.a,
+                moveProof.b,
+                moveProof.c,
+                toArray(moveInputs)
+            ),
             "Invalid move proof"
         );
 
-        nullifiers[rhoFrom] = true;
-        nullifiers[rhoTo] = true;
+        nullifiers[moveInputs.rhoFrom] = true;
+        nullifiers[moveInputs.rhoTo] = true;
 
-        insertLeaf(hUFrom);
-        insertLeaf(hUTo);
+        insertLeaf(moveInputs.hUFrom);
+        insertLeaf(moveInputs.hUTo);
 
-        emit NewLeaf(hUFrom);
-        emit NewLeaf(hUTo);
-        emit NewNullifier(rhoFrom);
-        emit NewNullifier(rhoTo);
+        emit NewLeaf(moveInputs.hUFrom);
+        emit NewLeaf(moveInputs.hUTo);
+        emit NewNullifier(moveInputs.rhoFrom);
+        emit NewNullifier(moveInputs.rhoTo);
     }
 
     /*
@@ -153,5 +176,35 @@ contract NStates is IncrementalMerkleTree {
      */
     function currentWaterInterval() public view returns (uint256) {
         return block.number / numBlocksInWaterUpdate;
+    }
+
+    /*
+     * From a signature obtain the address that signed. This should
+     * be the enclave's address whenever a player submits a move.
+     */
+    function getSigner(
+        uint256 hUFrom,
+        uint256 hUTo,
+        SignatureInputs memory sig
+    ) public pure returns (address) {
+        bytes32 hash = keccak256(abi.encode(hUFrom, hUTo));
+        bytes32 prefixedHash = keccak256(
+            abi.encodePacked("\x19Ethereum Signed Message:\n32", hash)
+        );
+        return ecrecover(prefixedHash, sig.v, sig.r, sig.s);
+    }
+
+    function toArray(
+        MoveInputs memory moveInputs
+    ) internal pure returns (uint256[7] memory) {
+        return [
+            moveInputs.root,
+            moveInputs.troopInterval,
+            moveInputs.waterInterval,
+            moveInputs.hUFrom,
+            moveInputs.hUTo,
+            moveInputs.rhoFrom,
+            moveInputs.rhoTo
+        ];
     }
 }

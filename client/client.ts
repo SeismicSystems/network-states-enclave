@@ -1,10 +1,17 @@
 import readline from "readline";
-import { ethers } from "ethers";
+import { ethers, Signature } from "ethers";
 import { io, Socket } from "socket.io-client";
 import dotenv from "dotenv";
 dotenv.config({ path: "../.env" });
 import { ServerToClientEvents, ClientToServerEvents } from "../enclave/socket";
-import { Player, Tile, Board, Location, Utils } from "../game";
+import {
+    Player,
+    Tile,
+    Board,
+    Location,
+    Utils,
+    Groth16ProofCalldata,
+} from "../game";
 
 /*
  * Conditions depend on which player is currently active.
@@ -54,6 +61,16 @@ let cursor = PLAYER_START;
  * Client's local belief on game state stored in Board object.
  */
 let b: Board;
+
+/*
+ * Whether client should wait for move to be finalized.
+ */
+let moving: boolean;
+
+/*
+ * Store pending move.
+ */
+let formattedProof: Groth16ProofCalldata;
 
 /*
  * Using Socket.IO to manage communication with enclave.
@@ -120,41 +137,23 @@ async function move(inp: string) {
         currentWaterInterval
     );
 
-    // Alert enclave of intended move
-    socket.emit(
-        "move",
-        tFrom.toJSON(),
-        tTo.toJSON(),
-        uFrom.toJSON(),
-        uTo.toJSON()
-    );
-
-    // Submit move to chain
-    const formattedProof = await Utils.exportCallDataGroth16(prf, [
+    formattedProof = await Utils.exportCallDataGroth16(prf, [
         mRoot.toString(),
         currentTroopInterval.toString(),
+        currentWaterInterval.toString(),
         uFrom.hash(),
         uTo.hash(),
         tFrom.nullifier(),
         tTo.nullifier(),
     ]);
-    await nStates.move(
-        [
-            mRoot.toString(),
-            currentTroopInterval.toString(),
-            currentWaterInterval.toString(),
-            uFrom.hash(),
-            uTo.hash(),
-            tFrom.nullifier(),
-            tTo.nullifier(),
-        ],
-        formattedProof.a,
-        formattedProof.b,
-        formattedProof.c
-    );
+
+    moving = false;
 
     // Update player position
     cursor = { r: nr, c: nc };
+
+    // Alert enclave of intended move
+    socket.emit("getSignature", uFrom.toJSON(), uTo.toJSON());
 }
 
 /*
@@ -162,6 +161,52 @@ async function move(inp: string) {
  */
 function decryptResponse(t: any) {
     b.setTile(Tile.fromJSON(t));
+}
+
+/*
+ * Get signature for move proposal. This signature and the queued move will be
+ * sent to the chain for approval.
+ */
+async function getSignatureResponse(sig: string, uFrom: any, uTo: any) {
+    const unpackedSig: Signature = ethers.utils.splitSignature(sig);
+
+    const moveInputs = {
+        root: formattedProof.input[0],
+        troopInterval: formattedProof.input[1],
+        waterInterval: formattedProof.input[2],
+        hUFrom: formattedProof.input[3],
+        hUTo: formattedProof.input[4],
+        rhoFrom: formattedProof.input[5],
+        rhoTo: formattedProof.input[6],
+    };
+    const moveProof = {
+        a: formattedProof.a,
+        b: formattedProof.b,
+        c: formattedProof.c,
+    };
+    const moveSig = {
+        v: unpackedSig.v,
+        r: unpackedSig.r,
+        s: unpackedSig.s,
+    };
+
+    await nStates.move(moveInputs, moveProof, moveSig);
+
+    socket.emit("ping", uFrom, uTo);
+}
+
+/*
+ * Callback for client asking enclave if the move has been finalized.
+ *
+ * [TMP]: this will change when we have an Alchemy node alerting enclave that
+ * global state has been updated.
+ */
+function pingResponse(move: boolean, uFrom: any, uTo: any) {
+    if (move) {
+        moving = true;
+    } else {
+        socket.emit("ping", uFrom, uTo);
+    }
 }
 
 /*
@@ -180,11 +225,19 @@ async function updateDisplay() {
  * Repeatedly ask user for next move until exit.
  */
 async function gameLoop() {
-    rl.question(MOVE_PROMPT, async (ans) => {
-        await move(ans);
-        await Utils.sleep(UPDATE_MLS * 2);
+    if (moving) {
+        updatePlayerView();
+        await Utils.sleep(UPDATE_MLS);
+        b.printView();
+        rl.question(MOVE_PROMPT, async (ans) => {
+            await move(ans);
+            await Utils.sleep(UPDATE_MLS * 2);
+            gameLoop();
+        });
+    } else {
+        await Utils.sleep(UPDATE_MLS);
         gameLoop();
-    });
+    }
 }
 
 /*
@@ -195,9 +248,8 @@ socket.on("connect", async () => {
 
     b = new Board();
     await b.seed(BOARD_SIZE, false, nStates);
-    updatePlayerView();
-    await Utils.sleep(UPDATE_MLS);
-    b.printView();
+
+    moving = true;
     gameLoop();
 });
 
@@ -205,4 +257,6 @@ socket.on("connect", async () => {
  * Attach event handlers.
  */
 socket.on("decryptResponse", decryptResponse);
+socket.on("getSignatureResponse", getSignatureResponse);
+socket.on("pingResponse", pingResponse);
 socket.on("updateDisplay", updateDisplay);
