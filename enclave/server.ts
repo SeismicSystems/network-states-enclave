@@ -60,7 +60,7 @@ let b: Board;
  * Propose move to enclave. In order for the move to be solidified, the enclave
  * must respond to a leaf event.
  */
-async function propose(socket: Socket, uFrom: any, uTo: any) {
+async function getSignature(socket: Socket, uFrom: any, uTo: any) {
     const uFromAsTile = Tile.fromJSON(uFrom);
     const hUFrom = uFromAsTile.hash();
     const uToAsTile = Tile.fromJSON(uTo);
@@ -72,14 +72,14 @@ async function propose(socket: Socket, uFrom: any, uTo: any) {
     );
     const sig = await signer.signMessage(utils.arrayify(digest));
 
-    socket.emit("proposeResponse", sig, uFrom, uTo);
+    socket.emit("getSignatureResponse", sig, uFrom, uTo);
 }
 
 /*
  * Alert enclave that solidity accepted new states into the global state.
  * Enclave should confirm by checking NewLeaf events and change it's own belief.
  *
- * [TODO]: automate this with an Alchemy node.
+ * [TMP]: automate this with an Alchemy node.
  */
 async function ping(socket: Socket, uFrom: any, uTo: any) {
     const uFromAsTile = Tile.fromJSON(uFrom);
@@ -157,8 +157,8 @@ async function spawnPlayers() {
 io.on("connection", (socket: Socket) => {
     console.log("Client connected: ", socket.id);
 
-    socket.on("propose", (uFrom: any, uTo: any) => {
-        propose(socket, uFrom, uTo);
+    socket.on("getSignature", (uFrom: any, uTo: any) => {
+        getSignature(socket, uFrom, uTo);
     });
     socket.on("ping", (uFrom: any, uTo: any) => {
         ping(socket, uFrom, uTo);

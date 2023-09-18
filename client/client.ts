@@ -153,7 +153,7 @@ async function move(inp: string) {
     cursor = { r: nr, c: nc };
 
     // Alert enclave of intended move
-    socket.emit("propose", uFrom.toJSON(), uTo.toJSON());
+    socket.emit("getSignature", uFrom.toJSON(), uTo.toJSON());
 }
 
 /*
@@ -167,25 +167,40 @@ function decryptResponse(t: any) {
  * Get signature for move proposal. This signature and the queued move will be
  * sent to the chain for approval.
  */
-async function proposeResponse(sig: string, uFrom: any, uTo: any) {
+async function getSignatureResponse(sig: string, uFrom: any, uTo: any) {
     const unpackedSig: Signature = ethers.utils.splitSignature(sig);
 
-    await nStates.move(
-        formattedProof.input,
-        [
-            ...formattedProof.a,
-            ...formattedProof.b[0],
-            ...formattedProof.b[1],
-            ...formattedProof.c,
-        ],
-        unpackedSig.v,
-        unpackedSig.r,
-        unpackedSig.s
-    );
+    const moveInputs = {
+        root: formattedProof.input[0],
+        troopInterval: formattedProof.input[1],
+        waterInterval: formattedProof.input[2],
+        hUFrom: formattedProof.input[3],
+        hUTo: formattedProof.input[4],
+        rhoFrom: formattedProof.input[5],
+        rhoTo: formattedProof.input[6],
+    };
+    const moveProof = {
+        a: formattedProof.a,
+        b: formattedProof.b,
+        c: formattedProof.c,
+    };
+    const moveSig = {
+        v: unpackedSig.v,
+        r: unpackedSig.r,
+        s: unpackedSig.s,
+    };
+
+    await nStates.move(moveInputs, moveProof, moveSig);
 
     socket.emit("ping", uFrom, uTo);
 }
 
+/*
+ * Callback for client asking enclave if the move has been finalized.
+ *
+ * [TMP]: this will change when we have an Alchemy node alerting enclave that
+ * global state has been updated.
+ */
 function pingResponse(move: boolean, uFrom: any, uTo: any) {
     if (move) {
         moving = true;
@@ -242,6 +257,6 @@ socket.on("connect", async () => {
  * Attach event handlers.
  */
 socket.on("decryptResponse", decryptResponse);
-socket.on("proposeResponse", proposeResponse);
+socket.on("getSignatureResponse", getSignatureResponse);
 socket.on("pingResponse", pingResponse);
 socket.on("updateDisplay", updateDisplay);
