@@ -49,6 +49,7 @@ contract NStates is IncrementalMerkleTree {
     IVerifier verifierContract =
         IVerifier(0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512);
 
+    event NewMove(uint256 hUFrom, uint256 hUTo);
     event NewLeaf(uint256 h);
     event NewNullifier(uint256 rho);
 
@@ -139,6 +140,7 @@ contract NStates is IncrementalMerkleTree {
         insertLeaf(moveInputs.hUFrom);
         insertLeaf(moveInputs.hUTo);
 
+        emit NewMove(moveInputs.hUFrom, moveInputs.hUTo);
         emit NewLeaf(moveInputs.hUFrom);
         emit NewLeaf(moveInputs.hUTo);
         emit NewNullifier(moveInputs.rhoFrom);

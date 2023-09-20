@@ -51,12 +51,13 @@ const nStates = new ethers.Contract(
     signer
 );
 
-type ClaimMoves = {
-    uFrom: Tile,
-    uto: Tile,
-    hUFrom: string,
-    hUTo: string
-}
+type ClaimedMoved = {
+    socketId: string;
+    uFrom: Tile;
+    uTo: Tile;
+    hUFrom: string;
+    hUTo: string;
+};
 
 /*
  * Enclave's internal belief on game state stored in Board object.
@@ -66,7 +67,7 @@ let b: Board;
 /*
  * List of claimed moves, pend for contract to emit event.
  */
-let claimedMoves: ClaimMoves[] = [];
+let claimedMoves: ClaimedMoved[] = [];
 
 /*
  * Propose move to enclave. In order for the move to be solidified, the enclave
@@ -78,7 +79,13 @@ async function getSignature(socket: Socket, uFrom: any, uTo: any) {
     const uToAsTile = Tile.fromJSON(uTo);
     const hUTo = uToAsTile.hash();
 
-    claimedMoves.push({ uFrom: uFromAsTile, uto: uToAsTile, hUFrom, hUTo });
+    claimedMoves.push({
+        socketId: socket.id,
+        uFrom: uFromAsTile,
+        uTo: uToAsTile,
+        hUFrom,
+        hUTo,
+    });
 
     const digest = utils.solidityKeccak256(
         ["uint256", "uint256"],
@@ -180,10 +187,46 @@ io.on("connection", (socket: Socket) => {
     socket.on("decrypt", (l: Location, pubkey: string, sig: string) => {
         decrypt(socket, l, Player.fromPubString(pubkey), sig);
     });
-    
-    nStates.on(nStates.filters.NewLeaf(), (log, event) => {
-        console.log(log);
-        console.log(event);
+
+    nStates.on(nStates.filters.NewMove(), (hUFrom, hUTo) => {
+        console.log("hUFrom", hUFrom);
+        console.log("hUTo: ", hUTo);
+
+        hUFrom = Utils.intoBigNumber(hUFrom);
+        hUTo = Utils.intoBigNumber(hUTo);
+
+        for (let i = 0; i < claimedMoves.length; i++) {
+            const move = claimedMoves[i];
+
+            if (move.hUFrom === hUFrom && move.hUTo === hUTo) {
+                // Move is no longer pending
+                claimedMoves.splice(i, 1);
+
+                // Update enclave belief
+                b.setTile(move.uFrom);
+                b.setTile(move.uTo);
+
+                // Alert players who own nearby tiles to update their beliefs
+                let alertIds: { [id: string]: ClaimedMoved } = {};
+                const moveR = move.uFrom.loc.r;
+                const moveC = move.uFrom.loc.c;
+                for (let r = moveR - 1; r < moveR + 1; r++) {
+                    for (let c = moveC - 1; c < moveC + 1; c++) {
+                        if (
+                            r >= 0 &&
+                            r < b.t.length &&
+                            c >= 0 &&
+                            c < b.t.length
+                        ) {
+                            const tile = b.t[r][c];
+                            if (tile.owner != Tile.UNOWNED) {
+                                
+                            }
+                        }
+                    }
+                }
+            }
+        }
     });
 });
 

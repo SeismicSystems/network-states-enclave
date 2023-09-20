@@ -20,13 +20,19 @@ export class Player {
     bjjPriv?: PrivKey;
     bjjPrivHash?: BigInt;
     bjjPub!: PubKey;
+    socketId?: string;
 
-    constructor(symb: string, ethPriv?: BigInt, bjjPub_?: PubKey) {
+    constructor(
+        symb: string,
+        ethPriv?: BigInt,
+        bjjPub?: PubKey,
+        socketId?: string
+    ) {
         this.symbol = symb;
         if (ethPriv) {
             this.bjjPriv = new PrivKey(formatPrivKeyForBabyJub(ethPriv));
-        } else if (bjjPub_) {
-            this.bjjPub = bjjPub_;
+        } else if (bjjPub) {
+            this.bjjPub = bjjPub;
         } else {
             this.bjjPriv = new PrivKey(genPrivKey());
         }
@@ -40,6 +46,8 @@ export class Player {
         if (symb === "_") {
             this.bjjPub = new PubKey([UNOWNED_PUB_X, UNOWNED_PUB_Y]);
         }
+
+        this.socketId = socketId;
     }
 
     static fromPubString(p: string): Player {
