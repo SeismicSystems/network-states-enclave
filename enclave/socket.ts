@@ -1,4 +1,4 @@
-import { Location } from "../game";
+import { Location, Player } from "../game";
 
 interface ServerToClientEvents {
     decryptResponse: (t: any) => void;
@@ -8,6 +8,7 @@ interface ServerToClientEvents {
 }
 
 interface ClientToServerEvents {
+    spawn: (symbol: string, l: Location, pubkey: string) => void;
     decrypt: (l: Location, pubkey: string, sig: string) => void;
     getSignature: (uFrom: any, uTo: any) => void;
     ping: (uFrom: any, uTo: any) => void;

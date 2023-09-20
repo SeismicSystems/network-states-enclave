@@ -65,6 +65,11 @@ type ClaimedMoved = {
 let b: Board;
 
 /*
+ *
+ */
+let players: Player[] = [];
+
+/*
  * List of claimed moves, pend for contract to emit event.
  */
 let claimedMoves: ClaimedMoved[] = [];
@@ -156,20 +161,48 @@ function decrypt(
  * Dev function for spawning default players on the map. Player A isn't spawned
  * so we can test client spawn.
  */
-async function spawnPlayers() {
-    await b.spawn({ r: 0, c: 0 }, PLAYER_A, START_RESOURCES, nStates);
-    await b.spawn(
-        { r: 0, c: BOARD_SIZE - 1 },
-        PLAYER_B,
-        START_RESOURCES,
-        nStates
-    );
-    await b.spawn(
-        { r: BOARD_SIZE - 1, c: 0 },
-        PLAYER_C,
-        START_RESOURCES,
-        nStates
-    );
+// async function spawnPlayers() {
+//     await b.spawn({ r: 0, c: 0 }, PLAYER_A, START_RESOURCES, nStates);
+//     await b.spawn(
+//         { r: 0, c: BOARD_SIZE - 1 },
+//         PLAYER_B,
+//         START_RESOURCES,
+//         nStates
+//     );
+//     await b.spawn(
+//         { r: BOARD_SIZE - 1, c: 0 },
+//         PLAYER_C,
+//         START_RESOURCES,
+//         nStates
+//     );
+// }
+
+/*
+ * Dev function for spawning a player on the map. Returns true if player is
+ * spawned in. Return false otherwise.
+ */
+async function spawn(
+    socket: Socket,
+    symbol: string,
+    l: Location,
+    pubkey: string
+) {
+    // If player already exists, update the socketId. Otherwise, instantiate.
+    let alreadySpawned = false;
+    for (let i = 0; i < players.length; i++) {
+        if (pubkey === players[i].bjjPub.serialize()) {
+            players[i].socketId = socket.id;
+            alreadySpawned = true;
+        }
+    }
+    if (!alreadySpawned) {
+        let p = Player.fromPubString(pubkey);
+        p.symbol = symbol;
+        p.socketId = socket.id;
+
+        players.push(p);
+        await b.spawn(l, p, START_RESOURCES, nStates);
+    }
 }
 
 /*
@@ -178,6 +211,9 @@ async function spawnPlayers() {
 io.on("connection", (socket: Socket) => {
     console.log("Client connected: ", socket.id);
 
+    socket.on("spawn", (symbol: string, l: Location, pubkey: string) => {
+        spawn(socket, symbol, l, pubkey);
+    });
     socket.on("getSignature", (uFrom: any, uTo: any) => {
         getSignature(socket, uFrom, uTo);
     });
@@ -220,7 +256,7 @@ io.on("connection", (socket: Socket) => {
                         ) {
                             const tile = b.t[r][c];
                             if (tile.owner != Tile.UNOWNED) {
-                                
+                                // [TODO]: alert neighbors.
                             }
                         }
                     }
@@ -236,7 +272,6 @@ io.on("connection", (socket: Socket) => {
 server.listen(process.env.SERVER_PORT, async () => {
     b = new Board();
     await b.seed(BOARD_SIZE, true, nStates);
-    await spawnPlayers();
 
     console.log(
         `Server running on http://localhost:${process.env.SERVER_PORT}`

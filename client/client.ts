@@ -245,9 +245,17 @@ async function gameLoop() {
  */
 socket.on("connect", async () => {
     console.log("Server connection established");
+    PLAYER.socketId = socket.id;
 
     b = new Board();
     await b.seed(BOARD_SIZE, false, nStates);
+
+    socket.emit(
+        "spawn",
+        PLAYER_SYMBOL,
+        PLAYER_START,
+        PLAYER.bjjPub.serialize()
+    );
 
     moving = true;
     gameLoop();

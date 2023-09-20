@@ -47,7 +47,9 @@ export class Player {
             this.bjjPub = new PubKey([UNOWNED_PUB_X, UNOWNED_PUB_Y]);
         }
 
-        this.socketId = socketId;
+        if (socketId) {
+            this.socketId = socketId;
+        }
     }
 
     static fromPubString(p: string): Player {
