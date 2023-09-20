@@ -75,6 +75,34 @@ let players: Player[] = [];
 let claimedMoves: ClaimedMoved[] = [];
 
 /*
+ * Dev function for spawning a player on the map. Returns true if player is
+ * spawned in. Return false otherwise.
+ */
+async function spawn(
+    socket: Socket,
+    symbol: string,
+    l: Location,
+    pubkey: string
+) {
+    // If player already exists, update the socketId. Otherwise, instantiate.
+    let alreadySpawned = false;
+    for (let i = 0; i < players.length; i++) {
+        if (pubkey === players[i].bjjPub.serialize()) {
+            players[i].socketId = socket.id;
+            alreadySpawned = true;
+        }
+    }
+    if (!alreadySpawned) {
+        let p = Player.fromPubString(pubkey);
+        p.symbol = symbol;
+        p.socketId = socket.id;
+
+        players.push(p);
+        await b.spawn(l, p, START_RESOURCES, nStates);
+    }
+}
+
+/*
  * Propose move to enclave. In order for the move to be solidified, the enclave
  * must respond to a leaf event.
  */
@@ -158,54 +186,6 @@ function decrypt(
 }
 
 /*
- * Dev function for spawning default players on the map. Player A isn't spawned
- * so we can test client spawn.
- */
-// async function spawnPlayers() {
-//     await b.spawn({ r: 0, c: 0 }, PLAYER_A, START_RESOURCES, nStates);
-//     await b.spawn(
-//         { r: 0, c: BOARD_SIZE - 1 },
-//         PLAYER_B,
-//         START_RESOURCES,
-//         nStates
-//     );
-//     await b.spawn(
-//         { r: BOARD_SIZE - 1, c: 0 },
-//         PLAYER_C,
-//         START_RESOURCES,
-//         nStates
-//     );
-// }
-
-/*
- * Dev function for spawning a player on the map. Returns true if player is
- * spawned in. Return false otherwise.
- */
-async function spawn(
-    socket: Socket,
-    symbol: string,
-    l: Location,
-    pubkey: string
-) {
-    // If player already exists, update the socketId. Otherwise, instantiate.
-    let alreadySpawned = false;
-    for (let i = 0; i < players.length; i++) {
-        if (pubkey === players[i].bjjPub.serialize()) {
-            players[i].socketId = socket.id;
-            alreadySpawned = true;
-        }
-    }
-    if (!alreadySpawned) {
-        let p = Player.fromPubString(pubkey);
-        p.symbol = symbol;
-        p.socketId = socket.id;
-
-        players.push(p);
-        await b.spawn(l, p, START_RESOURCES, nStates);
-    }
-}
-
-/*
  * Attach event handlers to a new connection.
  */
 io.on("connection", (socket: Socket) => {
@@ -254,9 +234,15 @@ io.on("connection", (socket: Socket) => {
                             c >= 0 &&
                             c < b.t.length
                         ) {
+                            const l: Location = { r, c };
                             const tile = b.t[r][c];
-                            if (tile.owner != Tile.UNOWNED) {
+                            if (
+                                tile.owner != Tile.UNOWNED &&
+                                tile.owner.socketId
+                            ) {
                                 // [TODO]: alert neighbors.
+                                let socketId = tile.owner.socketId;
+                                socket.to(socketId).emit("updateDisplay", l);
                             }
                         }
                     }

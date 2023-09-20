@@ -4,7 +4,7 @@ interface ServerToClientEvents {
     decryptResponse: (t: any) => void;
     getSignatureResponse: (sig: string, uFrom: any, uTo: any) => void;
     pingResponse: (b: boolean, uFrom: any, uTo: any) => void;
-    updateDisplay: () => void;
+    updateDisplay: (l: Location) => void;
 }
 
 interface ClientToServerEvents {

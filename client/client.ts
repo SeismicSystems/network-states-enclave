@@ -81,21 +81,29 @@ const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
 
 /*
  * Iterates through entire board, asking enclave to reveal all secrets this
- * player is privy to.
- *
- * [TODO] Only ask for tiles that should be out of the fog.
+ * player is privy to. If location is given, then the update is local.
  */
-function updatePlayerView() {
-    for (let i = 0; i < BOARD_SIZE; i++) {
-        for (let j = 0; j < BOARD_SIZE; j++) {
-            const l: Location = { r: i, c: j };
-            const sig = PLAYER.genSig(Player.hForDecrypt(l));
-            socket.emit(
-                "decrypt",
-                l,
-                PLAYER.bjjPub.serialize(),
-                Utils.serializeSig(sig)
-            );
+function updatePlayerView(l?: Location) {
+    if (l) {
+        const sig = PLAYER.genSig(Player.hForDecrypt(l));
+        socket.emit(
+            "decrypt",
+            l,
+            PLAYER.bjjPub.serialize(),
+            Utils.serializeSig(sig)
+        );
+    } else {
+        for (let i = 0; i < BOARD_SIZE; i++) {
+            for (let j = 0; j < BOARD_SIZE; j++) {
+                const l: Location = { r: i, c: j };
+                const sig = PLAYER.genSig(Player.hForDecrypt(l));
+                socket.emit(
+                    "decrypt",
+                    l,
+                    PLAYER.bjjPub.serialize(),
+                    Utils.serializeSig(sig)
+                );
+            }
         }
     }
 }
@@ -213,9 +221,9 @@ function pingResponse(move: boolean, uFrom: any, uTo: any) {
  * Refreshes the user's game board view. Done in response to enclave ping that
  * a relevant move was made.
  */
-async function updateDisplay() {
+async function updateDisplay(l?: Location) {
     process.stdout.write("\n");
-    updatePlayerView();
+    updatePlayerView(l);
     await Utils.sleep(UPDATE_MLS);
     b.printView();
     process.stdout.write(MOVE_PROMPT);
