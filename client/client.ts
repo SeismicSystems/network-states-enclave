@@ -199,22 +199,6 @@ async function getSignatureResponse(sig: string, uFrom: any, uTo: any) {
     };
 
     await nStates.move(moveInputs, moveProof, moveSig);
-
-    socket.emit("ping", uFrom, uTo);
-}
-
-/*
- * Callback for client asking enclave if the move has been finalized.
- *
- * [TMP]: this will change when we have an Alchemy node alerting enclave that
- * global state has been updated.
- */
-function pingResponse(move: boolean, uFrom: any, uTo: any) {
-    if (move) {
-        moving = true;
-    } else {
-        socket.emit("ping", uFrom, uTo);
-    }
 }
 
 /*
@@ -253,16 +237,18 @@ async function gameLoop() {
  */
 socket.on("connect", async () => {
     console.log("Server connection established");
-    PLAYER.socketId = socket.id;
 
     b = new Board();
     await b.seed(BOARD_SIZE, false, nStates);
 
+    const sig = PLAYER.genSig(
+        Player.hForSpawn(Utils.asciiIntoBigNumber(socket.id))
+    );
     socket.emit(
         "spawn",
-        PLAYER_SYMBOL,
         PLAYER_START,
-        PLAYER.bjjPub.serialize()
+        PLAYER.bjjPub.serialize(),
+        Utils.serializeSig(sig)
     );
 
     moving = true;
@@ -274,5 +260,4 @@ socket.on("connect", async () => {
  */
 socket.on("decryptResponse", decryptResponse);
 socket.on("getSignatureResponse", getSignatureResponse);
-socket.on("pingResponse", pingResponse);
 socket.on("updateDisplay", updateDisplay);

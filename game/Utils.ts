@@ -58,9 +58,21 @@ export class Utils {
     }
 
     /*
-     * Wrapper for turning string into type compatible with IncrementalQuinTree
+     * Converts an ASCII string into its BigInt representation. Used to sign
+     * the client's socket ID.
+     */
+    static asciiIntoBigNumber(msg: string): BigInt {
+        let result = 0n;
+        for (let i = 0; i < msg.length; i++) {
+            result = (result << 8n) + BigInt(msg.charCodeAt(i));
+        }
+        return result;
+    }
+
+    /*
+     * Wrapper for turning string into type compatible with IncrementalQuinTree.
      */ 
-    static intoBigNumber(hash: string): BigNumber {
+    static hIntoBigNumber(hash: string): BigNumber {
         return BigNumber.from(hash);
      }
 
@@ -106,7 +118,7 @@ export class Utils {
         tileHash: string,
         mTree: IncrementalQuinTree
     ) {
-        const h = Utils.intoBigNumber(tileHash);
+        const h = Utils.hIntoBigNumber(tileHash);
         const numLeaves = mTree.leavesPerNode ** mTree.depth;
 
         let leafIndex: number | undefined;

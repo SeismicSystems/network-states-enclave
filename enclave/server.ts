@@ -1,7 +1,7 @@
 import express from "express";
 import http from "http";
 import { Server, Socket } from "socket.io";
-import { ethers, utils } from "ethers";
+import { BigNumber, ethers, utils } from "ethers";
 import dotenv from "dotenv";
 dotenv.config({ path: "../.env" });
 import {
@@ -11,6 +11,7 @@ import {
     SocketData,
 } from "./socket";
 import { Tile, Player, Board, Location, Utils } from "../game";
+import { hexlify } from "ethers/lib/utils";
 
 /*
  * Set game parameters and create dummy players.
@@ -55,14 +56,17 @@ type ClaimedMoved = {
     socketId: string;
     uFrom: Tile;
     uTo: Tile;
-    hUFrom: string;
-    hUTo: string;
+    hUFrom: BigNumber;
+    hUTo: BigNumber;
 };
 
 /*
  * Enclave's internal belief on game state stored in Board object.
  */
 let b: Board;
+
+let idToPubKey = new Map<string, string>();
+let pubKeyToId = new Map<string, string>();
 
 /*
  *
@@ -75,42 +79,14 @@ let players: Player[] = [];
 let claimedMoves: ClaimedMoved[] = [];
 
 /*
- * Dev function for spawning a player on the map. Returns true if player is
- * spawned in. Return false otherwise.
- */
-async function spawn(
-    socket: Socket,
-    symbol: string,
-    l: Location,
-    pubkey: string
-) {
-    // If player already exists, update the socketId. Otherwise, instantiate.
-    let alreadySpawned = false;
-    for (let i = 0; i < players.length; i++) {
-        if (pubkey === players[i].bjjPub.serialize()) {
-            players[i].socketId = socket.id;
-            alreadySpawned = true;
-        }
-    }
-    if (!alreadySpawned) {
-        let p = Player.fromPubString(pubkey);
-        p.symbol = symbol;
-        p.socketId = socket.id;
-
-        players.push(p);
-        await b.spawn(l, p, START_RESOURCES, nStates);
-    }
-}
-
-/*
  * Propose move to enclave. In order for the move to be solidified, the enclave
  * must respond to a leaf event.
  */
 async function getSignature(socket: Socket, uFrom: any, uTo: any) {
     const uFromAsTile = Tile.fromJSON(uFrom);
-    const hUFrom = uFromAsTile.hash();
+    const hUFrom = BigNumber.from(uFromAsTile.hash());
     const uToAsTile = Tile.fromJSON(uTo);
-    const hUTo = uToAsTile.hash();
+    const hUTo = BigNumber.from(uToAsTile.hash());
 
     claimedMoves.push({
         socketId: socket.id,
@@ -130,40 +106,36 @@ async function getSignature(socket: Socket, uFrom: any, uTo: any) {
 }
 
 /*
- * Alert enclave that solidity accepted new states into the global state.
- * Enclave should confirm by checking NewLeaf events and change it's own belief.
- *
- * [TMP]: automate this with an Alchemy node.
+ * Dev function for spawning a player on the map.
  */
-async function ping(socket: Socket, uFrom: any, uTo: any) {
-    const uFromAsTile = Tile.fromJSON(uFrom);
-    const hUFrom = BigInt(uFromAsTile.hash());
-    const uToAsTile = Tile.fromJSON(uTo);
-    const hUTo = BigInt(uToAsTile.hash());
-
-    const newLeafEvents = await nStates.queryFilter(nStates.filters.NewLeaf());
-    const leaves: ethers.BigNumber[] = newLeafEvents.map((e) => e.args?.h);
-
-    let hUFromFound,
-        hUToFound = false;
-    for (let i = 0; i < leaves.length; i++) {
-        const leaf = leaves[i].toBigInt();
-        if (leaf === hUFrom) {
-            hUFromFound = true;
-        }
-        if (leaf === hUTo) {
-            hUToFound = true;
-        }
-    }
-
-    if (hUFromFound && hUToFound) {
-        // Update enclave belief
-        b.setTile(uFromAsTile);
-        b.setTile(uToAsTile);
-        socket.emit("pingResponse", true, uFrom, uTo);
+async function spawn(
+    socket: Socket,
+    l: Location,
+    reqPlayer: Player,
+    sigStr: string
+) {
+    // If player is already spawned in, their socket ID will already be stored
+    if (idToPubKey.has(socket.id)) {
         return;
     }
-    socket.emit("pingResponse", false, uFrom, uTo);
+
+    const h = Player.hForSpawn(Utils.asciiIntoBigNumber(socket.id));
+    const sig = Utils.unserializeSig(sigStr);
+    if (sig && reqPlayer.verifySig(h, sig)) {
+        const pubkey = reqPlayer.bjjPub.serialize();
+
+        // Spawn if player is connected for the first time
+        if (!pubKeyToId.has(pubkey)) {
+            await b.spawn(l, reqPlayer, START_RESOURCES, nStates);
+        }
+
+        // Pair the public key and the socket ID
+        idToPubKey.set(socket.id, pubkey);
+        pubKeyToId.set(pubkey, socket.id);
+
+        // [TODO]: ping player to get their tiles viewed.
+        console.log(b.playerTiles.get(pubkey));
+    }
 }
 
 /*
@@ -191,30 +163,25 @@ function decrypt(
 io.on("connection", (socket: Socket) => {
     console.log("Client connected: ", socket.id);
 
-    socket.on("spawn", (symbol: string, l: Location, pubkey: string) => {
-        spawn(socket, symbol, l, pubkey);
+    socket.on("spawn", (l: Location, pubkey: string, sig: string) => {
+        spawn(socket, l, Player.fromPubString(pubkey), sig);
     });
     socket.on("getSignature", (uFrom: any, uTo: any) => {
         getSignature(socket, uFrom, uTo);
-    });
-    socket.on("ping", (uFrom: any, uTo: any) => {
-        ping(socket, uFrom, uTo);
     });
     socket.on("decrypt", (l: Location, pubkey: string, sig: string) => {
         decrypt(socket, l, Player.fromPubString(pubkey), sig);
     });
 
     nStates.on(nStates.filters.NewMove(), (hUFrom, hUTo) => {
-        console.log("hUFrom", hUFrom);
-        console.log("hUTo: ", hUTo);
-
-        hUFrom = Utils.intoBigNumber(hUFrom);
-        hUTo = Utils.intoBigNumber(hUTo);
-
         for (let i = 0; i < claimedMoves.length; i++) {
             const move = claimedMoves[i];
+            console.log("move: ", move);
 
-            if (move.hUFrom === hUFrom && move.hUTo === hUTo) {
+            if (
+                move.hUFrom._hex === hUFrom._hex &&
+                move.hUTo._hex === hUTo._hex
+            ) {
                 // Move is no longer pending
                 claimedMoves.splice(i, 1);
 
@@ -223,25 +190,20 @@ io.on("connection", (socket: Socket) => {
                 b.setTile(move.uTo);
 
                 // Alert players who own nearby tiles to update their beliefs
-                let alertIds: { [id: string]: ClaimedMoved } = {};
-                const moveR = move.uFrom.loc.r;
-                const moveC = move.uFrom.loc.c;
+                const moveR = move.uTo.loc.r;
+                const moveC = move.uTo.loc.c;
                 for (let r = moveR - 1; r < moveR + 1; r++) {
                     for (let c = moveC - 1; c < moveC + 1; c++) {
-                        if (
-                            r >= 0 &&
-                            r < b.t.length &&
-                            c >= 0 &&
-                            c < b.t.length
-                        ) {
+                        if (b.inBounds(r, c)) {
                             const l: Location = { r, c };
                             const tile = b.t[r][c];
+                            console.log("tile: ", tile);
                             if (
                                 tile.owner != Tile.UNOWNED &&
                                 tile.owner.socketId
                             ) {
-                                // [TODO]: alert neighbors.
                                 let socketId = tile.owner.socketId;
+                                console.log("updateDisplay");
                                 socket.to(socketId).emit("updateDisplay", l);
                             }
                         }

@@ -66,6 +66,14 @@ export class Player {
     }
 
     /*
+     * Convert socket ID into field element in Babyjubjub's base field using
+     * Poseidon hash. This is used for spawn and reconnect requests.
+     */
+    static hForSpawn(id: BigInt): BigInt {
+        return hashOne(id);
+    }
+
+    /*
      * Signs message (Babyjubjub field element) using EDDSA. Player instance
      * must already have a derived private key.
      */
