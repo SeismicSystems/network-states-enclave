@@ -165,14 +165,12 @@ async function move(inp: string) {
 }
 
 function spawnResponse(t: any[]) {
-    console.log(t);
     for (let i = 0; i < t.length; i++) {
         b.setTile(Tile.fromJSON(t[i]));
     }
 
-    // moving = true;
-    // gameLoop();
-    b.printView();
+    moving = true;
+    gameLoop();
 }
 
 /*
@@ -216,7 +214,7 @@ async function getSignatureResponse(sig: string, uFrom: any, uTo: any) {
  * Refreshes the user's game board view. Done in response to enclave ping that
  * a relevant move was made.
  */
-async function updateDisplay(l?: Location) {
+async function updateDisplay(l: Location) {
     process.stdout.write("\n");
     updatePlayerView(l);
     await Utils.sleep(UPDATE_MLS);
@@ -228,19 +226,24 @@ async function updateDisplay(l?: Location) {
  * Repeatedly ask user for next move until exit.
  */
 async function gameLoop() {
-    if (moving) {
-        updatePlayerView();
-        await Utils.sleep(UPDATE_MLS);
-        b.printView();
-        rl.question(MOVE_PROMPT, async (ans) => {
-            await move(ans);
-            await Utils.sleep(UPDATE_MLS * 2);
-            gameLoop();
-        });
-    } else {
-        await Utils.sleep(UPDATE_MLS);
-        gameLoop();
-    }
+    // if (moving) {
+    //     updatePlayerView();
+    //     await Utils.sleep(UPDATE_MLS);
+    //     b.printView();
+    //     rl.question(MOVE_PROMPT, async (ans) => {
+    //         await move(ans);
+    //         await Utils.sleep(UPDATE_MLS * 2);
+    //         gameLoop();
+    //     });
+    // } else {
+    //     await Utils.sleep(UPDATE_MLS);
+    //     gameLoop();
+    // }
+
+    updatePlayerView();
+    await Utils.sleep(UPDATE_MLS);
+    b.printView();
+    await move("s");
 }
 
 /*
@@ -264,7 +267,6 @@ socket.on("connect", async () => {
         Utils.serializeSig(sig)
     );
 });
-
 /*
  * Attach event handlers.
  */

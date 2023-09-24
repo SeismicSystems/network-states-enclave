@@ -1,7 +1,7 @@
 import express from "express";
 import http from "http";
 import { Server, Socket } from "socket.io";
-import { BigNumber, ethers, utils } from "ethers";
+import { ethers, utils } from "ethers";
 import dotenv from "dotenv";
 dotenv.config({ path: "../.env" });
 import {
@@ -11,7 +11,6 @@ import {
     SocketData,
 } from "./socket";
 import { Tile, Player, Board, Location, Utils } from "../game";
-import { hexlify } from "ethers/lib/utils";
 
 /*
  * Set game parameters and create dummy players.
@@ -52,12 +51,9 @@ const nStates = new ethers.Contract(
     signer
 );
 
-type ClaimedMoved = {
-    socketId: string;
+type ClaimedMove = {
     uFrom: Tile;
     uTo: Tile;
-    hUFrom: BigNumber;
-    hUTo: BigNumber;
 };
 
 /*
@@ -69,14 +65,9 @@ let idToPubKey = new Map<string, string>();
 let pubKeyToId = new Map<string, string>();
 
 /*
- *
+ * Claimed moves. A move is finalized whenever NewMove event is emitted.
  */
-let players: Player[] = [];
-
-/*
- * List of claimed moves, pend for contract to emit event.
- */
-let claimedMoves: ClaimedMoved[] = [];
+let claimedMoves = new Map<string, ClaimedMove>();
 
 /*
  * Propose move to enclave. In order for the move to be solidified, the enclave
@@ -84,16 +75,14 @@ let claimedMoves: ClaimedMoved[] = [];
  */
 async function getSignature(socket: Socket, uFrom: any, uTo: any) {
     const uFromAsTile = Tile.fromJSON(uFrom);
-    const hUFrom = BigNumber.from(uFromAsTile.hash());
+    const hUFrom = uFromAsTile.hash();
     const uToAsTile = Tile.fromJSON(uTo);
-    const hUTo = BigNumber.from(uToAsTile.hash());
+    const hUTo = uToAsTile.hash();
 
-    claimedMoves.push({
-        socketId: socket.id,
+    const moveHash = { hUFrom, hUTo };
+    claimedMoves.set(hUFrom.concat(hUTo), {
         uFrom: uFromAsTile,
-        uTo: uToAsTile,
-        hUFrom,
-        hUTo,
+        uTo: uToAsTile
     });
 
     const digest = utils.solidityKeccak256(
@@ -134,11 +123,9 @@ async function spawn(
         pubKeyToId.set(pubkey, socket.id);
 
         let visibleTiles: Tile[] = [];
-        b.playerTiles
-            .get(pubkey)
-            ?.forEach((l) => {
-                visibleTiles.push(...b.getNeighborhood(l));
-            });
+        b.playerTiles.get(pubkey)?.forEach((l) => {
+            visibleTiles.push(...b.getNeighborhood(l));
+        });
         socket.emit("spawnResponse", visibleTiles);
     }
 }
@@ -162,6 +149,37 @@ function decrypt(
     socket.emit("decryptResponse", Tile.mystery(l).toJSON());
 }
 
+function onMoveFinalize(io: Server, hUFrom: string, hUTo: string) {
+    const moveHash = hUFrom.concat(hUTo);
+    const move = claimedMoves.get(moveHash);
+    if (move) {
+        // Move is no longer pending
+        claimedMoves.delete(moveHash);
+
+        // Update state
+        b.setTile(move.uFrom);
+        b.setTile(move.uTo);
+
+        // Alert nearby players that a displayUpdate is needed
+        const displayUpdateLocations = [
+            ...b.getNearbyLocations(move.uFrom.loc),
+            ...b.getNearbyLocations(move.uTo.loc),
+        ];
+        for (let l of displayUpdateLocations) {
+            const socketId = pubKeyToId.get(
+                b.getTile(l).owner.bjjPub.serialize()
+            );
+            if (socketId) {
+                io.to(socketId).emit("updateDisplay", l);
+            }
+        }
+    } else {
+        console.log(
+            `Move: (${hUFrom}, ${hUTo}) was finalized without a signature.`
+        );
+    }
+}
+
 /*
  * Attach event handlers to a new connection.
  */
@@ -177,46 +195,10 @@ io.on("connection", (socket: Socket) => {
     socket.on("decrypt", (l: Location, pubkey: string, sig: string) => {
         decrypt(socket, l, Player.fromPubString("", pubkey), sig);
     });
+});
 
-    nStates.on(nStates.filters.NewMove(), (hUFrom, hUTo) => {
-        for (let i = 0; i < claimedMoves.length; i++) {
-            const move = claimedMoves[i];
-            console.log("move: ", move);
-
-            if (
-                move.hUFrom._hex === hUFrom._hex &&
-                move.hUTo._hex === hUTo._hex
-            ) {
-                // Move is no longer pending
-                claimedMoves.splice(i, 1);
-
-                // Update enclave belief
-                b.setTile(move.uFrom);
-                b.setTile(move.uTo);
-
-                // Alert players who own nearby tiles to update their beliefs
-                const moveR = move.uTo.loc.r;
-                const moveC = move.uTo.loc.c;
-                for (let r = moveR - 1; r < moveR + 1; r++) {
-                    for (let c = moveC - 1; c < moveC + 1; c++) {
-                        if (b.inBounds(r, c)) {
-                            const l: Location = { r, c };
-                            const tile = b.t[r][c];
-                            console.log("tile: ", tile);
-                            if (
-                                tile.owner != Tile.UNOWNED &&
-                                tile.owner.socketId
-                            ) {
-                                let socketId = tile.owner.socketId;
-                                console.log("updateDisplay");
-                                socket.to(socketId).emit("updateDisplay", l);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    });
+nStates.on(nStates.filters.NewMove(), (hUFrom, hUTo) => {
+    onMoveFinalize(io, hUFrom.toString(), hUTo.toString());
 });
 
 /*

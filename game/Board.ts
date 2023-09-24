@@ -155,6 +155,18 @@ export class Board {
         return tiles;
     }
 
+    public getNearbyLocations(l: Location): Location[] {
+        let locs: Location[] = [];
+        for (let r = l.r - 1; r <= l.r + 1; r++) {
+            for (let c = l.c - 1; c <= l.c + 1; c++) {
+                if (this.inBounds(r, c)) {
+                    locs.push({ r, c });
+                }
+            }
+        }
+        return locs;
+    }
+
     /*
      * Set location to new Tile value. Enclave-only func.
      */
