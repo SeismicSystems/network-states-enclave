@@ -133,10 +133,13 @@ async function spawn(
         idToPubKey.set(socket.id, pubkey);
         pubKeyToId.set(pubkey, socket.id);
 
-        const tileData = b.playerTiles
+        let visibleTiles: Tile[] = [];
+        b.playerTiles
             .get(pubkey)
-            ?.map((l) => b.getTile(l).toJSON());
-        socket.emit("spawnResponse", tileData);
+            ?.forEach((l) => {
+                visibleTiles.push(...b.getNeighborhood(l));
+            });
+        socket.emit("spawnResponse", visibleTiles);
     }
 }
 

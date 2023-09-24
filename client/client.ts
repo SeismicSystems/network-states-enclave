@@ -170,8 +170,9 @@ function spawnResponse(t: any[]) {
         b.setTile(Tile.fromJSON(t[i]));
     }
 
-    moving = true;
-    gameLoop();
+    // moving = true;
+    // gameLoop();
+    b.printView();
 }
 
 /*
