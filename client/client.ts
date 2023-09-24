@@ -164,6 +164,16 @@ async function move(inp: string) {
     socket.emit("getSignature", uFrom.toJSON(), uTo.toJSON());
 }
 
+function spawnResponse(t: any[]) {
+    console.log(t);
+    for (let i = 0; i < t.length; i++) {
+        b.setTile(Tile.fromJSON(t[i]));
+    }
+
+    moving = true;
+    gameLoop();
+}
+
 /*
  * Update local view of game board based on enclave response.
  */
@@ -244,20 +254,20 @@ socket.on("connect", async () => {
     const sig = PLAYER.genSig(
         Player.hForSpawn(Utils.asciiIntoBigNumber(socket.id))
     );
+
     socket.emit(
         "spawn",
         PLAYER_START,
         PLAYER.bjjPub.serialize(),
+        PLAYER_SYMBOL,
         Utils.serializeSig(sig)
     );
-
-    moving = true;
-    gameLoop();
 });
 
 /*
  * Attach event handlers.
  */
+socket.on("spawnResponse", spawnResponse);
 socket.on("decryptResponse", decryptResponse);
 socket.on("getSignatureResponse", getSignatureResponse);
 socket.on("updateDisplay", updateDisplay);

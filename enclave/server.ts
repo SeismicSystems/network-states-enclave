@@ -133,8 +133,10 @@ async function spawn(
         idToPubKey.set(socket.id, pubkey);
         pubKeyToId.set(pubkey, socket.id);
 
-        // [TODO]: ping player to get their tiles viewed.
-        console.log(b.playerTiles.get(pubkey));
+        const tileData = b.playerTiles
+            .get(pubkey)
+            ?.map((l) => b.getTile(l).toJSON());
+        socket.emit("spawnResponse", tileData);
     }
 }
 
@@ -163,14 +165,14 @@ function decrypt(
 io.on("connection", (socket: Socket) => {
     console.log("Client connected: ", socket.id);
 
-    socket.on("spawn", (l: Location, pubkey: string, sig: string) => {
-        spawn(socket, l, Player.fromPubString(pubkey), sig);
+    socket.on("spawn", (l: Location, p: string, s: string, sig: string) => {
+        spawn(socket, l, Player.fromPubString(s, p), sig);
     });
     socket.on("getSignature", (uFrom: any, uTo: any) => {
         getSignature(socket, uFrom, uTo);
     });
     socket.on("decrypt", (l: Location, pubkey: string, sig: string) => {
-        decrypt(socket, l, Player.fromPubString(pubkey), sig);
+        decrypt(socket, l, Player.fromPubString("", pubkey), sig);
     });
 
     nStates.on(nStates.filters.NewMove(), (hUFrom, hUTo) => {

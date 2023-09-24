@@ -52,8 +52,8 @@ export class Player {
         }
     }
 
-    static fromPubString(p: string): Player {
-        return new Player("", undefined, PubKey.unserialize(p));
+    static fromPubString(s: string, p: string): Player {
+        return new Player(s, undefined, PubKey.unserialize(p));
     }
 
     /*
