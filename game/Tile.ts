@@ -14,13 +14,16 @@ export class Tile {
     static MYSTERY: Player = new Player("?");
 
     static NORMAL_TILE: number = 0;
-    static WATER_TILE: number = 1;
-    static HILL_TILE: number = 2;
+    static CITY_TILE: number = 1;
+    static CAPITAL_TILE: number = 2;
+    static WATER_TILE: number = 3;
+    static HILL_TILE: number = 4;
 
     owner: Player;
     loc: Location;
     resources: number;
     key: BigInt;
+    cityId: number;
     latestTroopUpdateInterval: number;
     latestWaterUpdateInterval: number;
     tileType: number;
@@ -30,6 +33,7 @@ export class Tile {
         l_: Location,
         r_: number,
         k_: BigInt,
+        c_: number,
         i_: number,
         w_: number,
         t_: number
@@ -38,6 +42,7 @@ export class Tile {
         this.loc = l_;
         this.resources = r_;
         this.key = k_;
+        this.cityId = c_;
         this.latestTroopUpdateInterval = i_;
         this.latestWaterUpdateInterval = w_;
         this.tileType = t_;
@@ -127,6 +132,7 @@ export class Tile {
             { r: parseInt(obj.r, 10), c: parseInt(obj.c, 10) },
             parseInt(obj.resources, 10),
             BigInt(obj.key),
+            parseInt(obj.cityId, 10),
             parseInt(obj.latestTroopUpdateInterval, 10),
             parseInt(obj.latestWaterUpdateInterval, 10),
             parseInt(obj.tileType, 10)
@@ -137,14 +143,32 @@ export class Tile {
      * Meant to represent a tile in the fog of war.
      */
     static mystery(l: Location): Tile {
-        return new Tile(Tile.MYSTERY, l, 0, BigInt(0), 0, 0, this.NORMAL_TILE);
+        return new Tile(
+            Tile.MYSTERY,
+            l,
+            0,
+            BigInt(0),
+            0,
+            0,
+            0,
+            this.NORMAL_TILE
+        );
     }
 
     /*
      * Hill tile. Players cannot move onto a hill tile.
      */
     static hill(l: Location): Tile {
-        return new Tile(Tile.UNOWNED, l, 0, genRandomSalt(), 0, 0, this.HILL_TILE);
+        return new Tile(
+            Tile.UNOWNED,
+            l,
+            0,
+            genRandomSalt(),
+            0,
+            0,
+            0,
+            this.HILL_TILE
+        );
     }
 
     /*
@@ -158,6 +182,7 @@ export class Tile {
             genRandomSalt(),
             0,
             0,
+            0,
             this.NORMAL_TILE
         );
     }
@@ -165,8 +190,16 @@ export class Tile {
     /*
      * New owned tile with random salt as the access key.
      */
-    static genOwned(o_: Player, l_: Location, r_: number, i_: number, w_: number, t_: number): Tile {
-        return new Tile(o_, l_, r_, genRandomSalt(), i_, w_, t_);
+    static genOwned(
+        o_: Player,
+        l_: Location,
+        r_: number,
+        c_: number,
+        i_: number,
+        w_: number,
+        t_: number
+    ): Tile {
+        return new Tile(o_, l_, r_, genRandomSalt(), c_, i_, w_, t_);
     }
 
     /*
@@ -178,6 +211,7 @@ export class Tile {
             l_,
             0,
             genRandomSalt(),
+            0,
             0,
             0,
             this.WATER_TILE

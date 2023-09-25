@@ -73,6 +73,7 @@ export class Board {
         l: Location,
         pl: Player,
         resource: number,
+        cityId: number,
         nStates: any
     ) {
         this.assertBounds(l);
@@ -90,9 +91,10 @@ export class Board {
             pl,
             { r, c },
             resource,
+            cityId,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.CAPITAL_TILE
         );
 
         this.setTile(tl);
@@ -262,12 +264,16 @@ export class Board {
         if (nMobilize < 1) {
             throw Error("Cannot move without mobilizing at least 1 troop.");
         }
+        if (tTo.owner === tFrom.owner && tTo.cityId != tFrom.cityId) {
+            throw Error("Cannot move from one of your cities to another.");
+        }
         let uTo: Tile;
         if (tTo.owner === tFrom.owner) {
             uTo = Tile.genOwned(
                 tTo.owner,
                 tTo.loc,
                 updatedTroops + nMobilize,
+                tFrom.cityId,
                 currentTroopInterval,
                 currentWaterInterval,
                 tTo.tileType
@@ -277,6 +283,7 @@ export class Board {
                 tFrom.owner,
                 tTo.loc,
                 nMobilize,
+                tFrom.cityId,
                 currentTroopInterval,
                 currentWaterInterval,
                 tTo.tileType
@@ -286,6 +293,7 @@ export class Board {
                 tTo.owner,
                 tTo.loc,
                 updatedTroops - nMobilize,
+                tTo.cityId,
                 currentTroopInterval,
                 currentWaterInterval,
                 tTo.tileType
@@ -293,6 +301,7 @@ export class Board {
             if (uTo.resources < 0) {
                 uTo.owner = uFrom.owner;
                 uTo.resources *= -1;
+                uTo.cityId = uFrom.cityId;
             }
         }
         return uTo;
@@ -331,6 +340,7 @@ export class Board {
             tFrom.owner,
             tFrom.loc,
             fromUpdatedTroops - nMobilize,
+            tFrom.cityId,
             currentTroopInterval,
             currentWaterInterval,
             tFrom.tileType
