@@ -149,14 +149,14 @@ async function move(inp: string) {
     socket.emit("getSignature", uFrom.toJSON(), uTo.toJSON());
 }
 
-function spawnResponse(t: any[]) {
-    for (let i = 0; i < t.length; i++) {
-        b.setTile(Tile.fromJSON(t[i]));
-    }
-
-    console.clear();
-    b.printView();
-    process.stdout.write(MOVE_PROMPT);
+/*
+ * After spawning in, player recieves a list of locations that they should
+ * decrypt.
+ */
+async function spawnResponse(locs: Location[]) {
+    updateDisplay(locs);
+    
+    await Utils.sleep(UPDATE_MLS);
     canMove = true;
 }
 
@@ -210,9 +210,6 @@ async function updateDisplay(locs: Location[]) {
     for (let l of locs) {
         updatePlayerView(l);
     }
-    // await Utils.sleep(UPDATE_MLS * 2);
-    // b.printView();
-    // process.stdout.write(MOVE_PROMPT);
 }
 
 /*
@@ -224,10 +221,10 @@ socket.on("connect", async () => {
     b = new Board();
     await b.seed(BOARD_SIZE, false, nStates);
 
+    // Sign socket ID for spawn
     const sig = PLAYER.genSig(
         Player.hForSpawn(Utils.asciiIntoBigNumber(socket.id))
     );
-
     socket.emit(
         "spawn",
         PLAYER_START,

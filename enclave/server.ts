@@ -21,11 +21,6 @@ const START_RESOURCES: number = parseInt(
     10
 );
 
-const PRIVKEYS = JSON.parse(<string>process.env.ETH_PRIVKEYS);
-const PLAYER_A: Player = new Player("A", BigInt(PRIVKEYS["A"]));
-const PLAYER_B: Player = new Player("B", BigInt(PRIVKEYS["B"]));
-const PLAYER_C: Player = new Player("C", BigInt(PRIVKEYS["C"]));
-
 /*
  * Using Socket.IO to manage communication to clients.
  */
@@ -61,38 +56,17 @@ type ClaimedMove = {
  */
 let b: Board;
 
+/*
+ * Bijection between player's public keys and their socket IDs.
+ */
 let idToPubKey = new Map<string, string>();
 let pubKeyToId = new Map<string, string>();
 
 /*
- * Claimed moves. A move is finalized whenever NewMove event is emitted.
+ * Moves claimed by players. A move is finalized whenever NewMove event is
+ * emitted.
  */
 let claimedMoves = new Map<string, ClaimedMove>();
-
-/*
- * Propose move to enclave. In order for the move to be solidified, the enclave
- * must respond to a leaf event.
- */
-async function getSignature(socket: Socket, uFrom: any, uTo: any) {
-    const uFromAsTile = Tile.fromJSON(uFrom);
-    const hUFrom = uFromAsTile.hash();
-    const uToAsTile = Tile.fromJSON(uTo);
-    const hUTo = uToAsTile.hash();
-
-    const moveHash = { hUFrom, hUTo };
-    claimedMoves.set(hUFrom.concat(hUTo), {
-        uFrom: uFromAsTile,
-        uTo: uToAsTile,
-    });
-
-    const digest = utils.solidityKeccak256(
-        ["uint256", "uint256"],
-        [hUFrom, hUTo]
-    );
-    const sig = await signer.signMessage(utils.arrayify(digest));
-
-    socket.emit("getSignatureResponse", sig, uFrom, uTo);
-}
 
 /*
  * Dev function for spawning a player on the map.
@@ -122,12 +96,36 @@ async function spawn(
         idToPubKey.set(socket.id, pubkey);
         pubKeyToId.set(pubkey, socket.id);
 
-        let visibleTiles: Tile[] = [];
+        let visibleTiles: Location[] = [];
         b.playerTiles.get(pubkey)?.forEach((l) => {
-            visibleTiles.push(...b.getNeighborhood(l));
+            visibleTiles.push(...b.getNearbyLocations(l));
         });
         socket.emit("spawnResponse", visibleTiles);
     }
+}
+
+/*
+ * Propose move to enclave. In order for the move to be solidified, the enclave
+ * must respond to a leaf event.
+ */
+async function getSignature(socket: Socket, uFrom: any, uTo: any) {
+    const uFromAsTile = Tile.fromJSON(uFrom);
+    const hUFrom = uFromAsTile.hash();
+    const uToAsTile = Tile.fromJSON(uTo);
+    const hUTo = uToAsTile.hash();
+
+    claimedMoves.set(hUFrom.concat(hUTo), {
+        uFrom: uFromAsTile,
+        uTo: uToAsTile,
+    });
+
+    const digest = utils.solidityKeccak256(
+        ["uint256", "uint256"],
+        [hUFrom, hUTo]
+    );
+    const sig = await signer.signMessage(utils.arrayify(digest));
+
+    socket.emit("getSignatureResponse", sig, uFrom, uTo);
 }
 
 /*
@@ -149,6 +147,10 @@ function decrypt(
     socket.emit("decryptResponse", Tile.mystery(l).toJSON());
 }
 
+/*
+ * Callback function for when a NewMove event is emitted. Reads claimed move
+ * into enclave's internal beliefs, and alerts players in range to decrypt.
+ */
 function onMoveFinalize(io: Server, hUFrom: string, hUTo: string) {
     const moveHash = hUFrom.concat(hUTo);
     const move = claimedMoves.get(moveHash);
@@ -161,44 +163,33 @@ function onMoveFinalize(io: Server, hUFrom: string, hUTo: string) {
         b.setTile(move.uTo);
 
         // Alert nearby players that an updateDisplay is needed
-        // 1. player on uFrom does not need to update
-        // 2. player on uTo needs to update all neighbors
-        // 3. all surounding players need to update @uFrom, uTo
-
-        const uToSocketId = pubKeyToId.get(move.uTo.owner.bjjPub.serialize());
-        if (uToSocketId) {
-            io.to(uToSocketId).emit(
-                "updateDisplay",
-                b.getNearbyLocations(move.uTo.loc)
-            );
-        }
+        // 1. player on uFrom does not need to decrypt
+        // 2. player on uTo needs to decrypt all neighbors
+        // 3. all surounding players need to decrypt uFrom, uTo
+        alertPlayer(io, move.uTo.owner, b.getNearbyLocations(move.uTo.loc));
 
         for (let l of b.getNearbyLocations(move.uFrom.loc)) {
-            const socketId = pubKeyToId.get(
-                b.getTile(l).owner.bjjPub.serialize()
-            );
-            if (socketId) {
-                io.to(socketId).emit(
-                    "updateDisplay",
-                    [move.uFrom.loc]
-                );
-            }
+            alertPlayer(io, b.getTile(l).owner, [move.uFrom.loc]);
         }
+
         for (let l of b.getNearbyLocations(move.uTo.loc)) {
-            const socketId = pubKeyToId.get(
-                b.getTile(l).owner.bjjPub.serialize()
-            );
-            if (socketId) {
-                io.to(socketId).emit(
-                    "updateDisplay",
-                    [move.uTo.loc]
-                );
-            }
+            alertPlayer(io, b.getTile(l).owner, [move.uTo.loc]);
         }
     } else {
         console.log(
             `Move: (${hUFrom}, ${hUTo}) was finalized without a signature.`
         );
+    }
+}
+
+/*
+ * Helper function for onMoveFinalize. Pings player when locations should be
+ * decrypted.
+ */
+function alertPlayer(io: Server, pl: Player, locs: Location[]) {
+    const socketId = pubKeyToId.get(pl.bjjPub.serialize());
+    if (socketId) {
+        io.to(socketId).emit("updateDisplay", locs);
     }
 }
 
