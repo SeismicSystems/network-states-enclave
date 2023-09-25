@@ -80,7 +80,7 @@ export class Board {
 
         let r = l.r,
             c = l.c;
-        if (this.t[r][c].owner != Tile.UNOWNED) {
+        if (!this.t[r][c].isUnowned()) {
             throw new Error("Tried to spawn player on an owned tile.");
         }
 

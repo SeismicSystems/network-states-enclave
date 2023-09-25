@@ -13,6 +13,10 @@ export class Tile {
     static UNOWNED: Player = new Player("_");
     static MYSTERY: Player = new Player("?");
 
+    // If cityId = 0 then the tile is considered unowned
+    static UNOWNED_ID: number = 0;
+
+    // tileType options
     static NORMAL_TILE: number = 0;
     static CITY_TILE: number = 1;
     static CAPITAL_TILE: number = 2;
@@ -106,7 +110,7 @@ export class Tile {
      * Return true if this Tile is not owned by any player.
      */
     isUnowned(): boolean {
-        return this.owner.symbol === Tile.UNOWNED.symbol;
+        return this.cityId === Tile.UNOWNED_ID;
     }
 
     /*
