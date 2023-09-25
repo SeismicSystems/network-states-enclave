@@ -82,7 +82,7 @@ async function getSignature(socket: Socket, uFrom: any, uTo: any) {
     const moveHash = { hUFrom, hUTo };
     claimedMoves.set(hUFrom.concat(hUTo), {
         uFrom: uFromAsTile,
-        uTo: uToAsTile
+        uTo: uToAsTile,
     });
 
     const digest = utils.solidityKeccak256(
@@ -160,17 +160,39 @@ function onMoveFinalize(io: Server, hUFrom: string, hUTo: string) {
         b.setTile(move.uFrom);
         b.setTile(move.uTo);
 
-        // Alert nearby players that a displayUpdate is needed
-        const displayUpdateLocations = [
-            ...b.getNearbyLocations(move.uFrom.loc),
-            ...b.getNearbyLocations(move.uTo.loc),
-        ];
-        for (let l of displayUpdateLocations) {
+        // Alert nearby players that an updateDisplay is needed
+        // 1. player on uFrom does not need to update
+        // 2. player on uTo needs to update all neighbors
+        // 3. all surounding players need to update @uFrom, uTo
+
+        const uToSocketId = pubKeyToId.get(move.uTo.owner.bjjPub.serialize());
+        if (uToSocketId) {
+            io.to(uToSocketId).emit(
+                "updateDisplay",
+                b.getNearbyLocations(move.uTo.loc)
+            );
+        }
+
+        for (let l of b.getNearbyLocations(move.uFrom.loc)) {
             const socketId = pubKeyToId.get(
                 b.getTile(l).owner.bjjPub.serialize()
             );
             if (socketId) {
-                io.to(socketId).emit("updateDisplay", l);
+                io.to(socketId).emit(
+                    "updateDisplay",
+                    [move.uFrom.loc]
+                );
+            }
+        }
+        for (let l of b.getNearbyLocations(move.uTo.loc)) {
+            const socketId = pubKeyToId.get(
+                b.getTile(l).owner.bjjPub.serialize()
+            );
+            if (socketId) {
+                io.to(socketId).emit(
+                    "updateDisplay",
+                    [move.uTo.loc]
+                );
             }
         }
     } else {

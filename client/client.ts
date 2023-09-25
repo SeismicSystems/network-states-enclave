@@ -83,29 +83,14 @@ const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
  * Iterates through entire board, asking enclave to reveal all secrets this
  * player is privy to. If location is given, then the update is local.
  */
-function updatePlayerView(l?: Location) {
-    if (l) {
-        const sig = PLAYER.genSig(Player.hForDecrypt(l));
-        socket.emit(
-            "decrypt",
-            l,
-            PLAYER.bjjPub.serialize(),
-            Utils.serializeSig(sig)
-        );
-    } else {
-        for (let i = 0; i < BOARD_SIZE; i++) {
-            for (let j = 0; j < BOARD_SIZE; j++) {
-                const l: Location = { r: i, c: j };
-                const sig = PLAYER.genSig(Player.hForDecrypt(l));
-                socket.emit(
-                    "decrypt",
-                    l,
-                    PLAYER.bjjPub.serialize(),
-                    Utils.serializeSig(sig)
-                );
-            }
-        }
-    }
+function updatePlayerView(l: Location) {
+    const sig = PLAYER.genSig(Player.hForDecrypt(l));
+    socket.emit(
+        "decrypt",
+        l,
+        PLAYER.bjjPub.serialize(),
+        Utils.serializeSig(sig)
+    );
 }
 
 /*
@@ -178,6 +163,9 @@ function spawnResponse(t: any[]) {
  */
 function decryptResponse(t: any) {
     b.setTile(Tile.fromJSON(t));
+    console.clear();
+    b.printView();
+    process.stdout.write(MOVE_PROMPT);
 }
 
 /*
@@ -214,12 +202,13 @@ async function getSignatureResponse(sig: string, uFrom: any, uTo: any) {
  * Refreshes the user's game board view. Done in response to enclave ping that
  * a relevant move was made.
  */
-async function updateDisplay(l: Location) {
-    process.stdout.write("\n");
-    updatePlayerView(l);
-    await Utils.sleep(UPDATE_MLS);
-    b.printView();
-    process.stdout.write(MOVE_PROMPT);
+async function updateDisplay(locs: Location[]) {
+    for (let l of locs) {
+        updatePlayerView(l);
+    }
+    // await Utils.sleep(UPDATE_MLS * 2);
+    // b.printView();
+    // process.stdout.write(MOVE_PROMPT);
 }
 
 /*
@@ -240,8 +229,8 @@ async function gameLoop() {
     //     gameLoop();
     // }
 
-    updatePlayerView();
-    await Utils.sleep(UPDATE_MLS);
+    // await Utils.sleep(UPDATE_MLS);
+    console.clear();
     b.printView();
     await move("s");
 }

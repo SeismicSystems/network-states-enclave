@@ -4,7 +4,7 @@ interface ServerToClientEvents {
     spawnResponse: (t: any[]) => void;
     decryptResponse: (t: any) => void;
     getSignatureResponse: (sig: string, uFrom: any, uTo: any) => void;
-    updateDisplay: (l: Location) => void;
+    updateDisplay: (locs: Location[]) => void;
 }
 
 interface ClientToServerEvents {
