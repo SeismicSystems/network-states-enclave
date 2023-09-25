@@ -312,6 +312,7 @@ describe("Unit tests for CheckRsrc()", () => {
             {
                 currentTroopInterval: "0",
                 currentWaterInterval: "0",
+                ontoSelfOrUnowned: "1",
                 tFrom: t1.toCircuitInput(),
                 tTo: t2.toCircuitInput(),
                 uFrom: u1.toCircuitInput(),
@@ -360,6 +361,7 @@ describe("Unit tests for CheckRsrc()", () => {
             {
                 currentTroopInterval: "0",
                 currentWaterInterval: "0",
+                ontoSelfOrUnowned: "1",
                 tFrom: t1.toCircuitInput(),
                 tTo: t2.toCircuitInput(),
                 uFrom: u1.toCircuitInput(),
@@ -417,6 +419,7 @@ describe("Unit tests for CheckRsrc()", () => {
             {
                 currentTroopInterval: "0",
                 currentWaterInterval: "0",
+                ontoSelfOrUnowned: "0",
                 tFrom: t1.toCircuitInput(),
                 tTo: t2.toCircuitInput(),
                 uFrom: u1.toCircuitInput(),
@@ -474,6 +477,7 @@ describe("Unit tests for CheckRsrc()", () => {
             {
                 currentTroopInterval: "0",
                 currentWaterInterval: "0",
+                ontoSelfOrUnowned: "0",
                 tFrom: t1.toCircuitInput(),
                 tTo: t2.toCircuitInput(),
                 uFrom: u1.toCircuitInput(),
@@ -514,6 +518,7 @@ describe("Unit tests for CheckRsrc()", () => {
             {
                 currentTroopInterval: "0",
                 currentWaterInterval: "0",
+                ontoSelfOrUnowned: "1",
                 tFrom: t1.toCircuitInput(),
                 tTo: t2.toCircuitInput(),
                 uFrom: u1.toCircuitInput(),
@@ -571,6 +576,7 @@ describe("Unit tests for CheckRsrc()", () => {
             {
                 currentTroopInterval: "0",
                 currentWaterInterval: "0",
+                ontoSelfOrUnowned: "0",
                 tFrom: t1.toCircuitInput(),
                 tTo: t2.toCircuitInput(),
                 uFrom: u1.toCircuitInput(),
@@ -619,6 +625,7 @@ describe("Unit tests for CheckRsrc()", () => {
             {
                 currentTroopInterval: "0",
                 currentWaterInterval: "0",
+                ontoSelfOrUnowned: "1",
                 tFrom: t1.toCircuitInput(),
                 tTo: t2.toCircuitInput(),
                 uFrom: u1.toCircuitInput(),
@@ -676,6 +683,7 @@ describe("Unit tests for CheckRsrc()", () => {
             {
                 currentTroopInterval: "0",
                 currentWaterInterval: "0",
+                ontoSelfOrUnowned: "0",
                 tFrom: t1.toCircuitInput(),
                 tTo: t2.toCircuitInput(),
                 uFrom: u1.toCircuitInput(),
@@ -733,6 +741,7 @@ describe("Unit tests for CheckRsrc()", () => {
             {
                 currentTroopInterval: "0",
                 currentWaterInterval: "0",
+                ontoSelfOrUnowned: "0",
                 tFrom: t1.toCircuitInput(),
                 tTo: t2.toCircuitInput(),
                 uFrom: u1.toCircuitInput(),
@@ -790,6 +799,7 @@ describe("Unit tests for CheckRsrc()", () => {
             {
                 currentTroopInterval: "2",
                 currentWaterInterval: "0",
+                ontoSelfOrUnowned: "0",
                 tFrom: t1.toCircuitInput(),
                 tTo: t2.toCircuitInput(),
                 uFrom: u1.toCircuitInput(),

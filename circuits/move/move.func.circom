@@ -100,6 +100,7 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PK_HASH_IDX, TRP_UPD_IDX, WTR_UPD_IDX,
     TYPE_IDX, WATER_ID, UNOWNED, SYS_BITS) {
     signal input currentTroopInterval;
     signal input currentWaterInterval;
+    signal input ontoSelfOrUnowned;
 
     signal input tFrom[N_TL_ATRS];
     signal input tTo[N_TL_ATRS];
@@ -111,10 +112,9 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PK_HASH_IDX, TRP_UPD_IDX, WTR_UPD_IDX,
     signal output out;
 
     // Properties we need to know regarding `to` tile relative to `from` tile
-    signal ontoSelf <== IsEqual()([tFrom[PK_HASH_IDX], tTo[PK_HASH_IDX]]);
     signal ontoUnowned <== IsEqual()([tTo[PK_HASH_IDX], UNOWNED]);
     signal ontoSelfOrEnemy <== NOT()(ontoUnowned);
-    signal ontoSelfOrUnowned <== OR()(ontoSelf, ontoUnowned);
+
     signal playerOnWater <== IsEqual()([tFrom[TYPE_IDX], WATER_ID]);
     signal enemyOnWater <== IsEqual()([tTo[TYPE_IDX], WATER_ID]);
 
@@ -297,6 +297,7 @@ template Move() {
     signal input root;
     signal input currentTroopInterval;
     signal input currentWaterInterval;
+    signal input ontoSelfOrUnowned;
     signal input hUFrom;
     signal input hUTo;
     signal input rhoFrom;
@@ -329,8 +330,8 @@ template Move() {
 
     signal resourcesCorrect <== CheckRsrc(N_TL_ATRS, RSRC_IDX, PK_HASH_IDX, 
         TRP_UPD_IDX, WTR_UPD_IDX, TYPE_IDX, WATER_ID, UNOWNED, SYS_BITS)(
-        currentTroopInterval, currentWaterInterval, tFrom, tTo, uFrom, uTo, 
-        fromUpdatedTroops, toUpdatedTroops);
+        currentTroopInterval, currentWaterInterval, ontoSelfOrUnowned, tFrom, 
+        tTo, uFrom, uTo, fromUpdatedTroops, toUpdatedTroops);
     resourcesCorrect === 1;
 
     signal merkleProofCorrect <== CheckMerkleInclusion(N_TL_ATRS,
