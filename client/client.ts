@@ -65,7 +65,7 @@ let b: Board;
 /*
  * Whether client should wait for move to be finalized.
  */
-let moving: boolean;
+let canMove: boolean;
 
 /*
  * Store pending move.
@@ -100,6 +100,8 @@ function updatePlayerView(l: Location) {
  * tile.
  */
 async function move(inp: string) {
+    canMove = false;
+
     // Construct move states
     const nr = cursor.r + MOVE_KEYS[inp][0],
         nc = cursor.c + MOVE_KEYS[inp][1];
@@ -140,8 +142,6 @@ async function move(inp: string) {
         tTo.nullifier(),
     ]);
 
-    moving = false;
-
     // Update player position
     cursor = { r: nr, c: nc };
 
@@ -154,8 +154,10 @@ function spawnResponse(t: any[]) {
         b.setTile(Tile.fromJSON(t[i]));
     }
 
-    moving = true;
-    gameLoop();
+    console.clear();
+    b.printView();
+    process.stdout.write(MOVE_PROMPT);
+    canMove = true;
 }
 
 /*
@@ -196,6 +198,8 @@ async function getSignatureResponse(sig: string, uFrom: any, uTo: any) {
     };
 
     await nStates.move(moveInputs, moveProof, moveSig);
+
+    canMove = true;
 }
 
 /*
@@ -209,30 +213,6 @@ async function updateDisplay(locs: Location[]) {
     // await Utils.sleep(UPDATE_MLS * 2);
     // b.printView();
     // process.stdout.write(MOVE_PROMPT);
-}
-
-/*
- * Repeatedly ask user for next move until exit.
- */
-async function gameLoop() {
-    // if (moving) {
-    //     updatePlayerView();
-    //     await Utils.sleep(UPDATE_MLS);
-    //     b.printView();
-    //     rl.question(MOVE_PROMPT, async (ans) => {
-    //         await move(ans);
-    //         await Utils.sleep(UPDATE_MLS * 2);
-    //         gameLoop();
-    //     });
-    // } else {
-    //     await Utils.sleep(UPDATE_MLS);
-    //     gameLoop();
-    // }
-
-    // await Utils.sleep(UPDATE_MLS);
-    console.clear();
-    b.printView();
-    await move("s");
 }
 
 /*
@@ -256,6 +236,16 @@ socket.on("connect", async () => {
         Utils.serializeSig(sig)
     );
 });
+
+/*
+ * Game loop.
+ */
+process.stdin.on("keypress", (str) => {
+    if (canMove) {
+        move(str);
+    }
+});
+
 /*
  * Attach event handlers.
  */
