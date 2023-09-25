@@ -58,10 +58,7 @@ export class Tile {
      */
     toCircuitInput(): string[] {
         return [
-            poseidon([
-                BigInt(this.owner.bjjPub.rawPubKey[0].toString()),
-                BigInt(this.owner.bjjPub.rawPubKey[1].toString()),
-            ]).toString(),
+            this.owner.pubKeyHash(),
             this.loc.r.toString(),
             this.loc.c.toString(),
             this.resources.toString(),

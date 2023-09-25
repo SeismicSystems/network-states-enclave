@@ -31,13 +31,14 @@ template CheckNullifiers() {
  * 2) the player owns the 'from' tile, which is true when the player's 
  * private key corresponds to the tile's public key hash.
  */
-template CheckLeaves(N_TL_ATRS, PK_HASH_IDX) {
+template CheckLeaves(N_TL_ATRS) {
     signal input uFrom[N_TL_ATRS];
     signal input uTo[N_TL_ATRS];
     signal input hUFrom;
     signal input hUTo;
 
     signal input privKeyHash;
+    signal input pubKeyHash;
 
     signal output out;
 
@@ -47,10 +48,10 @@ template CheckLeaves(N_TL_ATRS, PK_HASH_IDX) {
 
     signal circuitHFrom <== Poseidon(N_TL_ATRS)(uFrom);
     signal circuitHTo <== Poseidon(N_TL_ATRS)(uTo);
-    signal pkHash <== Poseidon(2)([bjj.Ax, bjj.Ay]);
+    signal circuitPubKeyHash <== Poseidon(2)([bjj.Ax, bjj.Ay]);
 
     out <== BatchIsEqual(3)([
-        [uFrom[PK_HASH_IDX], pkHash], [hUFrom, circuitHFrom], 
+        [pubKeyHash, circuitPubKeyHash], [hUFrom, circuitHFrom], 
         [hUTo, circuitHTo]]);
 }
 
@@ -312,9 +313,10 @@ template Move() {
     signal input fromUpdatedTroops;
     signal input toUpdatedTroops;
     signal input privKeyHash;
+    signal input pubKeyHash;
 
-    signal leavesCorrect <== CheckLeaves(N_TL_ATRS, PK_HASH_IDX)(uFrom, 
-        uTo, hUFrom, hUTo, privKeyHash);
+    signal leavesCorrect <== CheckLeaves(N_TL_ATRS)(uFrom, 
+        uTo, hUFrom, hUTo, privKeyHash, pubKeyHash);
     leavesCorrect === 1;
 
     signal nullifiersCorrect <== CheckNullifiers()(tFrom[KEY_IDX], 

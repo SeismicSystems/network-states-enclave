@@ -264,16 +264,13 @@ export class Board {
         if (nMobilize < 1) {
             throw Error("Cannot move without mobilizing at least 1 troop.");
         }
-        if (tTo.owner === tFrom.owner && tTo.cityId != tFrom.cityId) {
-            throw Error("Cannot move from one of your cities to another.");
-        }
         let uTo: Tile;
         if (tTo.owner === tFrom.owner) {
             uTo = Tile.genOwned(
                 tTo.owner,
                 tTo.loc,
                 updatedTroops + nMobilize,
-                tFrom.cityId,
+                tTo.cityId,
                 currentTroopInterval,
                 currentWaterInterval,
                 tTo.tileType
