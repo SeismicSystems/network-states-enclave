@@ -62,9 +62,9 @@ export class Utils {
      * the client's socket ID.
      */
     static asciiIntoBigNumber(msg: string): BigInt {
-        let result = 0n;
+        let result = BigInt(0);
         for (let i = 0; i < msg.length; i++) {
-            result = (result << 8n) + BigInt(msg.charCodeAt(i));
+            result = (result << BigInt(8)) + BigInt(msg.charCodeAt(i));
         }
         return result;
     }

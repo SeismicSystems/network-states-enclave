@@ -67,8 +67,8 @@ describe("Unit tests for CheckLeaves()", () => {
     it("fails if player tries to move troops they don't own", async () => {
         const p1 = new Player("A", BigInt("0xfff"));
         const p2 = new Player("B", BigInt("0xddd"));
-        const t1 = Tile.genOwned(p1, { r: 0, c: 0 }, 9, 0, 0, Tile.NORMAL_TILE);
-        const t2 = Tile.genOwned(p1, { r: 0, c: 0 }, 9, 0, 0, Tile.NORMAL_TILE);
+        const t1 = Tile.genOwned(p1, { r: 0, c: 0 }, 9, 1, 0, 0, Tile.NORMAL_TILE);
+        const t2 = Tile.genOwned(p1, { r: 0, c: 0 }, 9, 2, 0, 0, Tile.NORMAL_TILE);
 
         const w = await circuit.calculateWitness(
             {
@@ -87,8 +87,8 @@ describe("Unit tests for CheckLeaves()", () => {
     it("fails if proposed hashes don't match the new", async () => {
         const p1 = new Player("A", BigInt("0xfff"));
         const p2 = new Player("B", BigInt("0xddd"));
-        const t1 = Tile.genOwned(p1, { r: 0, c: 0 }, 9, 0, 0, Tile.NORMAL_TILE);
-        const t2 = Tile.genOwned(p2, { r: 0, c: 0 }, 9, 0, 0, Tile.NORMAL_TILE);
+        const t1 = Tile.genOwned(p1, { r: 0, c: 0 }, 9, 1, 0, 0, Tile.NORMAL_TILE);
+        const t2 = Tile.genOwned(p2, { r: 0, c: 0 }, 9, 2, 0, 0, Tile.NORMAL_TILE);
 
         const w1 = await circuit.calculateWitness(
             {
@@ -120,8 +120,8 @@ describe("Unit tests for CheckLeaves()", () => {
     it("passes if move initiated by owner & new hashes valid", async () => {
         const p1 = new Player("A", BigInt("0xfff"));
         const p2 = new Player("B", BigInt("0xddd"));
-        const t1 = Tile.genOwned(p1, { r: 0, c: 0 }, 9, 0, 0, Tile.NORMAL_TILE);
-        const t2 = Tile.genOwned(p2, { r: 0, c: 0 }, 9, 0, 0, Tile.NORMAL_TILE);
+        const t1 = Tile.genOwned(p1, { r: 0, c: 0 }, 9, 1, 0, 0, Tile.NORMAL_TILE);
+        const t2 = Tile.genOwned(p2, { r: 0, c: 0 }, 9, 2, 0, 0, Tile.NORMAL_TILE);
 
         const w = await circuit.calculateWitness(
             {
@@ -279,6 +279,7 @@ describe("Unit tests for CheckRsrc()", () => {
             p,
             { r: 123, c: 321 },
             9,
+            1,
             0,
             0,
             Tile.NORMAL_TILE
@@ -288,6 +289,7 @@ describe("Unit tests for CheckRsrc()", () => {
             p,
             { r: 123, c: 321 },
             0,
+            1,
             0,
             0,
             Tile.NORMAL_TILE
@@ -296,6 +298,7 @@ describe("Unit tests for CheckRsrc()", () => {
             p,
             { r: 124, c: 321 },
             9,
+            1,
             0,
             0,
             Tile.NORMAL_TILE
@@ -324,6 +327,7 @@ describe("Unit tests for CheckRsrc()", () => {
             p,
             { r: 123, c: 321 },
             3,
+            1,
             0,
             0,
             Tile.NORMAL_TILE
@@ -333,6 +337,7 @@ describe("Unit tests for CheckRsrc()", () => {
             p,
             { r: 123, c: 321 },
             3,
+            1,
             0,
             0,
             Tile.NORMAL_TILE
@@ -341,6 +346,7 @@ describe("Unit tests for CheckRsrc()", () => {
             p,
             { r: 124, c: 321 },
             2,
+            1,
             0,
             0,
             Tile.NORMAL_TILE
@@ -370,6 +376,7 @@ describe("Unit tests for CheckRsrc()", () => {
             p1,
             { r: 123, c: 321 },
             9,
+            1,
             0,
             0,
             Tile.NORMAL_TILE
@@ -378,6 +385,7 @@ describe("Unit tests for CheckRsrc()", () => {
             p2,
             { r: 124, c: 321 },
             3,
+            2,
             0,
             0,
             Tile.NORMAL_TILE
@@ -385,6 +393,7 @@ describe("Unit tests for CheckRsrc()", () => {
         const u1 = Tile.genOwned(
             p1,
             { r: 123, c: 321 },
+            1,
             1,
             0,
             0,
@@ -394,6 +403,7 @@ describe("Unit tests for CheckRsrc()", () => {
             p1,
             { r: 124, c: 321 },
             11,
+            1,
             0,
             0,
             Tile.NORMAL_TILE
@@ -423,6 +433,7 @@ describe("Unit tests for CheckRsrc()", () => {
             p1,
             { r: 123, c: 321 },
             3,
+            1,
             0,
             0,
             Tile.NORMAL_TILE
@@ -431,6 +442,7 @@ describe("Unit tests for CheckRsrc()", () => {
             p2,
             { r: 124, c: 321 },
             9,
+            2,
             0,
             0,
             Tile.NORMAL_TILE
@@ -438,6 +450,7 @@ describe("Unit tests for CheckRsrc()", () => {
         const u1 = Tile.genOwned(
             p1,
             { r: 123, c: 321 },
+            1,
             1,
             0,
             0,
@@ -447,6 +460,7 @@ describe("Unit tests for CheckRsrc()", () => {
             p1,
             { r: 124, c: 321 },
             2,
+            1,
             0,
             0,
             Tile.NORMAL_TILE
@@ -475,6 +489,7 @@ describe("Unit tests for CheckRsrc()", () => {
             p1,
             { r: 123, c: 321 },
             5,
+            1,
             0,
             0,
             Tile.NORMAL_TILE
@@ -484,6 +499,7 @@ describe("Unit tests for CheckRsrc()", () => {
             p1,
             { r: 123, c: 321 },
             2,
+            1,
             0,
             0,
             Tile.NORMAL_TILE
@@ -514,6 +530,7 @@ describe("Unit tests for CheckRsrc()", () => {
             p1,
             { r: 123, c: 321 },
             5,
+            1,
             0,
             0,
             Tile.NORMAL_TILE
@@ -521,6 +538,7 @@ describe("Unit tests for CheckRsrc()", () => {
         const t2 = Tile.genOwned(
             p2,
             { r: 124, c: 321 },
+            2,
             2,
             0,
             0,
@@ -530,6 +548,7 @@ describe("Unit tests for CheckRsrc()", () => {
             p1,
             { r: 123, c: 321 },
             2,
+            1,
             0,
             0,
             Tile.NORMAL_TILE
@@ -538,6 +557,7 @@ describe("Unit tests for CheckRsrc()", () => {
             p2,
             { r: 124, c: 321 },
             1,
+            2,
             0,
             0,
             Tile.NORMAL_TILE
@@ -566,6 +586,7 @@ describe("Unit tests for CheckRsrc()", () => {
             p,
             { r: 123, c: 321 },
             9,
+            1,
             0,
             0,
             Tile.NORMAL_TILE
@@ -575,6 +596,7 @@ describe("Unit tests for CheckRsrc()", () => {
             p,
             { r: 123, c: 321 },
             2,
+            1,
             0,
             0,
             Tile.NORMAL_TILE
@@ -583,6 +605,7 @@ describe("Unit tests for CheckRsrc()", () => {
             p,
             { r: 124, c: 321 },
             7,
+            1,
             0,
             0,
             Tile.NORMAL_TILE
@@ -612,6 +635,7 @@ describe("Unit tests for CheckRsrc()", () => {
             p1,
             { r: 123, c: 321 },
             15,
+            1,
             0,
             0,
             Tile.NORMAL_TILE
@@ -620,6 +644,7 @@ describe("Unit tests for CheckRsrc()", () => {
             p2,
             { r: 124, c: 321 },
             33,
+            2,
             0,
             0,
             Tile.NORMAL_TILE
@@ -628,6 +653,7 @@ describe("Unit tests for CheckRsrc()", () => {
             p1,
             { r: 123, c: 321 },
             10,
+            1,
             0,
             0,
             Tile.NORMAL_TILE
@@ -636,6 +662,7 @@ describe("Unit tests for CheckRsrc()", () => {
             p2,
             { r: 124, c: 321 },
             28,
+            2,
             0,
             0,
             Tile.NORMAL_TILE
@@ -665,6 +692,7 @@ describe("Unit tests for CheckRsrc()", () => {
             p1,
             { r: 123, c: 321 },
             33,
+            1,
             0,
             0,
             Tile.NORMAL_TILE
@@ -673,6 +701,7 @@ describe("Unit tests for CheckRsrc()", () => {
             p2,
             { r: 124, c: 321 },
             15,
+            2,
             0,
             0,
             Tile.NORMAL_TILE
@@ -681,6 +710,7 @@ describe("Unit tests for CheckRsrc()", () => {
             p1,
             { r: 123, c: 321 },
             3,
+            1,
             0,
             0,
             Tile.NORMAL_TILE
@@ -689,6 +719,7 @@ describe("Unit tests for CheckRsrc()", () => {
             p1,
             { r: 124, c: 321 },
             15,
+            1,
             0,
             0,
             Tile.NORMAL_TILE
@@ -718,6 +749,7 @@ describe("Unit tests for CheckRsrc()", () => {
             p1,
             { r: 123, c: 321 },
             30,
+            1,
             0,
             0,
             Tile.NORMAL_TILE
@@ -727,12 +759,14 @@ describe("Unit tests for CheckRsrc()", () => {
             { r: 124, c: 321 },
             30,
             2,
+            2,
             0,
             Tile.NORMAL_TILE
         );
         const u1 = Tile.genOwned(
             p1,
             { r: 123, c: 321 },
+            1,
             1,
             2,
             0,
@@ -741,6 +775,7 @@ describe("Unit tests for CheckRsrc()", () => {
         const u2 = Tile.genOwned(
             p1,
             { r: 124, c: 321 },
+            1,
             1,
             2,
             0,
@@ -999,6 +1034,7 @@ describe("Unit tests for CheckMerkleInclusion()", () => {
             p1,
             { r: 123, c: 321 },
             10,
+            1,
             0,
             0,
             Tile.NORMAL_TILE
@@ -1007,13 +1043,14 @@ describe("Unit tests for CheckMerkleInclusion()", () => {
             p2,
             { r: 124, c: 321 },
             10,
+            2,
             0,
             0,
             Tile.NORMAL_TILE
         );
 
-        tree.insert(Utils.intoBigNumber(t1.hash()));
-        tree.insert(Utils.intoBigNumber(t2.hash()));
+        tree.insert(Utils.hIntoBigNumber(t1.hash()));
+        tree.insert(Utils.hIntoBigNumber(t2.hash()));
 
         const mp1 = Utils.generateMerkleProof(t1.hash(), tree);
         const mp2 = Utils.generateMerkleProof(t2.hash(), tree);
@@ -1043,6 +1080,7 @@ describe("Unit tests for CheckMerkleInclusion()", () => {
             p1,
             { r: 123, c: 321 },
             10,
+            1,
             0,
             0,
             Tile.NORMAL_TILE
@@ -1051,12 +1089,13 @@ describe("Unit tests for CheckMerkleInclusion()", () => {
             p2,
             { r: 124, c: 321 },
             10,
+            2,
             0,
             0,
             Tile.NORMAL_TILE
         );
 
-        tree.insert(Utils.intoBigNumber(t1.hash()));
+        tree.insert(Utils.hIntoBigNumber(t1.hash()));
 
         const mp1 = Utils.generateMerkleProof(t1.hash(), tree);
         const mp2 = mp1; // Can't generate a valid proof for t2, so we try mp1
@@ -1086,6 +1125,7 @@ describe("Unit tests for CheckMerkleInclusion()", () => {
             p1,
             { r: 123, c: 321 },
             10,
+            1,
             0,
             0,
             Tile.NORMAL_TILE
@@ -1094,12 +1134,13 @@ describe("Unit tests for CheckMerkleInclusion()", () => {
             p2,
             { r: 124, c: 321 },
             10,
+            2,
             0,
             0,
             Tile.NORMAL_TILE
         );
 
-        tree.insert(Utils.intoBigNumber(t1.hash()));
+        tree.insert(Utils.hIntoBigNumber(t1.hash()));
 
         const mp1 = Utils.generateMerkleProof(t1.hash(), tree);
         const mp2 = mp1;
