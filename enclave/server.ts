@@ -216,6 +216,9 @@ io.on("connection", (socket: Socket) => {
     });
 });
 
+/*
+ * Event handler for NewMove event. io is passed in so that we can ping players.
+ */
 nStates.on(nStates.filters.NewMove(), (hUFrom, hUTo) => {
     onMoveFinalize(io, hUFrom.toString(), hUTo.toString());
 });
