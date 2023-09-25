@@ -158,14 +158,20 @@ function onMoveFinalize(io: Server, hUFrom: string, hUTo: string) {
         // Move is no longer pending
         claimedMoves.delete(moveHash);
 
+        // Before state is updated, we need the previous 'to' tile owner
+        const prevOwner = b.getTile(move.uTo.loc).owner;
+
         // Update state
         b.setTile(move.uFrom);
         b.setTile(move.uTo);
 
         // Alert nearby players that an updateDisplay is needed
         // 1. player on uFrom does not need to decrypt
-        // 2. player on uTo needs to decrypt all neighbors
-        // 3. all surounding players need to decrypt uFrom, uTo
+        // 2. the previous owner at uTo needs to decrypt uTo
+        // 3. player on uTo needs to decrypt all neighbors
+        // 4. all surounding players need to decrypt uFrom, uTo
+
+        alertPlayer(io, prevOwner, [move.uTo.loc]);
         alertPlayer(io, move.uTo.owner, b.getNearbyLocations(move.uTo.loc));
 
         for (let l of b.getNearbyLocations(move.uFrom.loc)) {
