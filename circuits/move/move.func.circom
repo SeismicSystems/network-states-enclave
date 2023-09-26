@@ -111,34 +111,20 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, CITY_IDX, TRP_UPD_IDX, WTR_UPD_IDX,
     signal ontoSelf <== AND()(ontoSelfOrUnowned, ontoSelfOrEnemy);
     signal ontoEnemy <== NOT()(ontoSelfOrUnowned);
 
-    signal playerOnWater <== IsEqual()([tFrom[TYPE_IDX], WATER_TYPE]);
-    signal enemyOnWater <== IsEqual()([tTo[TYPE_IDX], WATER_TYPE]);
-
     // Not allowed to move all troops off of tile
     signal movedAllTroops <== IsZero()(uFrom[RSRC_IDX]);
 
-    // Troop updates for water and land tiles
-    signal fromCheckTroopUpdates <== CheckTroopUpdates(N_TL_ATRS, RSRC_IDX, 
-        TRP_UPD_IDX)(currentTroopInterval, tFrom, uFrom, fromUpdatedTroops, 1);
-    signal toCheckTroopUpdates <== CheckTroopUpdates(N_TL_ATRS, RSRC_IDX,
-        TRP_UPD_IDX)(currentTroopInterval, tTo, uTo, toUpdatedTroops,
-        ontoSelfOrEnemy);
-
+    // Updates for water tiles
     signal fromCheckWaterUpdates <== CheckWaterUpdates(N_TL_ATRS, RSRC_IDX,
-        WTR_UPD_IDX, SYS_BITS)(currentWaterInterval, tFrom, uFrom, 
-        fromUpdatedTroops);
+        WTR_UPD_IDX, TYPE_IDX, WATER_TYPE, SYS_BITS)(currentWaterInterval, 
+        tFrom, uFrom, fromUpdatedTroops);
     signal toCheckWaterUpdates <== CheckWaterUpdates(N_TL_ATRS, RSRC_IDX,
-        WTR_UPD_IDX, SYS_BITS)(currentWaterInterval, tTo, uTo, 
-        toUpdatedTroops);
+        WTR_UPD_IDX, TYPE_IDX, WATER_TYPE, SYS_BITS)(currentWaterInterval, tTo, 
+        uTo, toUpdatedTroops);
 
-    signal fromTroopUpdateCorrect <== Mux1()([fromCheckTroopUpdates, 
-        fromCheckWaterUpdates], playerOnWater);
-    signal toTroopUpdateCorrect <== Mux1()([toCheckTroopUpdates, 
-        toCheckWaterUpdates], enemyOnWater);
-
-    signal troopUpdatesCorrect <== AND()(fromTroopUpdateCorrect, 
-        toTroopUpdateCorrect);
-    signal troopUpdatesIncorrect <== NOT()(troopUpdatesCorrect);
+    signal waterUpdatesCorrect <== AND()(fromCheckWaterUpdates, 
+        toCheckWaterUpdates);
+    signal waterUpdatesIncorrect <== NOT()(waterUpdatesCorrect);
 
     // Make sure resource management can't be broken via overflow
     signal overflowFrom <== GreaterEqThan(SYS_BITS)([uFrom[RSRC_IDX], 
@@ -164,7 +150,7 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, CITY_IDX, TRP_UPD_IDX, WTR_UPD_IDX,
 
 
 
-    out <== BatchIsZero(7)([movedAllTroops, troopUpdatesIncorrect, overflowFrom, 
+    out <== BatchIsZero(7)([movedAllTroops, waterUpdatesIncorrect, overflowFrom, 
         overflowTo, rsrcLogicIncorrect, cityIdLogicIncorrect, 
         typeLogicIncorrect]);
 }
@@ -200,7 +186,8 @@ template CheckTroopUpdates(N_TL_ATRS, RSRC_IDX, TRP_UPD_IDX) {
  * updates are mutually exclusive events, and updatedTroops reflects the 
  * player's troop count post updates (both water or troop).
  */
-template CheckWaterUpdates(N_TL_ATRS, RSRC_IDX, WTR_UPD_IDX, SYS_BITS) {
+template CheckWaterUpdates(N_TL_ATRS, RSRC_IDX, WTR_UPD_IDX, TYPE_IDX, 
+    WATER_TYPE, SYS_BITS) {
     signal input currentWaterInterval;
 
     signal input tTile[N_TL_ATRS];
@@ -209,14 +196,23 @@ template CheckWaterUpdates(N_TL_ATRS, RSRC_IDX, WTR_UPD_IDX, SYS_BITS) {
 
     signal output out;
 
+    signal onWater <== IsEqual()([tTile[TYPE_IDX], WATER_TYPE]);
+
     // Forces updatedTroops to be 0 when all troops die
     signal notAllDead <== GreaterEqThan(SYS_BITS)([tTile[RSRC_IDX], 
         currentWaterInterval - tTile[WTR_UPD_IDX]]);
 
+    // Updated troop count if tile is a water tile
     signal circuitUpdatedTroops <== (tTile[RSRC_IDX] + tTile[WTR_UPD_IDX] - 
         currentWaterInterval) * notAllDead;
-    signal troopRsrcCorrect <== IsEqual()(
-        [circuitUpdatedTroops, updatedTroops]);
+
+    // Case when not on water tile: troop count should not change
+    signal case1 <== IsEqual()([updatedTroops, tTile[RSRC_IDX]]);
+
+    // Case when on water tile
+    signal case2 <== IsEqual()([updatedTroops, circuitUpdatedTroops]);
+
+    signal troopRsrcCorrect <== Mux1()([case1, case2], onWater);
 
     signal troopsCounted <== IsEqual()(
         [currentWaterInterval, uTile[WTR_UPD_IDX]]);
