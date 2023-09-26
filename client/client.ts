@@ -150,10 +150,10 @@ async function move(inp: string) {
 }
 
 /*
- * After spawning in, player recieves a list of locations that they should
+ * After logging in, player recieves a list of locations that they should
  * decrypt.
  */
-async function spawnResponse(locs: Location[]) {
+async function loginResponse(locs: Location[]) {
     updateDisplay(locs);
     
     await Utils.sleep(UPDATE_MLS);
@@ -221,12 +221,12 @@ socket.on("connect", async () => {
     b = new Board();
     await b.seed(BOARD_SIZE, false, nStates);
 
-    // Sign socket ID for spawn
+    // Sign socket ID for login
     const sig = PLAYER.genSig(
-        Player.hForSpawn(Utils.asciiIntoBigNumber(socket.id))
+        Player.hForLogin(Utils.asciiIntoBigNumber(socket.id))
     );
     socket.emit(
-        "spawn",
+        "login",
         PLAYER_START,
         PLAYER.bjjPub.serialize(),
         PLAYER_SYMBOL,
@@ -246,7 +246,7 @@ process.stdin.on("keypress", (str) => {
 /*
  * Attach event handlers.
  */
-socket.on("spawnResponse", spawnResponse);
+socket.on("loginResponse", loginResponse);
 socket.on("decryptResponse", decryptResponse);
 socket.on("getSignatureResponse", getSignatureResponse);
 socket.on("updateDisplay", updateDisplay);

@@ -69,9 +69,9 @@ let pubKeyToId = new Map<string, string>();
 let claimedMoves = new Map<string, ClaimedMove>();
 
 /*
- * Dev function for spawning a player on the map.
+ * Dev function for spawning a player on the map or logging back in.
  */
-async function spawn(
+async function login(
     socket: Socket,
     l: Location,
     reqPlayer: Player,
@@ -82,7 +82,7 @@ async function spawn(
         return;
     }
 
-    const h = Player.hForSpawn(Utils.asciiIntoBigNumber(socket.id));
+    const h = Player.hForLogin(Utils.asciiIntoBigNumber(socket.id));
     const sig = Utils.unserializeSig(sigStr);
     if (sig && reqPlayer.verifySig(h, sig)) {
         const pubkey = reqPlayer.bjjPub.serialize();
@@ -100,7 +100,7 @@ async function spawn(
         b.playerTiles.get(pubkey)?.forEach((l) => {
             visibleTiles.push(...b.getNearbyLocations(l));
         });
-        socket.emit("spawnResponse", visibleTiles);
+        socket.emit("loginResponse", visibleTiles);
     }
 }
 
@@ -205,8 +205,8 @@ function alertPlayer(io: Server, pl: Player, locs: Location[]) {
 io.on("connection", (socket: Socket) => {
     console.log("Client connected: ", socket.id);
 
-    socket.on("spawn", (l: Location, p: string, s: string, sig: string) => {
-        spawn(socket, l, Player.fromPubString(s, p), sig);
+    socket.on("login", (l: Location, p: string, s: string, sig: string) => {
+        login(socket, l, Player.fromPubString(s, p), sig);
     });
     socket.on("getSignature", (uFrom: any, uTo: any) => {
         getSignature(socket, uFrom, uTo);
