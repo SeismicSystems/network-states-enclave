@@ -20,13 +20,19 @@ export class Player {
     bjjPriv?: PrivKey;
     bjjPrivHash?: BigInt;
     bjjPub!: PubKey;
+    socketId?: string;
 
-    constructor(symb: string, ethPriv?: BigInt, bjjPub_?: PubKey) {
+    constructor(
+        symb: string,
+        ethPriv?: BigInt,
+        bjjPub?: PubKey,
+        socketId?: string
+    ) {
         this.symbol = symb;
         if (ethPriv) {
             this.bjjPriv = new PrivKey(formatPrivKeyForBabyJub(ethPriv));
-        } else if (bjjPub_) {
-            this.bjjPub = bjjPub_;
+        } else if (bjjPub) {
+            this.bjjPub = bjjPub;
         } else {
             this.bjjPriv = new PrivKey(genPrivKey());
         }
@@ -40,10 +46,14 @@ export class Player {
         if (symb === "_") {
             this.bjjPub = new PubKey([UNOWNED_PUB_X, UNOWNED_PUB_Y]);
         }
+
+        if (socketId) {
+            this.socketId = socketId;
+        }
     }
 
-    static fromPubString(p: string): Player {
-        return new Player("", undefined, PubKey.unserialize(p));
+    static fromPubString(s: string, p: string): Player {
+        return new Player(s, undefined, PubKey.unserialize(p));
     }
 
     /*
@@ -53,6 +63,14 @@ export class Player {
      */
     static hForDecrypt(l: Location): BigInt {
         return hash2([BigInt(l.r), BigInt(l.c)]);
+    }
+
+    /*
+     * Convert socket ID into field element in Babyjubjub's base field using
+     * Poseidon hash. This is used for login requests.
+     */
+    static hForLogin(id: BigInt): BigInt {
+        return hashOne(id);
     }
 
     /*

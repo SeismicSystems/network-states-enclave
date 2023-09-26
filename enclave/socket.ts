@@ -1,16 +1,16 @@
-import { Location } from "../game";
+import { Location, Player } from "../game";
 
 interface ServerToClientEvents {
+    loginResponse: (locs: Location[]) => void;
     decryptResponse: (t: any) => void;
     getSignatureResponse: (sig: string, uFrom: any, uTo: any) => void;
-    pingResponse: (b: boolean, uFrom: any, uTo: any) => void;
-    updateDisplay: () => void;
+    updateDisplay: (locs: Location[]) => void;
 }
 
 interface ClientToServerEvents {
+    login: (l: Location, p: string, s: string, sig: string) => void;
     decrypt: (l: Location, pubkey: string, sig: string) => void;
     getSignature: (uFrom: any, uTo: any) => void;
-    ping: (uFrom: any, uTo: any) => void;
 }
 
 interface InterServerEvents {

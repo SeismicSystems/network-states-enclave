@@ -65,7 +65,7 @@ let b: Board;
 /*
  * Whether client should wait for move to be finalized.
  */
-let moving: boolean;
+let canMove: boolean;
 
 /*
  * Store pending move.
@@ -81,23 +81,16 @@ const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
 
 /*
  * Iterates through entire board, asking enclave to reveal all secrets this
- * player is privy to.
- *
- * [TODO] Only ask for tiles that should be out of the fog.
+ * player is privy to. If location is given, then the update is local.
  */
-function updatePlayerView() {
-    for (let i = 0; i < BOARD_SIZE; i++) {
-        for (let j = 0; j < BOARD_SIZE; j++) {
-            const l: Location = { r: i, c: j };
-            const sig = PLAYER.genSig(Player.hForDecrypt(l));
-            socket.emit(
-                "decrypt",
-                l,
-                PLAYER.bjjPub.serialize(),
-                Utils.serializeSig(sig)
-            );
-        }
-    }
+function updatePlayerView(l: Location) {
+    const sig = PLAYER.genSig(Player.hForDecrypt(l));
+    socket.emit(
+        "decrypt",
+        l,
+        PLAYER.bjjPub.serialize(),
+        Utils.serializeSig(sig)
+    );
 }
 
 /*
@@ -107,6 +100,8 @@ function updatePlayerView() {
  * tile.
  */
 async function move(inp: string) {
+    canMove = false;
+
     // Construct move states
     const nr = cursor.r + MOVE_KEYS[inp][0],
         nc = cursor.c + MOVE_KEYS[inp][1];
@@ -147,8 +142,6 @@ async function move(inp: string) {
         tTo.nullifier(),
     ]);
 
-    moving = false;
-
     // Update player position
     cursor = { r: nr, c: nc };
 
@@ -157,10 +150,24 @@ async function move(inp: string) {
 }
 
 /*
+ * After logging in, player recieves a list of locations that they should
+ * decrypt.
+ */
+async function loginResponse(locs: Location[]) {
+    updateDisplay(locs);
+    
+    await Utils.sleep(UPDATE_MLS);
+    canMove = true;
+}
+
+/*
  * Update local view of game board based on enclave response.
  */
 function decryptResponse(t: any) {
     b.setTile(Tile.fromJSON(t));
+    console.clear();
+    b.printView();
+    process.stdout.write(MOVE_PROMPT);
 }
 
 /*
@@ -192,51 +199,16 @@ async function getSignatureResponse(sig: string, uFrom: any, uTo: any) {
 
     await nStates.move(moveInputs, moveProof, moveSig);
 
-    socket.emit("ping", uFrom, uTo);
-}
-
-/*
- * Callback for client asking enclave if the move has been finalized.
- *
- * [TMP]: this will change when we have an Alchemy node alerting enclave that
- * global state has been updated.
- */
-function pingResponse(move: boolean, uFrom: any, uTo: any) {
-    if (move) {
-        moving = true;
-    } else {
-        socket.emit("ping", uFrom, uTo);
-    }
+    canMove = true;
 }
 
 /*
  * Refreshes the user's game board view. Done in response to enclave ping that
  * a relevant move was made.
  */
-async function updateDisplay() {
-    process.stdout.write("\n");
-    updatePlayerView();
-    await Utils.sleep(UPDATE_MLS);
-    b.printView();
-    process.stdout.write(MOVE_PROMPT);
-}
-
-/*
- * Repeatedly ask user for next move until exit.
- */
-async function gameLoop() {
-    if (moving) {
-        updatePlayerView();
-        await Utils.sleep(UPDATE_MLS);
-        b.printView();
-        rl.question(MOVE_PROMPT, async (ans) => {
-            await move(ans);
-            await Utils.sleep(UPDATE_MLS * 2);
-            gameLoop();
-        });
-    } else {
-        await Utils.sleep(UPDATE_MLS);
-        gameLoop();
+async function updateDisplay(locs: Location[]) {
+    for (let l of locs) {
+        updatePlayerView(l);
     }
 }
 
@@ -249,14 +221,32 @@ socket.on("connect", async () => {
     b = new Board();
     await b.seed(BOARD_SIZE, false, nStates);
 
-    moving = true;
-    gameLoop();
+    // Sign socket ID for login
+    const sig = PLAYER.genSig(
+        Player.hForLogin(Utils.asciiIntoBigNumber(socket.id))
+    );
+    socket.emit(
+        "login",
+        PLAYER_START,
+        PLAYER.bjjPub.serialize(),
+        PLAYER_SYMBOL,
+        Utils.serializeSig(sig)
+    );
+});
+
+/*
+ * Game loop.
+ */
+process.stdin.on("keypress", (str) => {
+    if (canMove) {
+        move(str);
+    }
 });
 
 /*
  * Attach event handlers.
  */
+socket.on("loginResponse", loginResponse);
 socket.on("decryptResponse", decryptResponse);
 socket.on("getSignatureResponse", getSignatureResponse);
-socket.on("pingResponse", pingResponse);
 socket.on("updateDisplay", updateDisplay);
