@@ -864,8 +864,8 @@ describe("Unit tests for CheckWaterUpdates()", () => {
     });
 
     it("fails if player does not lose troops when they should", async () => {
-        let t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.WATER_TILE);
-        let u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 1, Tile.WATER_TILE);
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.WATER_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 1, Tile.WATER_TILE);
 
         const w = await circuit.calculateWitness(
             {
@@ -881,8 +881,8 @@ describe("Unit tests for CheckWaterUpdates()", () => {
     });
 
     it("fails if player loses troops on a non-water tile", async () => {
-        let t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
-        let u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 1, Tile.NORMAL_TILE);
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 1, Tile.NORMAL_TILE);
 
         const w = await circuit.calculateWitness(
             {
@@ -898,8 +898,8 @@ describe("Unit tests for CheckWaterUpdates()", () => {
     });
 
     it("fails if player loses less troops than they should", async () => {
-        let t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.WATER_TILE);
-        let u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 2, Tile.WATER_TILE);
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.WATER_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 2, Tile.WATER_TILE);
 
         const w = await circuit.calculateWitness(
             {
@@ -915,8 +915,8 @@ describe("Unit tests for CheckWaterUpdates()", () => {
     });
 
     it("fails if player loses more troops than they should", async () => {
-        let t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.WATER_TILE);
-        let u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 2, Tile.WATER_TILE);
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.WATER_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 2, Tile.WATER_TILE);
 
         const w = await circuit.calculateWitness(
             {
@@ -932,8 +932,8 @@ describe("Unit tests for CheckWaterUpdates()", () => {
     });
 
     it("fails if player loses more than all of their troops", async () => {
-        let t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.WATER_TILE);
-        let u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 11, Tile.WATER_TILE);
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.WATER_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 11, Tile.WATER_TILE);
 
         const w = await circuit.calculateWitness(
             {
@@ -949,8 +949,8 @@ describe("Unit tests for CheckWaterUpdates()", () => {
     });
 
     it("fails if player does not update latestWaterUpdateInterval", async () => {
-        let t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.WATER_TILE);
-        let u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 0, Tile.WATER_TILE);
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.WATER_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 0, Tile.WATER_TILE);
 
         const w = await circuit.calculateWitness(
             {
@@ -966,8 +966,8 @@ describe("Unit tests for CheckWaterUpdates()", () => {
     });
 
     it("passes if player's troop count is correct on water (case 1)", async () => {
-        let t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.WATER_TILE);
-        let u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 0, Tile.WATER_TILE);
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.WATER_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 0, Tile.WATER_TILE);
 
         const w = await circuit.calculateWitness(
             {
@@ -983,8 +983,8 @@ describe("Unit tests for CheckWaterUpdates()", () => {
     });
 
     it("passes if player's troop count is correct on water (case 2)", async () => {
-        let t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.WATER_TILE);
-        let u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 1, Tile.WATER_TILE);
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.WATER_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 1, Tile.WATER_TILE);
 
         const w = await circuit.calculateWitness(
             {
@@ -1000,8 +1000,8 @@ describe("Unit tests for CheckWaterUpdates()", () => {
     });
 
     it("passes if player's troop count is correct on water (case 3)", async () => {
-        let t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.WATER_TILE);
-        let u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 11, Tile.WATER_TILE);
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.WATER_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 11, Tile.WATER_TILE);
 
         const w = await circuit.calculateWitness(
             {
@@ -1017,8 +1017,8 @@ describe("Unit tests for CheckWaterUpdates()", () => {
     });
 
     it("passes if player keeps troops on a non-water tile", async () => {
-        let t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
-        let u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 1, Tile.NORMAL_TILE);
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 1, Tile.NORMAL_TILE);
 
         const w = await circuit.calculateWitness(
             {
@@ -1026,6 +1026,166 @@ describe("Unit tests for CheckWaterUpdates()", () => {
                 tTile: t1.toCircuitInput(),
                 uTile: u1.toCircuitInput(),
                 updatedTroops: "10",
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("1"));
+        await circuit.checkConstraints(w);
+    });
+});
+
+describe("Unit tests for CheckRsrcCases()", () => {
+    let circuit;
+
+    beforeEach(async () => {
+        circuit = await wasm("test/circuits/test_check_rsrc_cases.circom");
+    });
+
+    it("fails (case 1)", async () => {
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 20, 0, 0, 0, Tile.NORMAL_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 0, Tile.NORMAL_TILE);
+
+        const w = await circuit.calculateWitness(
+            {
+                uFrom: u1.toCircuitInput(),
+                uTo: u2.toCircuitInput(),
+                fromUpdatedTroops: "20",
+                toUpdatedTroops: "5",
+                ontoSelfOrUnowned: "0",
+                ontoMoreOrEq: "0",
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("0"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails (case 2)", async () => {
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
+
+        const w = await circuit.calculateWitness(
+            {
+                uFrom: u1.toCircuitInput(),
+                uTo: u2.toCircuitInput(),
+                fromUpdatedTroops: "10",
+                toUpdatedTroops: "20",
+                ontoSelfOrUnowned: "0",
+                ontoMoreOrEq: "1",
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("0"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails (case 3, onto less resources)", async () => {
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 0, Tile.NORMAL_TILE);
+
+        const w = await circuit.calculateWitness(
+            {
+                uFrom: u1.toCircuitInput(),
+                uTo: u2.toCircuitInput(),
+                fromUpdatedTroops: "10",
+                toUpdatedTroops: "0",
+                ontoSelfOrUnowned: "1",
+                ontoMoreOrEq: "0",
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("0"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails (case 3, onto more or equal resources)", async () => {
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 1, 0, 0, 0, Tile.NORMAL_TILE);
+
+        const w = await circuit.calculateWitness(
+            {
+                uFrom: u1.toCircuitInput(),
+                uTo: u2.toCircuitInput(),
+                fromUpdatedTroops: "10",
+                toUpdatedTroops: "20",
+                ontoSelfOrUnowned: "1",
+                ontoMoreOrEq: "1",
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("0"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("passes (case 1)", async () => {
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 0, Tile.NORMAL_TILE);
+
+        const w = await circuit.calculateWitness(
+            {
+                uFrom: u1.toCircuitInput(),
+                uTo: u2.toCircuitInput(),
+                fromUpdatedTroops: "20",
+                toUpdatedTroops: "5",
+                ontoSelfOrUnowned: "0",
+                ontoMoreOrEq: "0",
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("1"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("passes (case 2)", async () => {
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 0, Tile.NORMAL_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 15, 0, 0, 0, Tile.NORMAL_TILE);
+
+        const w = await circuit.calculateWitness(
+            {
+                uFrom: u1.toCircuitInput(),
+                uTo: u2.toCircuitInput(),
+                fromUpdatedTroops: "10",
+                toUpdatedTroops: "20",
+                ontoSelfOrUnowned: "0",
+                ontoMoreOrEq: "1",
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("1"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("passes (case 3, onto less resources)", async () => {
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 0, Tile.NORMAL_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 0, Tile.NORMAL_TILE);
+
+        const w = await circuit.calculateWitness(
+            {
+                uFrom: u1.toCircuitInput(),
+                uTo: u2.toCircuitInput(),
+                fromUpdatedTroops: "10",
+                toUpdatedTroops: "0",
+                ontoSelfOrUnowned: "1",
+                ontoMoreOrEq: "0",
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("1"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("passes (case 3, onto more or equal resources)", async () => {
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 0, Tile.NORMAL_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 25, 0, 0, 0, Tile.NORMAL_TILE);
+
+        const w = await circuit.calculateWitness(
+            {
+                uFrom: u1.toCircuitInput(),
+                uTo: u2.toCircuitInput(),
+                fromUpdatedTroops: "10",
+                toUpdatedTroops: "20",
+                ontoSelfOrUnowned: "1",
+                ontoMoreOrEq: "1",
             },
             true
         );
