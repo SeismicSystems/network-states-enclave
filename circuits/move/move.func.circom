@@ -206,13 +206,9 @@ template CheckWaterUpdates(N_TL_ATRS, RSRC_IDX, WTR_UPD_IDX, TYPE_IDX,
     signal circuitUpdatedTroops <== (tTile[RSRC_IDX] + tTile[WTR_UPD_IDX] - 
         currentWaterInterval) * notAllDead;
 
-    // Case when not on water tile: troop count should not change
-    signal case1 <== IsEqual()([updatedTroops, tTile[RSRC_IDX]]);
-
-    // Case when on water tile
-    signal case2 <== IsEqual()([updatedTroops, circuitUpdatedTroops]);
-
-    signal troopRsrcCorrect <== Mux1()([case1, case2], onWater);
+    // The water update applies iff onWater is true
+    signal troopRsrcCorrect <== IsZero()(
+        onWater * (circuitUpdatedTroops - updatedTroops));
 
     signal troopsCounted <== IsEqual()(
         [currentWaterInterval, uTile[WTR_UPD_IDX]]);
