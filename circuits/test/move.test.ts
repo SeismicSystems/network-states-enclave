@@ -1194,57 +1194,145 @@ describe("Unit tests for CheckRsrcCases()", () => {
     });
 });
 
-describe("Unit tests for CheckMerkleInclusion()", () => {
+describe("Unit tests for CheckTypeConsistency()", () => {
     let circuit;
 
     beforeEach(async () => {
-        circuit = await wasm("test/circuits/test_check_merkle.circom");
+        circuit = await wasm("test/circuits/test_type_consistency.circom");
     });
 
-    it("passes if both tiles are in the merkle root", async () => {
-        let tree = Utils.newTree(8);
-
-        const p1 = new Player("A", BigInt("0xfff"));
-        const p2 = new Player("B", BigInt("0xddd"));
-        const t1 = Tile.genOwned(
-            p1,
-            { r: 123, c: 321 },
-            10,
-            1,
-            0,
-            0,
-            Tile.NORMAL_TILE
-        );
-        const t2 = Tile.genOwned(
-            p2,
-            { r: 124, c: 321 },
-            10,
-            2,
-            0,
-            0,
-            Tile.NORMAL_TILE
-        );
-
-        tree.insert(Utils.hIntoBigNumber(t1.hash()));
-        tree.insert(Utils.hIntoBigNumber(t2.hash()));
-
-        const mp1 = Utils.generateMerkleProof(t1.hash(), tree);
-        const mp2 = Utils.generateMerkleProof(t2.hash(), tree);
+    it("fails if 'from' tile changes type", async () => {
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
+        const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 1 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.WATER_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 1 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
 
         const w = await circuit.calculateWitness(
             {
-                root: tree.root,
                 tFrom: t1.toCircuitInput(),
-                tFromPathIndices: mp1.indices,
-                tFromPathElements: mp1.pathElements,
                 tTo: t2.toCircuitInput(),
-                tToPathIndices: mp2.indices,
-                tToPathElements: mp2.pathElements,
+                uFrom: u1.toCircuitInput(),
+                uTo: u2.toCircuitInput(),
+                ontoEnemy: "0",
+                ontoMoreOrEq: "1",
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("0"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails if 'to' tile changes type, not an enemy capital", async () => {
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
+        const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 1 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 1 }, 10, 0, 0, 0, Tile.WATER_TILE);
+
+        const w = await circuit.calculateWitness(
+            {
+                tFrom: t1.toCircuitInput(),
+                tTo: t2.toCircuitInput(),
+                uFrom: u1.toCircuitInput(),
+                uTo: u2.toCircuitInput(),
+                ontoEnemy: "1",
+                ontoMoreOrEq: "0",
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("0"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails if enemy capital is not turned into a city", async () => {
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
+        const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 1 }, 10, 0, 0, 0, Tile.CAPITAL_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.WATER_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 1 }, 10, 0, 0, 0, Tile.CAPITAL_TILE);
+
+        const w = await circuit.calculateWitness(
+            {
+                tFrom: t1.toCircuitInput(),
+                tTo: t2.toCircuitInput(),
+                uFrom: u1.toCircuitInput(),
+                uTo: u2.toCircuitInput(),
+                ontoEnemy: "1",
+                ontoMoreOrEq: "0",
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("0"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails if player capital turns into a city", async () => {
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
+        const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 1 }, 10, 0, 0, 0, Tile.CAPITAL_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.WATER_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 1 }, 10, 0, 0, 0, Tile.CITY_TILE);
+
+        const w = await circuit.calculateWitness(
+            {
+                tFrom: t1.toCircuitInput(),
+                tTo: t2.toCircuitInput(),
+                uFrom: u1.toCircuitInput(),
+                uTo: u2.toCircuitInput(),
+                ontoEnemy: "0",
+                ontoMoreOrEq: "0",
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("0"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("passes when moving onto a normal tile", async () => {
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
+        const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 1 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 1 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
+
+        const w = await circuit.calculateWitness(
+            {
+                tFrom: t1.toCircuitInput(),
+                tTo: t2.toCircuitInput(),
+                uFrom: u1.toCircuitInput(),
+                uTo: u2.toCircuitInput(),
+                ontoEnemy: "1",
+                ontoMoreOrEq: "0",
             },
             true
         );
         assert.equal(w[1], BigInt("1"));
         await circuit.checkConstraints(w);
+    });
+
+    it("passes when taking over enemy capital", async () => {
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
+        const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 1 }, 10, 0, 0, 0, Tile.CAPITAL_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 1 }, 10, 0, 0, 0, Tile.CITY_TILE);
+
+        const w = await circuit.calculateWitness(
+            {
+                tFrom: t1.toCircuitInput(),
+                tTo: t2.toCircuitInput(),
+                uFrom: u1.toCircuitInput(),
+                uTo: u2.toCircuitInput(),
+                ontoEnemy: "1",
+                ontoMoreOrEq: "0",
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("1"));
+        await circuit.checkConstraints(w);
+    });
+});
+
+describe("Unit tests for CheckMerkleInclusion()", () => {
+    let circuit;
+
+    beforeEach(async () => {
+        circuit = await wasm("test/circuits/test_check_merkle.circom");
     });
 
     it("fails if the from tile is not in the merkle root", async () => {
@@ -1334,6 +1422,52 @@ describe("Unit tests for CheckMerkleInclusion()", () => {
             true
         );
         assert.equal(w[1], BigInt("0"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("passes if both tiles are in the merkle root", async () => {
+        let tree = Utils.newTree(8);
+
+        const p1 = new Player("A", BigInt("0xfff"));
+        const p2 = new Player("B", BigInt("0xddd"));
+        const t1 = Tile.genOwned(
+            p1,
+            { r: 123, c: 321 },
+            10,
+            1,
+            0,
+            0,
+            Tile.NORMAL_TILE
+        );
+        const t2 = Tile.genOwned(
+            p2,
+            { r: 124, c: 321 },
+            10,
+            2,
+            0,
+            0,
+            Tile.NORMAL_TILE
+        );
+
+        tree.insert(Utils.hIntoBigNumber(t1.hash()));
+        tree.insert(Utils.hIntoBigNumber(t2.hash()));
+
+        const mp1 = Utils.generateMerkleProof(t1.hash(), tree);
+        const mp2 = Utils.generateMerkleProof(t2.hash(), tree);
+
+        const w = await circuit.calculateWitness(
+            {
+                root: tree.root,
+                tFrom: t1.toCircuitInput(),
+                tFromPathIndices: mp1.indices,
+                tFromPathElements: mp1.pathElements,
+                tTo: t2.toCircuitInput(),
+                tToPathIndices: mp2.indices,
+                tToPathElements: mp2.pathElements,
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("1"));
         await circuit.checkConstraints(w);
     });
 });
