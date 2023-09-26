@@ -155,39 +155,17 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, CITY_IDX, TRP_UPD_IDX, WTR_UPD_IDX,
     signal ontoMoreOrEq <== GreaterEqThan(SYS_BITS)([toUpdatedTroops, 
         fromUpdatedTroops - uFrom[RSRC_IDX]]);
 
-    // signal keepToCityId <== OR()(ontoSelf, AND()(ontoEnemy, ontoMoreOrEq));
-
-    // // Moving onto enemy tile that has less resource vs what's being sent
-    // signal case1 <== BatchIsEqual(2)([
-    //     [fromUpdatedTroops - uFrom[RSRC_IDX], toUpdatedTroops + uTo[RSRC_IDX]],
-    //     [uTo[CITY_IDX], uFrom[CITY_IDX]]]);
-
-    // // Moving onto enemy tile that has more or eq resource vs what's being sent
-    // signal case2 <== BatchIsEqual(2)([
-    //     [fromUpdatedTroops - uFrom[RSRC_IDX], toUpdatedTroops - uTo[RSRC_IDX]],
-    //     [uTo[CITY_IDX], tTo[CITY_IDX]]]);
-
-    // // Moving onto an unowned tile
-    // signal case3 <== BatchIsEqual(2)([
-    //     [fromUpdatedTroops + toUpdatedTroops, uFrom[RSRC_IDX] + uTo[RSRC_IDX]],
-    //     [uTo[CITY_IDX], uFrom[CITY_IDX]]]);
-
-    // // Moving onto self-owned tile, which may be from a different city
-    // signal case4 <== BatchIsEqual(2)([
-    //     [fromUpdatedTroops + toUpdatedTroops, uFrom[RSRC_IDX] + uTo[RSRC_IDX]],
-    //     [uTo[CITY_IDX], tTo[CITY_IDX]]]);
-
-    // signal moveLogic <== Mux2()([case1, case2, case3, case4], [keepToCityId, 
-    //     ontoSelfOrUnowned]);
-    // signal moveLogicIncorrect <== NOT()(moveLogic);
+    signal rsrcLogic <== CheckRsrcCases()(fromUpdatedTroops, toUpdatedTroops,
+        uFrom[RSRC_IDX], uTo[RSRC_IDX], ontoSelfOrUnowned, ontoMoreOrEq);
+    signal rsrcLogicIncorrect <== NOT()(rsrcLogic);
 
     signal cityIdLogic <== CheckCityIdCases(CITY_TYPE, CAPITAL_TYPE)(
         tFrom[CITY_IDX], tTo[CITY_IDX], uFrom[CITY_IDX], uTo[CITY_IDX], 
         tTo[TYPE_IDX], ontoSelf, ontoEnemy, ontoMoreOrEq);
     signal cityIdLogicIncorrect <== NOT()(cityIdLogic);
 
-    out <== BatchIsZero(5)([movedAllTroops, troopUpdatesIncorrect, overflowFrom, 
-        overflowTo, cityIdLogicIncorrect]);
+    out <== BatchIsZero(6)([movedAllTroops, troopUpdatesIncorrect, overflowFrom, 
+        overflowTo, rsrcLogicIncorrect, cityIdLogicIncorrect]);
 }
 
 /*
@@ -247,7 +225,29 @@ template CheckWaterUpdates(SYS_BITS) {
 }
 
 template CheckRsrcCases() {
+    signal input fromUpdatedTroops;
+    signal input toUpdatedTroops;
+    signal input uFromTroops;
+    signal input uToTroops;
+    signal input ontoSelfOrUnowned;
+    signal input ontoMoreOrEq;
 
+    signal output out;
+
+    // Moving onto enemy tile that has less resource vs what's being sent
+    signal case1 <== IsEqual()(
+        [fromUpdatedTroops - uFromTroops, toUpdatedTroops + uToTroops]);
+
+    // Moving onto enemy tile that has more or eq resource vs what's being sent
+    signal case2 <== IsEqual()(
+        [fromUpdatedTroops - uFromTroops, toUpdatedTroops - uToTroops]);
+
+    // Moving onto a self or unowned tile
+    signal case3 <== IsEqual()(
+        [fromUpdatedTroops + toUpdatedTroops, uFromTroops + uToTroops]);
+
+    out <== Mux2()([case1, case2, case3, case3], [ontoMoreOrEq, 
+        ontoSelfOrUnowned]);
 }
 
 template CheckCityIdCases(CITY_TYPE, CAPITAL_TYPE) {
