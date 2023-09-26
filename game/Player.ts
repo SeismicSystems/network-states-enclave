@@ -68,9 +68,9 @@ export class Player {
 
     /*
      * Convert socket ID into field element in Babyjubjub's base field using
-     * Poseidon hash. This is used for spawn and reconnect requests.
+     * Poseidon hash. This is used for login requests.
      */
-    static hForSpawn(id: BigInt): BigInt {
+    static hForLogin(id: BigInt): BigInt {
         return hashOne(id);
     }
 

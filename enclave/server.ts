@@ -74,26 +74,21 @@ let pubKeyToId = new Map<string, string>();
 let claimedMoves = new Map<string, ClaimedMove>();
 
 /*
- * Dev function for spawning a player on the map.
+ * Dev function for spawning a player on the map or logging back in.
  */
-async function spawn(
+async function login(
     socket: Socket,
     l: Location,
     reqPlayer: Player,
     sigStr: string
 ) {
-    // If player is already spawned in, their socket ID will already be stored
-    if (idToPubKey.has(socket.id)) {
-        return;
-    }
-
-    const h = Player.hForSpawn(Utils.asciiIntoBigNumber(socket.id));
+    const h = Player.hForLogin(Utils.asciiIntoBigNumber(socket.id));
     const sig = Utils.unserializeSig(sigStr);
     if (sig && reqPlayer.verifySig(h, sig)) {
         const pubkey = reqPlayer.bjjPub.serialize();
 
         // Spawn if player is connected for the first time
-        if (!pubKeyToId.has(pubkey)) {
+        if (!b.isSpawned(reqPlayer)) {
             await b.spawn(l, reqPlayer, START_RESOURCES, cityId, nStates);
             cityId++;
         }
@@ -106,7 +101,7 @@ async function spawn(
         b.playerTiles.get(pubkey)?.forEach((l) => {
             visibleTiles.push(...b.getNearbyLocations(l));
         });
-        socket.emit("spawnResponse", visibleTiles);
+        socket.emit("loginResponse", visibleTiles);
     }
 }
 
@@ -151,6 +146,19 @@ function decrypt(
         return;
     }
     socket.emit("decryptResponse", Tile.mystery(l).toJSON());
+}
+
+/*
+ * When a player disconnects, we remove the relation between their socket ID and
+ * their public key. This is so that no other player gains that ID and can play
+ * on their behalf.
+ */
+function disconnectPlayer(socket: Socket) {
+    const pubKey = idToPubKey.get(socket.id);
+    if (pubKey) {
+        pubKeyToId.delete(pubKey);
+        idToPubKey.delete(socket.id);
+    }
 }
 
 /*
@@ -211,14 +219,18 @@ function alertPlayer(io: Server, pl: Player, locs: Location[]) {
 io.on("connection", (socket: Socket) => {
     console.log("Client connected: ", socket.id);
 
-    socket.on("spawn", (l: Location, p: string, s: string, sig: string) => {
-        spawn(socket, l, Player.fromPubString(s, p), sig);
+    socket.on("login", (l: Location, p: string, s: string, sig: string) => {
+        login(socket, l, Player.fromPubString(s, p), sig);
     });
     socket.on("getSignature", (uFrom: any, uTo: any) => {
         getSignature(socket, uFrom, uTo);
     });
     socket.on("decrypt", (l: Location, pubkey: string, sig: string) => {
         decrypt(socket, l, Player.fromPubString("", pubkey), sig);
+    });
+
+    socket.on("disconnecting", () => {
+        disconnectPlayer(socket);
     });
 });
 
