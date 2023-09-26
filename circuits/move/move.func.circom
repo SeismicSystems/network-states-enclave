@@ -79,17 +79,11 @@ template CheckStep(VALID_MOVES, N_VALID_MOVES, N_TL_ATRS, ROW_IDX, COL_IDX,
     signal stepValid <== PairArrayContains(N_VALID_MOVES)(VALID_MOVES, step);
 
     signal moveLogic <== AND()(positionsConsistent, stepValid);
-
-    signal typesConsistent <== BatchIsEqual(2)([
-        [tFrom[TYPE_IDX], uFrom[TYPE_IDX]],
-        [tTo[TYPE_IDX], uTo[TYPE_IDX]]]);
         
     signal ontoHill <== IsEqual()([tTo[TYPE_IDX], HILL_TYPE]);
     signal notOntoHill <== NOT()(ontoHill);
-
-    signal typeLogic <== AND()(typesConsistent, notOntoHill);
     
-    out <== AND()(moveLogic, typeLogic);
+    out <== AND()(moveLogic, notOntoHill);
 }
 
 /*
@@ -124,18 +118,18 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, CITY_IDX, TRP_UPD_IDX, WTR_UPD_IDX,
     signal movedAllTroops <== IsZero()(uFrom[RSRC_IDX]);
 
     // Troop updates for water and land tiles
-    signal fromCheckTroopUpdates <== CheckTroopUpdates()(
-        currentTroopInterval, tFrom[RSRC_IDX], 1, tFrom[TRP_UPD_IDX], 
-        uFrom[TRP_UPD_IDX], fromUpdatedTroops);
-    signal toCheckTroopUpdates <== CheckTroopUpdates()(
-        currentTroopInterval, tTo[RSRC_IDX], ontoSelfOrEnemy, tTo[TRP_UPD_IDX], 
-        uTo[TRP_UPD_IDX], toUpdatedTroops);
-    signal fromCheckWaterUpdates <== CheckWaterUpdates(SYS_BITS)(
-        currentWaterInterval, tFrom[RSRC_IDX], tFrom[WTR_UPD_IDX], 
-        uFrom[WTR_UPD_IDX], fromUpdatedTroops);
-    signal toCheckWaterUpdates <== CheckWaterUpdates(SYS_BITS)(
-        currentWaterInterval, tTo[RSRC_IDX], 
-        tTo[WTR_UPD_IDX], uTo[WTR_UPD_IDX], toUpdatedTroops);
+    signal fromCheckTroopUpdates <== CheckTroopUpdates(N_TL_ATRS, RSRC_IDX, 
+        TRP_UPD_IDX)(currentTroopInterval, tFrom, uFrom, fromUpdatedTroops, 1);
+    signal toCheckTroopUpdates <== CheckTroopUpdates(N_TL_ATRS, RSRC_IDX,
+        TRP_UPD_IDX)(currentTroopInterval, tTo, uTo, toUpdatedTroops,
+        ontoSelfOrEnemy);
+
+    signal fromCheckWaterUpdates <== CheckWaterUpdates(N_TL_ATRS, RSRC_IDX,
+        WTR_UPD_IDX, SYS_BITS)(currentWaterInterval, tFrom, uFrom, 
+        fromUpdatedTroops);
+    signal toCheckWaterUpdates <== CheckWaterUpdates(N_TL_ATRS, RSRC_IDX,
+        WTR_UPD_IDX, SYS_BITS)(currentWaterInterval, tTo, uTo, 
+        toUpdatedTroops);
 
     signal fromTroopUpdateCorrect <== Mux1()([fromCheckTroopUpdates, 
         fromCheckWaterUpdates], playerOnWater);
@@ -155,42 +149,48 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, CITY_IDX, TRP_UPD_IDX, WTR_UPD_IDX,
     signal ontoMoreOrEq <== GreaterEqThan(SYS_BITS)([toUpdatedTroops, 
         fromUpdatedTroops - uFrom[RSRC_IDX]]);
 
-    signal rsrcLogic <== CheckRsrcCases()(fromUpdatedTroops, toUpdatedTroops,
-        uFrom[RSRC_IDX], uTo[RSRC_IDX], ontoSelfOrUnowned, ontoMoreOrEq);
+    signal rsrcLogic <== CheckRsrcCases(N_TL_ATRS, RSRC_IDX)(uFrom, uTo, 
+        fromUpdatedTroops, toUpdatedTroops, ontoSelfOrUnowned, ontoMoreOrEq);
     signal rsrcLogicIncorrect <== NOT()(rsrcLogic);
 
-    signal cityIdLogic <== CheckCityIdCases(CITY_TYPE, CAPITAL_TYPE)(
-        tFrom[CITY_IDX], tTo[CITY_IDX], uFrom[CITY_IDX], uTo[CITY_IDX], 
-        tTo[TYPE_IDX], ontoSelf, ontoEnemy, ontoMoreOrEq);
+    signal cityIdLogic <== CheckCityIdCases(N_TL_ATRS, CITY_IDX, TYPE_IDX, 
+        CITY_TYPE, CAPITAL_TYPE)(tFrom, tTo, uFrom, uTo, ontoSelf, ontoEnemy, 
+        ontoMoreOrEq);
     signal cityIdLogicIncorrect <== NOT()(cityIdLogic);
 
-    out <== BatchIsZero(6)([movedAllTroops, troopUpdatesIncorrect, overflowFrom, 
-        overflowTo, rsrcLogicIncorrect, cityIdLogicIncorrect]);
+    signal typeLogic <== CheckTypeConsistency(N_TL_ATRS, TYPE_IDX, CITY_TYPE,
+        CAPITAL_TYPE)(tFrom, tTo, uFrom, uTo, ontoEnemy, ontoMoreOrEq);
+    signal typeLogicIncorrect <== NOT()(typeLogic);
+
+
+
+    out <== BatchIsZero(7)([movedAllTroops, troopUpdatesIncorrect, overflowFrom, 
+        overflowTo, rsrcLogicIncorrect, cityIdLogicIncorrect, 
+        typeLogicIncorrect]);
 }
 
 /*
  * Asserts that the attacker's and defender's resources prior to moving reflect
  * any troop updates that should have occurred.
  */
-template CheckTroopUpdates() {
+template CheckTroopUpdates(N_TL_ATRS, RSRC_IDX, TRP_UPD_IDX) {
     signal input currentTroopInterval;
 
-    signal input tTroops;
-    signal input isSelfOrEnemy;
-    signal input tLatestUpdate;
-    signal input uLatestUpdate;
+    signal input tTile[N_TL_ATRS];
+    signal input uTile[N_TL_ATRS];
     signal input updatedTroops;
+    signal input isSelfOrEnemy;
 
     signal output out;
 
     // Make sure updated troop counts are computed correctly
-    signal circuitUpdatedTroops <== (tTroops + currentTroopInterval 
-        - tLatestUpdate) * isSelfOrEnemy;
+    signal circuitUpdatedTroops <== (tTile[RSRC_IDX] + currentTroopInterval 
+        - tTile[TRP_UPD_IDX]) * isSelfOrEnemy;
     signal troopRsrcCorrect <== IsEqual()(
         [circuitUpdatedTroops, updatedTroops]);
 
     // Troop updates should be accounted for in new tile states
-    signal troopsCounted <== IsEqual()([currentTroopInterval, uLatestUpdate]);
+    signal troopsCounted <== IsEqual()([currentTroopInterval, uTile[TRP_UPD_IDX]]);
 
     out <== AND()(troopRsrcCorrect, troopsCounted);
 }
@@ -200,35 +200,35 @@ template CheckTroopUpdates() {
  * updates are mutually exclusive events, and updatedTroops reflects the 
  * player's troop count post updates (both water or troop).
  */
-template CheckWaterUpdates(SYS_BITS) {
+template CheckWaterUpdates(N_TL_ATRS, RSRC_IDX, WTR_UPD_IDX, SYS_BITS) {
     signal input currentWaterInterval;
 
-    signal input tTroops;
-    signal input tLatestUpdate;
-    signal input uLatestUpdate;
+    signal input tTile[N_TL_ATRS];
+    signal input uTile[N_TL_ATRS];
     signal input updatedTroops;
 
     signal output out;
 
     // Forces updatedTroops to be 0 when all troops die
-    signal notAllDead <== GreaterEqThan(SYS_BITS)([tTroops, 
-        currentWaterInterval - tLatestUpdate]);
+    signal notAllDead <== GreaterEqThan(SYS_BITS)([tTile[RSRC_IDX], 
+        currentWaterInterval - tTile[WTR_UPD_IDX]]);
 
-    signal circuitUpdatedTroops <== (tTroops + tLatestUpdate - 
+    signal circuitUpdatedTroops <== (tTile[RSRC_IDX] + tTile[WTR_UPD_IDX] - 
         currentWaterInterval) * notAllDead;
     signal troopRsrcCorrect <== IsEqual()(
         [circuitUpdatedTroops, updatedTroops]);
 
-    signal troopsCounted <== IsEqual()([currentWaterInterval, uLatestUpdate]);
+    signal troopsCounted <== IsEqual()(
+        [currentWaterInterval, uTile[WTR_UPD_IDX]]);
 
     out <== AND()(troopRsrcCorrect, troopsCounted);
 }
 
-template CheckRsrcCases() {
+template CheckRsrcCases(N_TL_ATRS, RSRC_IDX) {
+    signal input uFrom[N_TL_ATRS];
+    signal input uTo[N_TL_ATRS];
     signal input fromUpdatedTroops;
     signal input toUpdatedTroops;
-    signal input uFromTroops;
-    signal input uToTroops;
     signal input ontoSelfOrUnowned;
     signal input ontoMoreOrEq;
 
@@ -236,26 +236,26 @@ template CheckRsrcCases() {
 
     // Moving onto enemy tile that has less resource vs what's being sent
     signal case1 <== IsEqual()(
-        [fromUpdatedTroops - uFromTroops, toUpdatedTroops + uToTroops]);
+        [fromUpdatedTroops - uFrom[RSRC_IDX], toUpdatedTroops + uTo[RSRC_IDX]]);
 
     // Moving onto enemy tile that has more or eq resource vs what's being sent
     signal case2 <== IsEqual()(
-        [fromUpdatedTroops - uFromTroops, toUpdatedTroops - uToTroops]);
+        [fromUpdatedTroops - uFrom[RSRC_IDX], toUpdatedTroops - uTo[RSRC_IDX]]);
 
     // Moving onto a self or unowned tile
     signal case3 <== IsEqual()(
-        [fromUpdatedTroops + toUpdatedTroops, uFromTroops + uToTroops]);
+        [fromUpdatedTroops + toUpdatedTroops, uFrom[RSRC_IDX] + uTo[RSRC_IDX]]);
 
     out <== Mux2()([case1, case2, case3, case3], [ontoMoreOrEq, 
         ontoSelfOrUnowned]);
 }
 
-template CheckCityIdCases(CITY_TYPE, CAPITAL_TYPE) {
-    signal input tFromCityId;
-    signal input tToCityId;
-    signal input uFromCityId;
-    signal input uToCityId;
-    signal input tToType;
+template CheckCityIdCases(N_TL_ATRS, CITY_IDX, TYPE_IDX, CITY_TYPE, 
+    CAPITAL_TYPE) {
+    signal input tFrom[N_TL_ATRS];
+    signal input tTo[N_TL_ATRS];
+    signal input uFrom[N_TL_ATRS];
+    signal input uTo[N_TL_ATRS];
     signal input ontoSelf;
     signal input ontoEnemy;
     signal input ontoMoreOrEq;
@@ -263,11 +263,12 @@ template CheckCityIdCases(CITY_TYPE, CAPITAL_TYPE) {
     signal output out;
 
     // Properties we need to know to determine uTo's city ID
-    signal ontoCity <== IsEqual()([tToType, CITY_TYPE]);
-    signal ontoCapital <== IsEqual()([tToType, CAPITAL_TYPE]);
-    signal sameCity <== IsEqual()([tFromCityId, tToCityId]);
+    signal ontoCity <== IsEqual()([tTo[TYPE_IDX], CITY_TYPE]);
+    signal ontoCapital <== IsEqual()([tTo[TYPE_IDX], CAPITAL_TYPE]);
+    signal sameCity <== IsEqual()([tFrom[CITY_IDX], tTo[CITY_IDX]]);
     signal diffCity <== NOT()(sameCity);
 
+    // Cases when city ID of 'to' should not change
     signal ontoCityOrCapital <== OR()(ontoCity, ontoCapital);
     signal ontoSelfDiffCity <== AND()(ontoSelf, diffCity);
     signal ontoEnemyMoreOrEq <== AND()(ontoEnemy, ontoMoreOrEq);
@@ -276,15 +277,46 @@ template CheckCityIdCases(CITY_TYPE, CAPITAL_TYPE) {
         ontoEnemyMoreOrEq));
 
     // Case when the city ID of 'to' is tFrom's city ID
-    signal case1 <== IsEqual()([uToCityId, tFromCityId]);
+    signal case1 <== IsEqual()([uTo[CITY_IDX], tFrom[CITY_IDX]]);
 
     // Case when the city ID of 'to' remains the same
-    signal case2 <== IsEqual()([uToCityId, tToCityId]);
+    signal case2 <== IsEqual()([uTo[CITY_IDX], tTo[CITY_IDX]]);
+
+    signal caseLogic <== Mux1()([case1, case2], selector);
 
     // From tile must remain player's after move
-    signal fromOwnership <== IsEqual()([tFromCityId, uFromCityId]);
+    signal fromOwnership <== IsEqual()([tFrom[CITY_IDX], uFrom[CITY_IDX]]);
 
-    out <== Mux1()([case1, case2], selector);
+    out <== AND()(caseLogic, fromOwnership);
+}
+
+template CheckTypeConsistency(N_TL_ATRS, TYPE_IDX, CITY_TYPE, CAPITAL_TYPE) {
+    signal input tFrom[N_TL_ATRS];
+    signal input tTo[N_TL_ATRS];
+    signal input uFrom[N_TL_ATRS];
+    signal input uTo[N_TL_ATRS];
+    signal input ontoEnemy;
+    signal input ontoMoreOrEq;
+
+    signal output out;
+
+    // 'from' tile's type should always remain the same
+    signal fromTypeCorrect <== IsEqual()([uFrom[TYPE_IDX], tFrom[TYPE_IDX]]);
+
+    signal ontoCapital <== IsEqual()([tTo[TYPE_IDX], CAPITAL_TYPE]);
+    signal ontoLess <== NOT()(ontoMoreOrEq);
+    signal capturingEnemy <== AND()(ontoEnemy, ontoLess);
+    signal capturingCapital <== AND()(ontoCapital, capturingEnemy);
+
+    // Unless capturing an enemy capital, the 'to' tile's type should not change
+    signal case1 <== IsEqual()([uTo[TYPE_IDX], tTo[TYPE_IDX]]);
+
+    // Capital turns into a city
+    signal case2 <== IsEqual()([uTo[TYPE_IDX], CITY_TYPE]);
+
+    signal toTypeCorrect <== Mux1()([case1, case2], capturingCapital);
+
+    out <== AND()(fromTypeCorrect, toTypeCorrect);
 }
 
 /*
