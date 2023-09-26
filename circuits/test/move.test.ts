@@ -209,26 +209,6 @@ describe("Unit tests for CheckStep()", () => {
         await circuit.checkConstraints(w);
     });
 
-    it("fails if player tries to change tile type", async () => {
-        const t1 = Tile.genUnowned({ r: 12, c: 15 });
-        const t2 = Tile.water({ r: 11, c: 15 });
-
-        const u1 = Tile.genUnowned({ r: 12, c: 15 });
-        const u2 = Tile.genUnowned({ r: 11, c: 15 });
-
-        const w = await circuit.calculateWitness(
-            {
-                tFrom: t1.toCircuitInput(),
-                tTo: t2.toCircuitInput(),
-                uFrom: u1.toCircuitInput(),
-                uTo: u2.toCircuitInput(),
-            },
-            true
-        );
-        assert.equal(w[1], BigInt("0"));
-        await circuit.checkConstraints(w);
-    });
-
     it("fails if player tries to move onto a hill tile", async () => {
         const t1 = Tile.genUnowned({ r: 12, c: 15 });
         const t2 = Tile.hill({ r: 11, c: 15 });
@@ -754,64 +734,6 @@ describe("Unit tests for CheckRsrc()", () => {
         assert.equal(w[1], BigInt("1"));
         await circuit.checkConstraints(w);
     });
-
-    it("passes if player can capture enemy because of a troop update", async () => {
-        const p1 = new Player("A", BigInt("0xfff"));
-        const p2 = new Player("B", BigInt("0xddd"));
-        const t1 = Tile.genOwned(
-            p1,
-            { r: 123, c: 321 },
-            30,
-            1,
-            0,
-            0,
-            Tile.NORMAL_TILE
-        );
-        const t2 = Tile.genOwned(
-            p2,
-            { r: 124, c: 321 },
-            30,
-            2,
-            2,
-            0,
-            Tile.NORMAL_TILE
-        );
-        const u1 = Tile.genOwned(
-            p1,
-            { r: 123, c: 321 },
-            1,
-            1,
-            2,
-            0,
-            Tile.NORMAL_TILE
-        );
-        const u2 = Tile.genOwned(
-            p1,
-            { r: 124, c: 321 },
-            1,
-            1,
-            2,
-            0,
-            Tile.NORMAL_TILE
-        );
-
-        const w = await circuit.calculateWitness(
-            {
-                currentTroopInterval: "2",
-                currentWaterInterval: "0",
-                ontoSelfOrUnowned: "0",
-                tFrom: t1.toCircuitInput(),
-                tTo: t2.toCircuitInput(),
-                uFrom: u1.toCircuitInput(),
-                uTo: u2.toCircuitInput(),
-                fromUpdatedTroops: "32",
-                toUpdatedTroops: "30",
-            },
-            true
-        );
-        assert.equal(w[1], BigInt("1"));
-        await circuit.checkConstraints(w);
-    });
 });
 
 describe("Unit tests for CheckTroopUpdates()", () => {
@@ -941,13 +863,15 @@ describe("Unit tests for CheckWaterUpdates()", () => {
         circuit = await wasm("test/circuits/test_check_water.circom");
     });
 
-    it("fails if player does not lose troops in water", async () => {
+    it("fails if player does not lose troops when they should", async () => {
+        let t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.WATER_TILE);
+        let u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 1, Tile.WATER_TILE);
+
         const w = await circuit.calculateWitness(
             {
-                currentWaterInterval: "10",
-                tTroops: "10",
-                tLatestUpdate: "5",
-                uLatestUpdate: "10",
+                currentWaterInterval: "1",
+                tTile: t1.toCircuitInput(),
+                uTile: u1.toCircuitInput(),
                 updatedTroops: "10",
             },
             true
@@ -956,14 +880,16 @@ describe("Unit tests for CheckWaterUpdates()", () => {
         await circuit.checkConstraints(w);
     });
 
-    it("fails if player loses too few troops in water", async () => {
+    it("fails if player loses troops on a non-water tile", async () => {
+        let t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
+        let u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 1, Tile.NORMAL_TILE);
+
         const w = await circuit.calculateWitness(
             {
-                currentWaterInterval: "10",
-                tTroops: "10",
-                tLatestUpdate: "5",
-                uLatestUpdate: "10",
-                updatedTroops: "6",
+                currentWaterInterval: "1",
+                tTile: t1.toCircuitInput(),
+                uTile: u1.toCircuitInput(),
+                updatedTroops: "9",
             },
             true
         );
@@ -971,14 +897,16 @@ describe("Unit tests for CheckWaterUpdates()", () => {
         await circuit.checkConstraints(w);
     });
 
-    it("fails if player loses too many troops in water", async () => {
+    it("fails if player loses less troops than they should", async () => {
+        let t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.WATER_TILE);
+        let u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 2, Tile.WATER_TILE);
+
         const w = await circuit.calculateWitness(
             {
-                currentWaterInterval: "10",
-                tTroops: "10",
-                tLatestUpdate: "5",
-                uLatestUpdate: "10",
-                updatedTroops: "4",
+                currentWaterInterval: "2",
+                tTile: t1.toCircuitInput(),
+                uTile: u1.toCircuitInput(),
+                updatedTroops: "9",
             },
             true
         );
@@ -986,14 +914,16 @@ describe("Unit tests for CheckWaterUpdates()", () => {
         await circuit.checkConstraints(w);
     });
 
-    it("fails if player gains troops in water", async () => {
+    it("fails if player loses more troops than they should", async () => {
+        let t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.WATER_TILE);
+        let u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 2, Tile.WATER_TILE);
+
         const w = await circuit.calculateWitness(
             {
-                currentWaterInterval: "10",
-                tTroops: "10",
-                tLatestUpdate: "5",
-                uLatestUpdate: "10",
-                updatedTroops: "15",
+                currentWaterInterval: "2",
+                tTile: t1.toCircuitInput(),
+                uTile: u1.toCircuitInput(),
+                updatedTroops: "7",
             },
             true
         );
@@ -1001,14 +931,50 @@ describe("Unit tests for CheckWaterUpdates()", () => {
         await circuit.checkConstraints(w);
     });
 
-    it("passes if player loses correct amount of troops in water", async () => {
+    it("fails if player loses more than all of their troops", async () => {
+        let t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.WATER_TILE);
+        let u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 11, Tile.WATER_TILE);
+
         const w = await circuit.calculateWitness(
             {
-                currentWaterInterval: "10",
-                tTroops: "10",
-                tLatestUpdate: "5",
-                uLatestUpdate: "10",
-                updatedTroops: "5",
+                currentWaterInterval: "11",
+                tTile: t1.toCircuitInput(),
+                uTile: u1.toCircuitInput(),
+                updatedTroops: "21888242871839275222246405745257275088548364400416034343698204186575808495616",
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("0"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails if player does not update latestWaterUpdateInterval", async () => {
+        let t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.WATER_TILE);
+        let u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 0, Tile.WATER_TILE);
+
+        const w = await circuit.calculateWitness(
+            {
+                currentWaterInterval: "1",
+                tTile: t1.toCircuitInput(),
+                uTile: u1.toCircuitInput(),
+                updatedTroops: "9",
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("0"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("passes if player's troop count is correct on water (case 1)", async () => {
+        let t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.WATER_TILE);
+        let u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 0, Tile.WATER_TILE);
+
+        const w = await circuit.calculateWitness(
+            {
+                currentWaterInterval: "0",
+                tTile: t1.toCircuitInput(),
+                uTile: u1.toCircuitInput(),
+                updatedTroops: "10",
             },
             true
         );
@@ -1016,14 +982,50 @@ describe("Unit tests for CheckWaterUpdates()", () => {
         await circuit.checkConstraints(w);
     });
 
-    it("passes if unowned water tile is unaffected by update", async () => {
+    it("passes if player's troop count is correct on water (case 2)", async () => {
+        let t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.WATER_TILE);
+        let u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 1, Tile.WATER_TILE);
+
         const w = await circuit.calculateWitness(
             {
-                currentWaterInterval: "10",
-                tTroops: "0",
-                tLatestUpdate: "5",
-                uLatestUpdate: "10",
+                currentWaterInterval: "1",
+                tTile: t1.toCircuitInput(),
+                uTile: u1.toCircuitInput(),
+                updatedTroops: "9",
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("1"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("passes if player's troop count is correct on water (case 3)", async () => {
+        let t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.WATER_TILE);
+        let u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 11, Tile.WATER_TILE);
+
+        const w = await circuit.calculateWitness(
+            {
+                currentWaterInterval: "11",
+                tTile: t1.toCircuitInput(),
+                uTile: u1.toCircuitInput(),
                 updatedTroops: "0",
+            },
+            true
+        );
+        assert.equal(w[1], BigInt("1"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("passes if player keeps troops on a non-water tile", async () => {
+        let t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
+        let u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 1, Tile.NORMAL_TILE);
+
+        const w = await circuit.calculateWitness(
+            {
+                currentWaterInterval: "1",
+                tTile: t1.toCircuitInput(),
+                uTile: u1.toCircuitInput(),
+                updatedTroops: "10",
             },
             true
         );

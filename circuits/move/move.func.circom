@@ -58,8 +58,7 @@ template CheckLeaves(N_TL_ATRS) {
 /*
  * A valid step entails 1) new tile states must have the same coordinates as 
  * the old states they are replacing, 2) the movement is one tile in one of
- * the cardinal directions, and 3) the to tile keeps the same type which cannot
- * be a hill.
+ * the cardinal directions, and 3) the to tile cannot be a hill.
  */
 template CheckStep(VALID_MOVES, N_VALID_MOVES, N_TL_ATRS, ROW_IDX, COL_IDX, 
     TYPE_IDX, HILL_TYPE) {
@@ -176,15 +175,15 @@ template CheckTroopUpdates(N_TL_ATRS, RSRC_IDX, TRP_UPD_IDX) {
         [circuitUpdatedTroops, updatedTroops]);
 
     // Troop updates should be accounted for in new tile states
-    signal troopsCounted <== IsEqual()([currentTroopInterval, uTile[TRP_UPD_IDX]]);
+    signal troopsCounted <== IsEqual()(
+        [currentTroopInterval, uTile[TRP_UPD_IDX]]);
 
     out <== AND()(troopRsrcCorrect, troopsCounted);
 }
 
 /*
- * If a player is on the water, they should lose troops. Water updates and troop
- * updates are mutually exclusive events, and updatedTroops reflects the 
- * player's troop count post updates (both water or troop).
+ * If a player is on the water, they should lose troops. Constrains
+ * updatedTroops post water update.
  */
 template CheckWaterUpdates(N_TL_ATRS, RSRC_IDX, WTR_UPD_IDX, TYPE_IDX, 
     WATER_TYPE, SYS_BITS) {
@@ -206,9 +205,14 @@ template CheckWaterUpdates(N_TL_ATRS, RSRC_IDX, WTR_UPD_IDX, TYPE_IDX,
     signal circuitUpdatedTroops <== (tTile[RSRC_IDX] + tTile[WTR_UPD_IDX] - 
         currentWaterInterval) * notAllDead;
 
+    // Case when on a non-water tile
+    signal case1 <== IsEqual()([updatedTroops, tTile[RSRC_IDX]]);
+
+    // Case when on a water tile
+    signal case2 <== IsEqual()([updatedTroops, circuitUpdatedTroops]);
+
     // The water update applies iff onWater is true
-    signal troopRsrcCorrect <== IsZero()(
-        onWater * (circuitUpdatedTroops - updatedTroops));
+    signal troopRsrcCorrect <== Mux1()([case1, case2], onWater);
 
     signal troopsCounted <== IsEqual()(
         [currentWaterInterval, uTile[WTR_UPD_IDX]]);
