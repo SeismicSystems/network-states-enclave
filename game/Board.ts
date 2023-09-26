@@ -140,21 +140,6 @@ export class Board {
         return this.t[l.r][l.c];
     }
 
-    /*
-     * Getter for Tile and all of its neighbors at a location.
-     */
-    public getNeighborhood(l: Location): Tile[] {
-        let tiles: Tile[] = [];
-        for (let r = l.r - 1; r <= l.r + 1; r++) {
-            for (let c = l.c - 1; c <= l.c + 1; c++) {
-                if (this.inBounds(r, c)) {
-                    tiles.push(this.t[r][c]);
-                }
-            }
-        }
-        return tiles;
-    }
-
     public getNearbyLocations(l: Location): Location[] {
         let locs: Location[] = [];
         for (let r = l.r - 1; r <= l.r + 1; r++) {
