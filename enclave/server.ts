@@ -77,18 +77,13 @@ async function login(
     reqPlayer: Player,
     sigStr: string
 ) {
-    // If player is already spawned in, their socket ID will already be stored
-    if (idToPubKey.has(socket.id)) {
-        return;
-    }
-
     const h = Player.hForLogin(Utils.asciiIntoBigNumber(socket.id));
     const sig = Utils.unserializeSig(sigStr);
     if (sig && reqPlayer.verifySig(h, sig)) {
         const pubkey = reqPlayer.bjjPub.serialize();
 
         // Spawn if player is connected for the first time
-        if (!pubKeyToId.has(pubkey)) {
+        if (!b.isSpawned(reqPlayer)) {
             await b.spawn(l, reqPlayer, START_RESOURCES, nStates);
         }
 
