@@ -58,11 +58,11 @@ export class Tile {
      */
     toCircuitInput(): string[] {
         return [
-            this.owner.pubKeyHash(),
             this.loc.r.toString(),
             this.loc.c.toString(),
             this.resources.toString(),
             this.key.toString(),
+            this.cityId.toString(),
             this.latestTroopUpdateInterval.toString(),
             this.latestWaterUpdateInterval.toString(),
             this.tileType.toString(),

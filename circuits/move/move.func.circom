@@ -62,7 +62,7 @@ template CheckLeaves(N_TL_ATRS) {
  * be a hill.
  */
 template CheckStep(VALID_MOVES, N_VALID_MOVES, N_TL_ATRS, ROW_IDX, COL_IDX, 
-    TYPE_IDX, HILL_ID) {
+    TYPE_IDX, HILL_TYPE) {
     signal input tFrom[N_TL_ATRS];
     signal input tTo[N_TL_ATRS];
     signal input uFrom[N_TL_ATRS];
@@ -84,7 +84,7 @@ template CheckStep(VALID_MOVES, N_VALID_MOVES, N_TL_ATRS, ROW_IDX, COL_IDX,
         [tFrom[TYPE_IDX], uFrom[TYPE_IDX]],
         [tTo[TYPE_IDX], uTo[TYPE_IDX]]]);
         
-    signal ontoHill <== IsEqual()([tTo[TYPE_IDX], HILL_ID]);
+    signal ontoHill <== IsEqual()([tTo[TYPE_IDX], HILL_TYPE]);
     signal notOntoHill <== NOT()(ontoHill);
 
     signal typeLogic <== AND()(typesConsistent, notOntoHill);
@@ -96,8 +96,8 @@ template CheckStep(VALID_MOVES, N_VALID_MOVES, N_TL_ATRS, ROW_IDX, COL_IDX,
  * Must preserve resource management logic- what happens when armies expand to
  * unowned or enemy territories. 
  */
-template CheckRsrc(N_TL_ATRS, RSRC_IDX, PK_HASH_IDX, TRP_UPD_IDX, WTR_UPD_IDX, 
-    TYPE_IDX, WATER_ID, UNOWNED, SYS_BITS) {
+template CheckRsrc(N_TL_ATRS, RSRC_IDX, CITY_IDX, TRP_UPD_IDX, WTR_UPD_IDX, 
+    TYPE_IDX, WATER_TYPE, UNOWNED_ID, SYS_BITS) {
     signal input currentTroopInterval;
     signal input currentWaterInterval;
     signal input ontoSelfOrUnowned;
@@ -112,11 +112,11 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PK_HASH_IDX, TRP_UPD_IDX, WTR_UPD_IDX,
     signal output out;
 
     // Properties we need to know regarding `to` tile relative to `from` tile
-    signal ontoUnowned <== IsEqual()([tTo[PK_HASH_IDX], UNOWNED]);
+    signal ontoUnowned <== IsEqual()([tTo[CITY_IDX], UNOWNED_ID]);
     signal ontoSelfOrEnemy <== NOT()(ontoUnowned);
 
-    signal playerOnWater <== IsEqual()([tFrom[TYPE_IDX], WATER_ID]);
-    signal enemyOnWater <== IsEqual()([tTo[TYPE_IDX], WATER_ID]);
+    signal playerOnWater <== IsEqual()([tFrom[TYPE_IDX], WATER_TYPE]);
+    signal enemyOnWater <== IsEqual()([tTo[TYPE_IDX], WATER_TYPE]);
 
     // Not allowed to move all troops off of tile
     signal movedAllTroops <== IsZero()(uFrom[RSRC_IDX]);
@@ -152,7 +152,7 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PK_HASH_IDX, TRP_UPD_IDX, WTR_UPD_IDX,
 
     // From tile must remain player's after move
     signal fromOwnership <== IsEqual()(
-        [tFrom[PK_HASH_IDX], uFrom[PK_HASH_IDX]]);
+        [tFrom[CITY_IDX], uFrom[CITY_IDX]]);
     signal fromOwnershipWrong <== NOT()(fromOwnership);
 
     signal ontoMoreOrEq <== GreaterEqThan(SYS_BITS)([toUpdatedTroops, 
@@ -161,17 +161,17 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, PK_HASH_IDX, TRP_UPD_IDX, WTR_UPD_IDX,
     // Moving onto enemy tile that has less resource vs what's being sent
     signal case1 <== BatchIsEqual(2)([
         [fromUpdatedTroops - uFrom[RSRC_IDX], toUpdatedTroops + uTo[RSRC_IDX]],
-        [uTo[PK_HASH_IDX], uFrom[PK_HASH_IDX]]]);
+        [uTo[CITY_IDX], uFrom[CITY_IDX]]]);
 
     // Moving onto enemy tile that has more or eq resource vs what's being sent
     signal case2 <== BatchIsEqual(2)([
         [fromUpdatedTroops - uFrom[RSRC_IDX], toUpdatedTroops - uTo[RSRC_IDX]],
-        [uTo[PK_HASH_IDX], tTo[PK_HASH_IDX]]]);
+        [uTo[CITY_IDX], tTo[CITY_IDX]]]);
 
     // Moving onto a non-enemy tile (self or unowned)
     signal case3 <== BatchIsEqual(2)([
         [fromUpdatedTroops + toUpdatedTroops, uFrom[RSRC_IDX] + uTo[RSRC_IDX]],
-        [uTo[PK_HASH_IDX], uFrom[PK_HASH_IDX]]]);
+        [uTo[CITY_IDX], uFrom[CITY_IDX]]]);
 
     signal moveLogic <== Mux2()([case1, case2, case3, case3], [ontoMoreOrEq, 
         ontoSelfOrUnowned]);
@@ -276,21 +276,23 @@ template Move() {
     var MERKLE_TREE_DEPTH = 8;
 
     var N_TL_ATRS = 8;
-    var PK_HASH_IDX = 0;
-    var ROW_IDX = 1;
-    var COL_IDX = 2;
-    var RSRC_IDX = 3;
-    var KEY_IDX = 4;
+    var ROW_IDX = 0;
+    var COL_IDX = 1;
+    var RSRC_IDX = 2;
+    var KEY_IDX = 3;
+    var CITY_IDX = 4;
     var TRP_UPD_IDX = 5;
     var WTR_UPD_IDX = 6;
     var TYPE_IDX = 7;
 
-    // Hash of UNOWNED_PLAYER's public keys, used to look for unowned tiles
-    var UNOWNED = 7423237065226347324353380772367382631490014989348495481811164164159255474657;
+    // cityId used to look for unowned tiles
+    var UNOWNED_ID = 0;
 
-    // Id's used to check for water and hill tiles
-    var WATER_ID = 1;
-    var HILL_ID = 2;
+    // Id's used to check tile type
+    var CITY_TYPE = 1;
+    var CAPITAL_TYPE = 2;
+    var WATER_TYPE = 3;
+    var HILL_TYPE = 4;
 
     var SYS_BITS = 252;
 
@@ -325,11 +327,11 @@ template Move() {
     nullifiersCorrect === 1;
 
     signal stepCorrect <== CheckStep(VALID_MOVES, N_VALID_MOVES, N_TL_ATRS, 
-        ROW_IDX, COL_IDX, TYPE_IDX, HILL_ID)(tFrom, tTo, uFrom, uTo);
+        ROW_IDX, COL_IDX, TYPE_IDX, HILL_TYPE)(tFrom, tTo, uFrom, uTo);
     stepCorrect === 1;
 
-    signal resourcesCorrect <== CheckRsrc(N_TL_ATRS, RSRC_IDX, PK_HASH_IDX, 
-        TRP_UPD_IDX, WTR_UPD_IDX, TYPE_IDX, WATER_ID, UNOWNED, SYS_BITS)(
+    signal resourcesCorrect <== CheckRsrc(N_TL_ATRS, RSRC_IDX, CITY_IDX, 
+        TRP_UPD_IDX, WTR_UPD_IDX, TYPE_IDX, WATER_TYPE, UNOWNED_ID, SYS_BITS)(
         currentTroopInterval, currentWaterInterval, ontoSelfOrUnowned, tFrom, 
         tTo, uFrom, uTo, fromUpdatedTroops, toUpdatedTroops);
     resourcesCorrect === 1;
