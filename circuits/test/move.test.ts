@@ -1194,11 +1194,171 @@ describe("Unit tests for CheckRsrcCases()", () => {
     });
 });
 
+describe("Unit tests for CheckCityIdCases()", () => {
+    let circuit;
+
+    beforeEach(async () => {
+        circuit = await wasm("test/circuits/test_check_city_ids.circom");
+    });
+
+    it("fails if 'from' tile's city changes", async () => {
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.NORMAL_TILE);
+        const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 0, 0, 0, Tile.NORMAL_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 2, 0, 0, Tile.NORMAL_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 0, 0, 0, Tile.NORMAL_TILE);
+
+        const w = await circuit.calculateWitness({
+            tFrom: t1.toCircuitInput(),
+            tTo: t2.toCircuitInput(),
+            uFrom: u1.toCircuitInput(),
+            uTo: u2.toCircuitInput(),
+            ontoSelf: "0",
+            ontoEnemy: "0",
+            ontoMoreOrEq: "0",
+        });
+        assert.equal(w[1], BigInt("0"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails if city ID changes when moving onto enemy city", async () => {
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.NORMAL_TILE);
+        const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 2, 0, 0, Tile.CITY_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.NORMAL_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.CITY_TILE);
+
+        const w = await circuit.calculateWitness({
+            tFrom: t1.toCircuitInput(),
+            tTo: t2.toCircuitInput(),
+            uFrom: u1.toCircuitInput(),
+            uTo: u2.toCircuitInput(),
+            ontoSelf: "0",
+            ontoEnemy: "1",
+            ontoMoreOrEq: "0",
+        });
+        assert.equal(w[1], BigInt("0"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails if city ID changes when moving onto enemy capital", async () => {
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.NORMAL_TILE);
+        const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 2, 0, 0, Tile.CAPITAL_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.NORMAL_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.CAPITAL_TILE);
+
+        const w = await circuit.calculateWitness({
+            tFrom: t1.toCircuitInput(),
+            tTo: t2.toCircuitInput(),
+            uFrom: u1.toCircuitInput(),
+            uTo: u2.toCircuitInput(),
+            ontoSelf: "0",
+            ontoEnemy: "1",
+            ontoMoreOrEq: "0",
+        });
+        assert.equal(w[1], BigInt("0"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails if city ID changes when moving into a different city", async () => {
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.NORMAL_TILE);
+        const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 2, 0, 0, Tile.NORMAL_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.NORMAL_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.NORMAL_TILE);
+
+        const w = await circuit.calculateWitness({
+            tFrom: t1.toCircuitInput(),
+            tTo: t2.toCircuitInput(),
+            uFrom: u1.toCircuitInput(),
+            uTo: u2.toCircuitInput(),
+            ontoSelf: "1",
+            ontoEnemy: "0",
+            ontoMoreOrEq: "0",
+        });
+        assert.equal(w[1], BigInt("0"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails if city ID changes when moving in the same city", async () => {
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.NORMAL_TILE);
+        const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.NORMAL_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.NORMAL_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 2, 0, 0, Tile.NORMAL_TILE);
+
+        const w = await circuit.calculateWitness({
+            tFrom: t1.toCircuitInput(),
+            tTo: t2.toCircuitInput(),
+            uFrom: u1.toCircuitInput(),
+            uTo: u2.toCircuitInput(),
+            ontoSelf: "1",
+            ontoEnemy: "0",
+            ontoMoreOrEq: "0",
+        });
+        assert.equal(w[1], BigInt("0"));
+        await circuit.checkConstraints(w);  
+    });
+
+    it("fails if city ID changes when failing to take an enemy", async () => {
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.NORMAL_TILE);
+        const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 2, 0, 0, Tile.NORMAL_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.NORMAL_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.NORMAL_TILE);
+
+        const w = await circuit.calculateWitness({
+            tFrom: t1.toCircuitInput(),
+            tTo: t2.toCircuitInput(),
+            uFrom: u1.toCircuitInput(),
+            uTo: u2.toCircuitInput(),
+            ontoSelf: "0",
+            ontoEnemy: "1",
+            ontoMoreOrEq: "1",
+        });
+        assert.equal(w[1], BigInt("0"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails if city ID stays the same taking unowned", async () => {
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.NORMAL_TILE);
+        const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 0, 0, 0, Tile.NORMAL_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.NORMAL_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 0, 0, 0, Tile.NORMAL_TILE);
+
+        const w = await circuit.calculateWitness({
+            tFrom: t1.toCircuitInput(),
+            tTo: t2.toCircuitInput(),
+            uFrom: u1.toCircuitInput(),
+            uTo: u2.toCircuitInput(),
+            ontoSelf: "0",
+            ontoEnemy: "0",
+            ontoMoreOrEq: "0",
+        });
+        assert.equal(w[1], BigInt("0"));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails if city ID stays the same taking enemy non-city", async () => {
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.NORMAL_TILE);
+        const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 2, 0, 0, Tile.NORMAL_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.NORMAL_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 2, 0, 0, Tile.NORMAL_TILE);
+
+        const w = await circuit.calculateWitness({
+            tFrom: t1.toCircuitInput(),
+            tTo: t2.toCircuitInput(),
+            uFrom: u1.toCircuitInput(),
+            uTo: u2.toCircuitInput(),
+            ontoSelf: "0",
+            ontoEnemy: "1",
+            ontoMoreOrEq: "0",
+        });
+        assert.equal(w[1], BigInt("0"));
+        await circuit.checkConstraints(w);
+    });
+});
+
 describe("Unit tests for CheckTypeConsistency()", () => {
     let circuit;
 
     beforeEach(async () => {
-        circuit = await wasm("test/circuits/test_type_consistency.circom");
+        circuit = await wasm("test/circuits/test_check_types.circom");
     });
 
     it("fails if 'from' tile changes type", async () => {
