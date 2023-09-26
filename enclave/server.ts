@@ -148,6 +148,19 @@ function decrypt(
 }
 
 /*
+ * When a player disconnects, we remove the relation between their socket ID and
+ * their public key. This is so that no other player gains that ID and can play
+ * on their behalf.
+ */
+function disconnectPlayer(socket: Socket) {
+    const pubKey = idToPubKey.get(socket.id);
+    if (pubKey) {
+        pubKeyToId.delete(pubKey);
+        idToPubKey.delete(socket.id);
+    }
+}
+
+/*
  * Callback function for when a NewMove event is emitted. Reads claimed move
  * into enclave's internal beliefs, and alerts players in range to decrypt.
  */
@@ -213,6 +226,10 @@ io.on("connection", (socket: Socket) => {
     });
     socket.on("decrypt", (l: Location, pubkey: string, sig: string) => {
         decrypt(socket, l, Player.fromPubString("", pubkey), sig);
+    });
+
+    socket.on("disconnecting", () => {
+        disconnectPlayer(socket);
     });
 });
 
