@@ -38,7 +38,7 @@ template CheckLeaves(N_TL_ATRS) {
     signal input hUTo;
 
     signal input privKeyHash;
-    signal input pubKeyHash;
+    signal input fromPkHash;
 
     signal output out;
 
@@ -48,10 +48,10 @@ template CheckLeaves(N_TL_ATRS) {
 
     signal circuitHFrom <== Poseidon(N_TL_ATRS)(uFrom);
     signal circuitHTo <== Poseidon(N_TL_ATRS)(uTo);
-    signal circuitPubKeyHash <== Poseidon(2)([bjj.Ax, bjj.Ay]);
+    signal circuitFromPkHash <== Poseidon(2)([bjj.Ax, bjj.Ay]);
 
     out <== BatchIsEqual(3)([
-        [pubKeyHash, circuitPubKeyHash], [hUFrom, circuitHFrom], 
+        [fromPkHash, circuitFromPkHash], [hUFrom, circuitHFrom], 
         [hUTo, circuitHTo]]);
 }
 
@@ -376,6 +376,8 @@ template Move() {
     signal input root;
     signal input currentTroopInterval;
     signal input currentWaterInterval;
+    signal input fromPkHash;
+    signal input toPkHash;
     signal input ontoSelfOrUnowned;
     signal input hUFrom;
     signal input hUTo;
@@ -393,10 +395,9 @@ template Move() {
     signal input fromUpdatedTroops;
     signal input toUpdatedTroops;
     signal input privKeyHash;
-    signal input pubKeyHash;
 
     signal leavesCorrect <== CheckLeaves(N_TL_ATRS)(uFrom, 
-        uTo, hUFrom, hUTo, privKeyHash, pubKeyHash);
+        uTo, hUFrom, hUTo, privKeyHash, fromPkHash);
     leavesCorrect === 1;
 
     signal nullifiersCorrect <== CheckNullifiers()(tFrom[KEY_IDX], 

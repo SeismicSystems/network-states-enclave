@@ -333,7 +333,7 @@ export class Board {
         to: Location,
         currentTroopInterval: number,
         currentWaterInterval: number
-    ): Promise<[Tile, Tile, Tile, Tile, Groth16Proof]> {
+    ): Promise<[Tile, Tile, Tile, Tile, Groth16Proof, any]> {
         const tFrom: Tile = this.getTile(from);
         const tTo: Tile = this.getTile(to);
 
@@ -383,6 +383,8 @@ export class Board {
                 root: mTree.root.toString(),
                 currentTroopInterval: currentTroopInterval.toString(),
                 currentWaterInterval: currentWaterInterval.toString(),
+                fromPkHash: tFrom.owner.pubKeyHash(),
+                toPkHash: tTo.owner.pubKeyHash(),
                 ontoSelfOrUnowned,
                 hUFrom: uFrom.hash(),
                 hUTo: uTo.hash(),
@@ -399,12 +401,11 @@ export class Board {
                 fromUpdatedTroops: fromUpdatedTroops.toString(),
                 toUpdatedTroops: toUpdatedTroops.toString(),
                 privKeyHash: bjjPrivKeyHash.toString(),
-                pubKeyHash: tFrom.owner.pubKeyHash(),
             },
             Board.MOVE_WASM,
             Board.MOVE_PROVKEY
         );
 
-        return [tFrom, tTo, uFrom, uTo, proof];
+        return [tFrom, tTo, uFrom, uTo, proof, publicSignals];
     }
 }

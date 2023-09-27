@@ -123,7 +123,7 @@ async function move(inp: string) {
         throw Error("Can't move without a Baby Jubjub private key.");
     }
 
-    const [tFrom, tTo, uFrom, uTo, prf] = await b.constructMove(
+    const [tFrom, tTo, uFrom, uTo, prf, pubSignals] = await b.constructMove(
         mTree,
         PLAYER.bjjPrivHash,
         cursor,
@@ -132,15 +132,7 @@ async function move(inp: string) {
         currentWaterInterval
     );
 
-    formattedProof = await Utils.exportCallDataGroth16(prf, [
-        mRoot.toString(),
-        currentTroopInterval.toString(),
-        currentWaterInterval.toString(),
-        uFrom.hash(),
-        uTo.hash(),
-        tFrom.nullifier(),
-        tTo.nullifier(),
-    ]);
+    formattedProof = await Utils.exportCallDataGroth16(prf, pubSignals);
 
     // Update player position
     cursor = { r: nr, c: nc };
@@ -181,10 +173,13 @@ async function getSignatureResponse(sig: string, uFrom: any, uTo: any) {
         root: formattedProof.input[0],
         troopInterval: formattedProof.input[1],
         waterInterval: formattedProof.input[2],
-        hUFrom: formattedProof.input[3],
-        hUTo: formattedProof.input[4],
-        rhoFrom: formattedProof.input[5],
-        rhoTo: formattedProof.input[6],
+        fromPkHash: formattedProof.input[3],
+        toPkHash: formattedProof.input[4],
+        ontoSelfOrUnowned: formattedProof.input[5],
+        hUFrom: formattedProof.input[6],
+        hUTo: formattedProof.input[7],
+        rhoFrom: formattedProof.input[8],
+        rhoTo: formattedProof.input[9],
     };
     const moveProof = {
         a: formattedProof.a,
