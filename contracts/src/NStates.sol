@@ -58,6 +58,9 @@ contract NStates is IncrementalMerkleTree {
     uint256 public numBlocksInWaterUpdate;
     mapping(uint256 => bool) public nullifiers;
 
+    mapping(uint256 => uint24) public playerToCities;
+    mapping(uint24 => uint256) public citiesToPlayer;
+
     constructor(
         address contractOwner,
         uint8 treeDepth,
@@ -91,9 +94,22 @@ contract NStates is IncrementalMerkleTree {
     /*
      * Game deployer has the ability to initialize players onto the board.
      */
-    function spawn(uint256 h, uint256 rho) public onlyOwner {
+    function spawn(
+        uint256 pkHash,
+        uint24 cityId,
+        uint256 h,
+        uint256 rho
+    ) public onlyOwner {
+        require(cityId != 0, "City ID must be a non-zero value");
+        require(playerToCities[pkHash] == 0, "Player is already spawned in");
+        require(citiesToPlayer[cityId] == 0, "City is already in game");
+
         set(h);
         nullifiers[rho] = true;
+
+        playerToCities[pkHash] = cityId;
+        citiesToPlayer[cityId] = pkHash;
+
         emit NewNullifier(rho);
     }
 

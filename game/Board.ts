@@ -105,7 +105,12 @@ export class Board {
         this.playerCapitals.set(pl.bjjPub.serialize(), { r, c });
 
         // Update the merkle root on-chain.
-        await nStates.spawn(this.t[r][c].hash(), nullifier);
+        await nStates.spawn(
+            pl.pubKeyHash(),
+            cityId,
+            this.t[r][c].hash(),
+            nullifier
+        );
         await Utils.sleep(200);
     }
 
