@@ -63,8 +63,8 @@ contract NStates is IncrementalMerkleTree {
     uint256 public numBlocksInWaterUpdate;
     mapping(uint256 => bool) public nullifiers;
 
-    mapping(uint256 => uint24) public playerToCities;
-    mapping(uint24 => uint256) public citiesToPlayer;
+    mapping(uint256 => uint256) public playerToCities;
+    mapping(uint256 => uint256) public citiesToPlayer;
 
     constructor(
         address contractOwner,
@@ -138,6 +138,18 @@ contract NStates is IncrementalMerkleTree {
             "Move is too far into the future, change currentWaterInterval value"
         );
         require(
+            moveInputs.fromPkHash == citiesToPlayer[moveInputs.fromCityId],
+            "Must move from a city that you own"
+        );
+        require(
+            checkOntoSelfOrUnowned(
+                moveInputs.fromPkHash,
+                moveInputs.toCityId,
+                moveInputs.ontoSelfOrUnowned
+            ),
+            "Value of ontoSelfOrUnowned is incorrect"
+        );
+        require(
             !nullifiers[moveInputs.rhoFrom] && !nullifiers[moveInputs.rhoTo],
             "Move has already been made"
         );
@@ -166,6 +178,23 @@ contract NStates is IncrementalMerkleTree {
         emit NewLeaf(moveInputs.hUTo);
         emit NewNullifier(moveInputs.rhoFrom);
         emit NewNullifier(moveInputs.rhoTo);
+    }
+
+    /*
+     * Helper function for move(). Checks if public signal ontoSelfOrUnowned is
+     * set correctly. ontoSelfOrUnowned is used in the ZKP, but must be
+     * checked onchain.
+     */
+    function checkOntoSelfOrUnowned(
+        uint256 fromPkHash,
+        uint256 toCityId,
+        uint256 ontoSelfOrUnowned
+    ) internal view returns (bool) {
+        uint256 toCityOwner = citiesToPlayer[toCityId];
+        if (toCityOwner == fromPkHash || toCityOwner == 0) {
+            return ontoSelfOrUnowned == 1;
+        }
+        return ontoSelfOrUnowned == 0;
     }
 
     /*
