@@ -385,6 +385,8 @@ export class Board {
                 currentWaterInterval: currentWaterInterval.toString(),
                 fromPkHash: tFrom.owner.pubKeyHash(),
                 toPkHash: tTo.owner.pubKeyHash(),
+                fromCityId: tFrom.cityId.toString(),
+                toCityId: tTo.cityId.toString(),
                 ontoSelfOrUnowned,
                 hUFrom: uFrom.hash(),
                 hUTo: uTo.hash(),

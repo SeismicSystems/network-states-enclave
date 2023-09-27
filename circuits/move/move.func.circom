@@ -378,6 +378,8 @@ template Move() {
     signal input currentWaterInterval;
     signal input fromPkHash;
     signal input toPkHash;
+    signal input fromCityId;
+    signal input toCityId;
     signal input ontoSelfOrUnowned;
     signal input hUFrom;
     signal input hUTo;
@@ -395,6 +397,11 @@ template Move() {
     signal input fromUpdatedTroops;
     signal input toUpdatedTroops;
     signal input privKeyHash;
+
+    signal fromCityIdCorrect <== IsEqual()([fromCityId, tFrom[CITY_IDX]]);
+    fromCityIdCorrect === 1;
+    signal toCityIdCorrect <== IsEqual()([toCityId, tTo[CITY_IDX]]);
+    toCityIdCorrect === 1;
 
     signal leavesCorrect <== CheckLeaves(N_TL_ATRS)(uFrom, 
         uTo, hUFrom, hUTo, privKeyHash, fromPkHash);
