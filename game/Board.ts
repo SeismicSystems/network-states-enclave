@@ -251,9 +251,13 @@ export class Board {
         const isUnowned: number = tTile.isUnowned() ? 0 : 1;
         const deltaTroops: number = tTile.isWater()
             ? tTile.latestWaterUpdateInterval - currentWaterInterval
-            : currentTroopInterval - tTile.latestTroopUpdateInterval;
+            : 0;
 
-        return (tTile.resources + deltaTroops) * isUnowned;
+        let updatedTroops = (tTile.resources + deltaTroops) * isUnowned;
+        if (updatedTroops < 0) {
+            updatedTroops = 0;
+        }
+        return updatedTroops;
     }
 
     /*
@@ -273,6 +277,7 @@ export class Board {
             throw Error("Cannot move without mobilizing at least 1 troop.");
         }
         let uTo: Tile;
+        let ontoSelfOrUnowned = "1";
         if (tTo.owner === tFrom.owner) {
             uTo = Tile.genOwned(
                 tTo.owner,
@@ -360,14 +365,43 @@ export class Board {
             currentWaterInterval
         );
 
+        let ontoSelfOrUnowned = "0";
+        if (tTo.owner === tFrom.owner || tTo.isUnowned()) {
+            ontoSelfOrUnowned = "1";
+        }
+
         const mProofFrom = Utils.generateMerkleProof(tFrom.hash(), mTree);
         const mProofTo = Utils.generateMerkleProof(tTo.hash(), mTree);
+
+        console.log({
+            root: mTree.root.toString(),
+            currentTroopInterval: currentTroopInterval.toString(),
+            currentWaterInterval: currentWaterInterval.toString(),
+            ontoSelfOrUnowned,
+            hUFrom: uFrom.hash(),
+            hUTo: uTo.hash(),
+            rhoFrom: tFrom.nullifier(),
+            rhoTo: tTo.nullifier(),
+            tFrom: tFrom.toCircuitInput(),
+            tFromPathIndices: mProofFrom.indices,
+            tFromPathElements: mProofFrom.pathElements,
+            tTo: tTo.toCircuitInput(),
+            tToPathIndices: mProofTo.indices,
+            tToPathElements: mProofTo.pathElements,
+            uFrom: uFrom.toCircuitInput(),
+            uTo: uTo.toCircuitInput(),
+            fromUpdatedTroops: fromUpdatedTroops.toString(),
+            toUpdatedTroops: toUpdatedTroops.toString(),
+            privKeyHash: bjjPrivKeyHash.toString(),
+            pubKeyHash: tFrom.owner.pubKeyHash(),
+        });
 
         const { proof, publicSignals } = await groth16.fullProve(
             {
                 root: mTree.root.toString(),
                 currentTroopInterval: currentTroopInterval.toString(),
                 currentWaterInterval: currentWaterInterval.toString(),
+                ontoSelfOrUnowned,
                 hUFrom: uFrom.hash(),
                 hUTo: uTo.hash(),
                 rhoFrom: tFrom.nullifier(),
@@ -383,6 +417,7 @@ export class Board {
                 fromUpdatedTroops: fromUpdatedTroops.toString(),
                 toUpdatedTroops: toUpdatedTroops.toString(),
                 privKeyHash: bjjPrivKeyHash.toString(),
+                pubKeyHash: tFrom.owner.pubKeyHash(),
             },
             Board.MOVE_WASM,
             Board.MOVE_PROVKEY

@@ -89,8 +89,8 @@ template CheckStep(VALID_MOVES, N_VALID_MOVES, N_TL_ATRS, ROW_IDX, COL_IDX,
  * Must preserve resource management logic- what happens when armies expand to
  * unowned or enemy territories. 
  */
-template CheckRsrc(N_TL_ATRS, RSRC_IDX, CITY_IDX, TRP_UPD_IDX, WTR_UPD_IDX, 
-    TYPE_IDX, CITY_TYPE, CAPITAL_TYPE, WATER_TYPE, UNOWNED_ID, SYS_BITS) {
+template CheckRsrc(N_TL_ATRS, RSRC_IDX, CITY_IDX, WTR_UPD_IDX, TYPE_IDX, 
+    CITY_TYPE, CAPITAL_TYPE, WATER_TYPE, UNOWNED_ID, SYS_BITS) {
     signal input currentTroopInterval;
     signal input currentWaterInterval;
     signal input ontoSelfOrUnowned;
@@ -353,15 +353,14 @@ template Move() {
 
     var MERKLE_TREE_DEPTH = 8;
 
-    var N_TL_ATRS = 8;
+    var N_TL_ATRS = 7;
     var ROW_IDX = 0;
     var COL_IDX = 1;
     var RSRC_IDX = 2;
     var KEY_IDX = 3;
     var CITY_IDX = 4;
-    var TRP_UPD_IDX = 5;
-    var WTR_UPD_IDX = 6;
-    var TYPE_IDX = 7;
+    var WTR_UPD_IDX = 5;
+    var TYPE_IDX = 6;
 
     // cityId used to look for unowned tiles
     var UNOWNED_ID = 0;
@@ -409,7 +408,7 @@ template Move() {
     stepCorrect === 1;
 
     signal resourcesCorrect <== CheckRsrc(N_TL_ATRS, RSRC_IDX, CITY_IDX, 
-        TRP_UPD_IDX, WTR_UPD_IDX, TYPE_IDX, CITY_TYPE, CAPITAL_TYPE, WATER_TYPE, 
+        WTR_UPD_IDX, TYPE_IDX, CITY_TYPE, CAPITAL_TYPE, WATER_TYPE, 
         UNOWNED_ID, SYS_BITS)(currentTroopInterval, currentWaterInterval, 
         ontoSelfOrUnowned, tFrom, tTo, uFrom, uTo, fromUpdatedTroops, 
         toUpdatedTroops);

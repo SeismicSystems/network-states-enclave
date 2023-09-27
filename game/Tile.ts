@@ -63,7 +63,6 @@ export class Tile {
             this.resources.toString(),
             this.key.toString(),
             this.cityId.toString(),
-            this.latestTroopUpdateInterval.toString(),
             this.latestWaterUpdateInterval.toString(),
             this.tileType.toString(),
         ];
@@ -95,6 +94,7 @@ export class Tile {
             c: this.loc.c.toString(),
             resources: this.resources.toString(),
             key: this.key.toString(10),
+            cityId: this.cityId.toString(),
             latestTroopUpdateInterval:
                 this.latestTroopUpdateInterval.toString(),
             latestWaterUpdateInterval:

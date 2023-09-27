@@ -1,3 +1,4 @@
+// @ts-ignore
 import { poseidon } from "circomlib";
 import { PrivKey, PubKey } from "maci-domainobjs";
 import {
