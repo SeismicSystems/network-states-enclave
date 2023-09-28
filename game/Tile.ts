@@ -125,6 +125,20 @@ export class Tile {
     }
 
     /*
+     * Return true if this Tile is a city.
+     */
+    isCity(): boolean {
+        return this.tileType === Tile.CITY_TILE;
+    }
+
+    /*
+     * Return true if this Tile is a capital.
+     */
+    isCapital(): boolean {
+        return this.tileType === Tile.CAPITAL_TILE;
+    }
+
+    /*
      * Convert JSON object to Tile.
      */
     static fromJSON(obj: any): Tile {

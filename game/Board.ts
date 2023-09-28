@@ -376,10 +376,11 @@ export class Board {
             currentWaterInterval
         );
 
-        let ontoSelfOrUnowned = "0";
-        if (tTo.owner === tFrom.owner || tTo.isUnowned()) {
-            ontoSelfOrUnowned = "1";
-        }
+        const ontoSelfOrUnowned =
+            tTo.owner === tFrom.owner || tTo.isUnowned() ? "1" : "0";
+        const takingCity = tTo.isCity() && uTo.owner != tTo.owner ? "1" : "0";
+        const takingCapital =
+            tTo.isCapital() && uTo.owner != tTo.owner ? "1" : "0";
 
         const mProofFrom = Utils.generateMerkleProof(tFrom.hash(), mTree);
         const mProofTo = Utils.generateMerkleProof(tTo.hash(), mTree);
@@ -393,6 +394,8 @@ export class Board {
                 fromCityId: tFrom.cityId.toString(),
                 toCityId: tTo.cityId.toString(),
                 ontoSelfOrUnowned,
+                takingCity,
+                takingCapital,
                 hUFrom: uFrom.hash(),
                 hUTo: uTo.hash(),
                 rhoFrom: tFrom.nullifier(),

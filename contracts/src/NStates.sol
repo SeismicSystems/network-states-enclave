@@ -11,7 +11,7 @@ interface IVerifier {
         uint256[2] memory a,
         uint256[2][2] memory b,
         uint256[2] memory c,
-        uint256[11] memory input
+        uint256[13] memory input
     ) external view returns (bool);
 }
 
@@ -30,6 +30,8 @@ struct MoveInputs {
     uint256 fromCityId;
     uint256 toCityId;
     uint256 ontoSelfOrUnowned;
+    uint256 takingCity;
+    uint256 takingCapital;
     uint256 hUFrom;
     uint256 hUTo;
     uint256 rhoFrom;
@@ -247,7 +249,7 @@ contract NStates is IncrementalMerkleTree {
 
     function toArray(
         MoveInputs memory moveInputs
-    ) internal pure returns (uint256[11] memory) {
+    ) internal pure returns (uint256[13] memory) {
         return [
             moveInputs.root,
             moveInputs.troopInterval,
@@ -256,6 +258,8 @@ contract NStates is IncrementalMerkleTree {
             moveInputs.fromCityId,
             moveInputs.toCityId,
             moveInputs.ontoSelfOrUnowned,
+            moveInputs.takingCity,
+            moveInputs.takingCapital,
             moveInputs.hUFrom,
             moveInputs.hUTo,
             moveInputs.rhoFrom,
