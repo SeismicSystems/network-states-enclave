@@ -282,7 +282,6 @@ export class Board {
             throw Error("Cannot move without mobilizing at least 1 troop.");
         }
         let uTo: Tile;
-        let ontoSelfOrUnowned = "1";
         if (tTo.owner === tFrom.owner) {
             uTo = Tile.genOwned(
                 tTo.owner,
@@ -316,7 +315,14 @@ export class Board {
             if (uTo.resources < 0) {
                 uTo.owner = uFrom.owner;
                 uTo.resources *= -1;
-                uTo.cityId = uFrom.cityId;
+                if (
+                    tTo.tileType != Tile.CITY_TILE &&
+                    tTo.tileType != Tile.CAPITAL_TILE
+                ) {
+                    uTo.cityId = uFrom.cityId;
+                } else if (tTo.tileType === Tile.CAPITAL_TILE) {
+                    uTo.tileType = Tile.CITY_TILE;
+                }
             }
         }
         return uTo;
@@ -384,7 +390,6 @@ export class Board {
                 currentTroopInterval: currentTroopInterval.toString(),
                 currentWaterInterval: currentWaterInterval.toString(),
                 fromPkHash: tFrom.owner.pubKeyHash(),
-                toPkHash: tTo.owner.pubKeyHash(),
                 fromCityId: tFrom.cityId.toString(),
                 toCityId: tTo.cityId.toString(),
                 ontoSelfOrUnowned,

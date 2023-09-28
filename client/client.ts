@@ -147,7 +147,7 @@ async function move(inp: string) {
  */
 async function loginResponse(locs: Location[]) {
     updateDisplay(locs);
-    
+
     await Utils.sleep(UPDATE_MLS);
     canMove = true;
 }
@@ -174,14 +174,13 @@ async function getSignatureResponse(sig: string, uFrom: any, uTo: any) {
         troopInterval: formattedProof.input[1],
         waterInterval: formattedProof.input[2],
         fromPkHash: formattedProof.input[3],
-        toPkHash: formattedProof.input[4],
-        fromCityId: formattedProof.input[5],
-        toCityId: formattedProof.input[6],
-        ontoSelfOrUnowned: formattedProof.input[7],
-        hUFrom: formattedProof.input[8],
-        hUTo: formattedProof.input[9],
-        rhoFrom: formattedProof.input[10],
-        rhoTo: formattedProof.input[11],
+        fromCityId: formattedProof.input[4],
+        toCityId: formattedProof.input[5],
+        ontoSelfOrUnowned: formattedProof.input[6],
+        hUFrom: formattedProof.input[7],
+        hUTo: formattedProof.input[8],
+        rhoFrom: formattedProof.input[9],
+        rhoTo: formattedProof.input[10],
     };
     const moveProof = {
         a: formattedProof.a,

@@ -77,7 +77,7 @@ describe("Unit tests for CheckLeaves()", () => {
                 hUFrom: t1.hash(),
                 hUTo: t2.hash(),
                 privKeyHash: p2.bjjPrivHash,
-                pubKeyHash: p1.pubKeyHash(),
+                fromPkHash: p1.pubKeyHash(),
             },
             true
         );
@@ -98,7 +98,7 @@ describe("Unit tests for CheckLeaves()", () => {
                 hUFrom: "123",
                 hUTo: t2.hash(),
                 privKeyHash: p2.bjjPrivHash,
-                pubKeyHash: p1.pubKeyHash(),
+                fromPkHash: p1.pubKeyHash(),
             },
             true
         );
@@ -112,7 +112,7 @@ describe("Unit tests for CheckLeaves()", () => {
                 hUFrom: t1.hash(),
                 hUTo: "123",
                 privKeyHash: p2.bjjPrivHash,
-                pubKeyHash: p1.pubKeyHash(),
+                fromPkHash: p1.pubKeyHash(),
             },
             true
         );
@@ -133,7 +133,7 @@ describe("Unit tests for CheckLeaves()", () => {
                 hUFrom: t1.hash(),
                 hUTo: t2.hash(),
                 privKeyHash: p1.bjjPrivHash,
-                pubKeyHash: p1.pubKeyHash(),
+                fromPkHash: p1.pubKeyHash(),
             },
             true
         );

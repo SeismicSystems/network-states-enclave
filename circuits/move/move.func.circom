@@ -147,8 +147,6 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, CITY_IDX, WTR_UPD_IDX, TYPE_IDX,
         CAPITAL_TYPE)(tFrom, tTo, uFrom, uTo, ontoEnemy, ontoMoreOrEq);
     signal typeLogicIncorrect <== NOT()(typeLogic);
 
-
-
     out <== BatchIsZero(7)([movedAllTroops, waterUpdatesIncorrect, overflowFrom, 
         overflowTo, rsrcLogicIncorrect, cityIdLogicIncorrect, 
         typeLogicIncorrect]);
@@ -377,7 +375,6 @@ template Move() {
     signal input currentTroopInterval;
     signal input currentWaterInterval;
     signal input fromPkHash;
-    signal input toPkHash;
     signal input fromCityId;
     signal input toCityId;
     signal input ontoSelfOrUnowned;
