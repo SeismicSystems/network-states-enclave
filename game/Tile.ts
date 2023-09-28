@@ -84,6 +84,13 @@ export class Tile {
     }
 
     /*
+     * Returns the owner's public key as a string.
+     */
+    ownerPubKey(): string {
+        return this.owner.bjjPub.serialize();
+    }
+
+    /*
      * Convert to JSON object with all values as strings.
      */
     toJSON(): object {

@@ -101,6 +101,7 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, CITY_IDX, WTR_UPD_IDX, TYPE_IDX,
     signal input uTo[N_TL_ATRS];
     signal input fromUpdatedTroops;
     signal input toUpdatedTroops;
+    signal input ontoMoreOrEq;
 
     signal output out;
 
@@ -130,9 +131,6 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, CITY_IDX, WTR_UPD_IDX, TYPE_IDX,
         fromUpdatedTroops]);
     signal overflowTo <== GreaterEqThan(SYS_BITS)([uTo[RSRC_IDX], 
         fromUpdatedTroops + toUpdatedTroops]);
-
-    signal ontoMoreOrEq <== GreaterEqThan(SYS_BITS)([toUpdatedTroops, 
-        fromUpdatedTroops - uFrom[RSRC_IDX]]);
 
     signal rsrcLogic <== CheckRsrcCases(N_TL_ATRS, RSRC_IDX)(ontoSelfOrUnowned, 
         uFrom, uTo, fromUpdatedTroops, toUpdatedTroops, ontoMoreOrEq);
@@ -345,10 +343,11 @@ template CheckMerkleInclusion(N_TL_ATRS, MERKLE_TREE_DEPTH) {
  * Checks that the public signals that the contract logic uses are computed
  * correctly.
  */
-template CheckPublicSignals(N_TL_ATRS, CITY_IDX, TYPE_IDX, CITY_TYPE, 
-    CAPITAL_TYPE) {
+template CheckPublicSignals(N_TL_ATRS, CITY_IDX, UNOWNED_ID, TYPE_IDX, 
+    CITY_TYPE, CAPITAL_TYPE) {
     signal input fromCityId;
     signal input toCityId;
+    signal input ontoSelfOrUnowned;
     signal input takingCity;
     signal input takingCapital;
     signal input ontoMoreOrEq;
@@ -362,14 +361,23 @@ template CheckPublicSignals(N_TL_ATRS, CITY_IDX, TYPE_IDX, CITY_TYPE,
     signal toCityIdCorrect <== IsEqual()([toCityId, tTo[CITY_IDX]]);
     signal cityIdCorrect <== AND()(fromCityIdCorrect, toCityIdCorrect);
 
+    // Capturing requires moving more troops than on the to tile
     signal ontoLess <== NOT()(ontoMoreOrEq);
 
+    // Cannot 'capture' your own city/capital
+    signal ontoUnowned <== IsEqual()([toCityId, UNOWNED_ID]);
+    signal notOntoUnowned <== NOT()(ontoUnowned);
+    signal ontoSelf <== AND()(ontoSelfOrUnowned, notOntoUnowned);
+    signal notOntoSelf <== NOT()(ontoSelf);
+
+    signal capturingOther <== AND()(ontoLess, notOntoSelf);
+
     signal ontoCity <== IsEqual()([tTo[TYPE_IDX], CITY_TYPE]);
-    signal circuitTakingCity <== AND()(ontoCity, ontoLess);
+    signal circuitTakingCity <== AND()(ontoCity, capturingOther);
     signal takingCityCorrect <== IsEqual()([takingCity, circuitTakingCity]);
 
     signal ontoCapital <== IsEqual()([tTo[TYPE_IDX], CAPITAL_TYPE]);
-    signal circuitTakingCapital <== AND()(ontoCapital, ontoLess);
+    signal circuitTakingCapital <== AND()(ontoCapital, capturingOther);
     signal takingCapitalCorrect <== IsEqual()(
         [takingCapital, circuitTakingCapital]);
 
@@ -435,9 +443,13 @@ template Move() {
     signal input toUpdatedTroops;
     signal input privKeyHash;
 
+    signal ontoMoreOrEq <== GreaterEqThan(SYS_BITS)([toUpdatedTroops, 
+        fromUpdatedTroops - uFrom[RSRC_IDX]]);
+
     signal pubSignalsCorrect <== CheckPublicSignals(N_TL_ATRS, CITY_IDX, 
-        TYPE_IDX, CITY_TYPE, CAPITAL_TYPE)(fromCityId, toCityId, takingCity,
-        takingCapital, ontoSelfOrUnowned, tFrom, tTo);
+        UNOWNED_ID, TYPE_IDX, CITY_TYPE, CAPITAL_TYPE)(fromCityId, toCityId, 
+        ontoSelfOrUnowned, takingCity, takingCapital, ontoMoreOrEq, tFrom, 
+        tTo);
     pubSignalsCorrect === 1;
 
     signal leavesCorrect <== CheckLeaves(N_TL_ATRS)(uFrom, 
@@ -456,7 +468,7 @@ template Move() {
         WTR_UPD_IDX, TYPE_IDX, CITY_TYPE, CAPITAL_TYPE, WATER_TYPE, 
         UNOWNED_ID, SYS_BITS)(currentTroopInterval, currentWaterInterval, 
         ontoSelfOrUnowned, tFrom, tTo, uFrom, uTo, fromUpdatedTroops, 
-        toUpdatedTroops);
+        toUpdatedTroops, ontoMoreOrEq);
     resourcesCorrect === 1;
 
     signal merkleProofCorrect <== CheckMerkleInclusion(N_TL_ATRS,

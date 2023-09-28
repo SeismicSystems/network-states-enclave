@@ -282,7 +282,7 @@ export class Board {
             throw Error("Cannot move without mobilizing at least 1 troop.");
         }
         let uTo: Tile;
-        if (tTo.owner === tFrom.owner) {
+        if (tTo.ownerPubKey() === tFrom.ownerPubKey()) {
             uTo = Tile.genOwned(
                 tTo.owner,
                 tTo.loc,
@@ -377,10 +377,15 @@ export class Board {
         );
 
         const ontoSelfOrUnowned =
-            tTo.owner === tFrom.owner || tTo.isUnowned() ? "1" : "0";
-        const takingCity = tTo.isCity() && uTo.owner != tTo.owner ? "1" : "0";
+            tTo.ownerPubKey() === tFrom.ownerPubKey() || tTo.isUnowned()
+                ? "1"
+                : "0";
+        const takingCity =
+            tTo.isCity() && uTo.ownerPubKey() != tTo.ownerPubKey() ? "1" : "0";
         const takingCapital =
-            tTo.isCapital() && uTo.owner != tTo.owner ? "1" : "0";
+            tTo.isCapital() && uTo.ownerPubKey() != tTo.ownerPubKey()
+                ? "1"
+                : "0";
 
         const mProofFrom = Utils.generateMerkleProof(tFrom.hash(), mTree);
         const mProofTo = Utils.generateMerkleProof(tTo.hash(), mTree);
