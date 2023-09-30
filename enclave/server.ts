@@ -178,28 +178,53 @@ function onMoveFinalize(io: Server, hUFrom: string, hUTo: string) {
         claimedMoves.delete(moveHash);
 
         // Before state is updated, we need the previous 'to' tile owner
-        const prevOwner = b.getTile(move.uTo.loc).owner;
+        const prevOwner = b.getTile(move.uTo.loc).ownerPubKey();
+        const newOwner = move.uTo.ownerPubKey();
 
         // Update state
         b.setTile(move.uFrom);
         b.setTile(move.uTo);
 
-        // Alert nearby players that an updateDisplay is needed
-        // 1. player on uFrom does not need to decrypt
-        // 2. the previous owner at uTo needs to decrypt uTo
-        // 3. player on uTo needs to decrypt all neighbors
-        // 4. all surounding players need to decrypt uFrom, uTo
+        // Alert all nearby players that an updateDisplay is needed
+        let alertPlayerMap = new Map<string, Map<string, boolean>>();
+        alertPlayerMap.set(prevOwner, new Map<string, boolean>());
+        alertPlayerMap.set(newOwner, new Map<string, boolean>());
 
-        alertPlayer(io, prevOwner, [move.uTo.loc]);
-        alertPlayer(io, move.uTo.owner, b.getNearbyLocations(move.uTo.loc));
-
+        // All tiles around uFrom
         for (let l of b.getNearbyLocations(move.uFrom.loc)) {
-            alertPlayer(io, b.getTile(l).owner, [move.uFrom.loc]);
+            const tileOwner = b.getTile(l).ownerPubKey();
+            const locString = Utils.stringifyLocation(l);
+
+            if (!alertPlayerMap.has(tileOwner)) {
+                alertPlayerMap.set(tileOwner, new Map<string, boolean>());
+            }
+            alertPlayerMap.get(tileOwner)?.set(locString, true);
+            alertPlayerMap.get(prevOwner)?.set(locString, true);
+            alertPlayerMap.get(newOwner)?.set(locString, true);
+        }
+        // All tiles around uTo
+        for (let l of b.getNearbyLocations(move.uTo.loc)) {
+            const tileOwner = b.getTile(l).ownerPubKey();
+            const locString = Utils.stringifyLocation(l);
+
+            if (!alertPlayerMap.has(tileOwner)) {
+                alertPlayerMap.set(tileOwner, new Map<string, boolean>());
+            }
+            alertPlayerMap.get(tileOwner)?.set(locString, true);
+            alertPlayerMap.get(prevOwner)?.set(locString, true);
+            alertPlayerMap.get(newOwner)?.set(locString, true);
+        }
+        // Players who own tiles nearby should decrypt uFrom, uTo
+        for (let pubkey of alertPlayerMap.keys()) {
+            alertPlayerMap
+                .get(pubkey)
+                ?.set(Utils.stringifyLocation(move.uFrom.loc), true)
+                .set(Utils.stringifyLocation(move.uTo.loc), true);
         }
 
-        for (let l of b.getNearbyLocations(move.uTo.loc)) {
-            alertPlayer(io, b.getTile(l).owner, [move.uTo.loc]);
-        }
+        alertPlayerMap.forEach((locs: Map<string, boolean>, pubkey: string) => {
+            alertPlayer(io, pubkey, Array.from(locs.keys()));
+        });
     } else {
         console.log(
             `Move: (${hUFrom}, ${hUTo}) was finalized without a signature.`
@@ -211,13 +236,10 @@ function onMoveFinalize(io: Server, hUFrom: string, hUTo: string) {
  * Helper function for onMoveFinalize. Pings player when locations should be
  * decrypted.
  */
-function alertPlayer(io: Server, pl: Player, locs: Location[]) {
-    // [TODO]: update onMoveFinalize so this isn't awkward anymore
-    let locStrings: string[] = locs.map((l) => Utils.stringifyLocation(l));
-
-    const socketId = pubKeyToId.get(pl.bjjPub.serialize());
+function alertPlayer(io: Server, pubkey: string, locs: string[]) {
+    const socketId = pubKeyToId.get(pubkey);
     if (socketId) {
-        io.to(socketId).emit("updateDisplay", locStrings);
+        io.to(socketId).emit("updateDisplay", locs);
     }
 }
 
