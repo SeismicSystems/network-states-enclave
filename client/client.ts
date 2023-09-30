@@ -145,7 +145,7 @@ async function move(inp: string) {
  * After logging in, player recieves a list of locations that they should
  * decrypt.
  */
-async function loginResponse(locs: Location[]) {
+async function loginResponse(locs: string[]) {
     updateDisplay(locs);
 
     await Utils.sleep(UPDATE_MLS);
@@ -204,9 +204,12 @@ async function getSignatureResponse(sig: string, uFrom: any, uTo: any) {
  * Refreshes the user's game board view. Done in response to enclave ping that
  * a relevant move was made.
  */
-async function updateDisplay(locs: Location[]) {
+async function updateDisplay(locs: string[]) {
     for (let l of locs) {
-        updatePlayerView(l);
+        const unstringified = Utils.unstringifyLocation(l);
+        if (unstringified) {
+            updatePlayerView(unstringified);
+        }
     }
 }
 

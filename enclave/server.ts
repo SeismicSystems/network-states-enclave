@@ -97,19 +97,16 @@ async function login(
         idToPubKey.set(socket.id, pubkey);
         pubKeyToId.set(pubkey, socket.id);
 
-        let visibleTiles: Location[] = [];
-        // [TODO]: make this more efficient now that we have string reps
-        b.playerTiles
-            .get(pubkey)
-            ?.forEach(
-                (value: boolean, key: string, map: Map<string, boolean>) => {
-                    const l = Utils.unstringifyLocation(key);
-                    if (l) {
-                        visibleTiles.push(...b.getNearbyLocations(l));
-                    }
+        let visibleTiles = new Map<string, boolean>();
+        b.playerTiles.get(pubkey)?.forEach((_value: boolean, key: string) => {
+            const playerTile = Utils.unstringifyLocation(key);
+            if (playerTile) {
+                for (let loc of b.getNearbyLocations(playerTile)) {
+                    visibleTiles.set(Utils.stringifyLocation(loc), true);
                 }
-            );
-        socket.emit("loginResponse", visibleTiles);
+            }
+        });
+        socket.emit("loginResponse", Array.from(visibleTiles.keys()));
     }
 }
 
@@ -215,9 +212,12 @@ function onMoveFinalize(io: Server, hUFrom: string, hUTo: string) {
  * decrypted.
  */
 function alertPlayer(io: Server, pl: Player, locs: Location[]) {
+    // [TODO]: update onMoveFinalize so this isn't awkward anymore
+    let locStrings: string[] = locs.map((l) => Utils.stringifyLocation(l));
+
     const socketId = pubKeyToId.get(pl.bjjPub.serialize());
     if (socketId) {
-        io.to(socketId).emit("updateDisplay", locs);
+        io.to(socketId).emit("updateDisplay", locStrings);
     }
 }
 
