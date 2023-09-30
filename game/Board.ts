@@ -14,14 +14,14 @@ export class Board {
 
     t: Tile[][];
 
-    playerTiles: Map<string, Location[]>;
+    playerTiles: Map<string, Map<string, boolean>>;
 
-    playerCapitals: Map<string, Location>;
+    playerCapitals: Map<string, string>;
 
     public constructor() {
         this.t = new Array<Array<Tile>>();
-        this.playerTiles = new Map<string, Location[]>();
-        this.playerCapitals = new Map<string, Location>();
+        this.playerTiles = new Map<string, Map<string, boolean>>();
+        this.playerCapitals = new Map<string, string>();
     }
 
     /*
@@ -102,7 +102,10 @@ export class Board {
 
         this.setTile(tl);
 
-        this.playerCapitals.set(pl.bjjPub.serialize(), { r, c });
+        this.playerCapitals.set(
+            pl.bjjPub.serialize(),
+            Utils.stringifyLocation({ r, c })
+        );
 
         // Update the merkle root on-chain.
         await nStates.spawn(
@@ -178,28 +181,20 @@ export class Board {
         const oldTile = this.t[tl.loc.r][tl.loc.c];
         const oldPubKey = oldTile.owner.bjjPub.serialize();
         const newPubKey = tl.owner.bjjPub.serialize();
+        const locString = Utils.stringifyLocation(tl.loc);
+        
         if (oldPubKey != newPubKey) {
             // Remove tile from old player and give to new player
-            const index = this.playerTiles.get(oldPubKey)?.indexOf(tl.loc);
-            if (index) {
-                this.playerTiles.get(oldPubKey)?.splice(index, 1);
-            }
+            this.playerTiles.get(oldPubKey)?.delete(locString);
 
-            const newPubKey = tl.owner.bjjPub.serialize();
-            const newOwnerTiles = this.playerTiles.get(newPubKey);
-            if (newOwnerTiles) {
-                newOwnerTiles.push(tl.loc);
-            } else {
-                this.playerTiles.set(newPubKey, [tl.loc]);
+            if (!this.playerTiles.has(newPubKey)) {
+                this.playerTiles.set(newPubKey, new Map<string, boolean>());
             }
+            this.playerTiles.get(newPubKey)?.set(locString, true);
 
             // If setTile is over a capital, remove capital from player
             const capitalLoc = this.playerCapitals.get(oldPubKey);
-            if (
-                capitalLoc &&
-                capitalLoc.r === tl.loc.r &&
-                capitalLoc.c === tl.loc.c
-            ) {
+            if (capitalLoc === locString) {
                 this.playerCapitals.delete(oldPubKey);
             }
         }

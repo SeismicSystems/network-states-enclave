@@ -98,9 +98,17 @@ async function login(
         pubKeyToId.set(pubkey, socket.id);
 
         let visibleTiles: Location[] = [];
-        b.playerTiles.get(pubkey)?.forEach((l) => {
-            visibleTiles.push(...b.getNearbyLocations(l));
-        });
+        // [TODO]: make this more efficient now that we have string reps
+        b.playerTiles
+            .get(pubkey)
+            ?.forEach(
+                (value: boolean, key: string, map: Map<string, boolean>) => {
+                    const l = Utils.unstringifyLocation(key);
+                    if (l) {
+                        visibleTiles.push(...b.getNearbyLocations(l));
+                    }
+                }
+            );
         socket.emit("loginResponse", visibleTiles);
     }
 }

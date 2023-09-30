@@ -228,6 +228,9 @@ contract NStates is IncrementalMerkleTree {
         return ontoSelfOrUnowned == 0;
     }
 
+    /*
+     * Transfers ownership of one city to its new owner.
+     */
     function transferCityOwnership(
         uint256 newOwner,
         uint256 toCityId,
