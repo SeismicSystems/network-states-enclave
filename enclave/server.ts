@@ -191,6 +191,7 @@ function onMoveFinalize(io: Server, hUFrom: string, hUTo: string) {
         alertPlayerMap.set(newOwner, new Map<string, boolean>());
 
         // All tiles around uFrom
+        const uFromLocString = Utils.stringifyLocation(move.uFrom.loc);
         for (let l of b.getNearbyLocations(move.uFrom.loc)) {
             const tileOwner = b.getTile(l).ownerPubKey();
             const locString = Utils.stringifyLocation(l);
@@ -198,11 +199,12 @@ function onMoveFinalize(io: Server, hUFrom: string, hUTo: string) {
             if (!alertPlayerMap.has(tileOwner)) {
                 alertPlayerMap.set(tileOwner, new Map<string, boolean>());
             }
-            alertPlayerMap.get(tileOwner)?.set(locString, true);
+            alertPlayerMap.get(tileOwner)?.set(uFromLocString, true);
             alertPlayerMap.get(prevOwner)?.set(locString, true);
             alertPlayerMap.get(newOwner)?.set(locString, true);
         }
         // All tiles around uTo
+        const uToLocString = Utils.stringifyLocation(move.uTo.loc);
         for (let l of b.getNearbyLocations(move.uTo.loc)) {
             const tileOwner = b.getTile(l).ownerPubKey();
             const locString = Utils.stringifyLocation(l);
@@ -210,16 +212,9 @@ function onMoveFinalize(io: Server, hUFrom: string, hUTo: string) {
             if (!alertPlayerMap.has(tileOwner)) {
                 alertPlayerMap.set(tileOwner, new Map<string, boolean>());
             }
-            alertPlayerMap.get(tileOwner)?.set(locString, true);
+            alertPlayerMap.get(tileOwner)?.set(uToLocString, true);
             alertPlayerMap.get(prevOwner)?.set(locString, true);
             alertPlayerMap.get(newOwner)?.set(locString, true);
-        }
-        // Players who own tiles nearby should decrypt uFrom, uTo
-        for (let pubkey of alertPlayerMap.keys()) {
-            alertPlayerMap
-                .get(pubkey)
-                ?.set(Utils.stringifyLocation(move.uFrom.loc), true)
-                .set(Utils.stringifyLocation(move.uTo.loc), true);
         }
 
         alertPlayerMap.forEach((locs: Map<string, boolean>, pubkey: string) => {
