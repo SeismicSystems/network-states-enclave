@@ -58,6 +58,9 @@ let b: Board;
 
 /*
  * City ID given to each spawning player. Increments by one each time.
+ *
+ * [TODO]: eventually, the client will sample their own cityId, and the contract
+ * will check that the cityId is not in use.
  */
 let cityId: number = 1;
 
@@ -231,10 +234,6 @@ function onMoveFinalize(io: Server, hUFrom: string, hUTo: string) {
             `Move: (${hUFrom}, ${hUTo}) was finalized without a signature.`
         );
     }
-
-    console.log("==player capitals: ", b.playerCapital);
-    console.log("==player cities: ", b.playerCities);
-    console.log("== city tiles: ", b.cityTiles);
 }
 
 /*

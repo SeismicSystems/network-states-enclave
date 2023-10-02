@@ -80,8 +80,8 @@ const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
 );
 
 /*
- * Iterates through entire board, asking enclave to reveal all secrets this
- * player is privy to. If location is given, then the update is local.
+ * Submits a signature of the location to the enclave, in order to decrypt
+ * hidden state.
  */
 function updatePlayerView(l: Location) {
     const sig = PLAYER.genSig(Player.hForDecrypt(l));
