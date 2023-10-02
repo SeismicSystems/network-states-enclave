@@ -75,6 +75,9 @@ let claimedMoves = new Map<string, ClaimedMove>();
 
 /*
  * Dev function for spawning a player on the map or logging back in.
+ *
+ * [TODO]: for prod, the enclave should not be calling the contract's spawn
+ * function on behalf of the player.
  */
 async function login(
     socket: Socket,

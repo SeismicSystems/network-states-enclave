@@ -182,7 +182,7 @@ export class Board {
         const oldPubKey = oldTile.owner.bjjPub.serialize();
         const newPubKey = tl.owner.bjjPub.serialize();
         const locString = Utils.stringifyLocation(tl.loc);
-        
+
         if (oldPubKey != newPubKey) {
             // Remove tile from old player and give to new player
             this.playerTiles.get(oldPubKey)?.delete(locString);
@@ -193,10 +193,7 @@ export class Board {
             this.playerTiles.get(newPubKey)?.set(locString, true);
 
             // If setTile is over a capital, remove capital from player
-            const capitalLoc = this.playerCapitals.get(oldPubKey);
-            if (capitalLoc === locString) {
-                this.playerCapitals.delete(oldPubKey);
-            }
+            this.playerCapitals.delete(oldPubKey);
         }
 
         this.t[tl.loc.r][tl.loc.c] = tl;
