@@ -202,7 +202,6 @@ export class Board {
                     this.playerCities.get(newOwner)?.set(cityId, true);
                 }
                 this.playerCities.delete(oldOwner);
-
             } else if (oldTile.isCity()) {
                 this.playerCities.get(oldOwner)?.delete(tl.cityId);
                 this.playerCities.get(newOwner)?.set(tl.cityId, true);
@@ -230,7 +229,9 @@ export class Board {
                 nc = c + dx;
             if (
                 this.inBounds(nr, nc) &&
-                this.t[nr][nc].owner.bjjPub.equals(reqPlayer.bjjPub)
+                this.playerCities
+                    .get(reqPlayer.bjjPub.serialize())
+                    ?.has(this.t[nr][nc].cityId)
             ) {
                 foundNeighbor = true;
             }

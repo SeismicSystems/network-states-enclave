@@ -188,68 +188,90 @@ function onMoveFinalize(io: Server, hUFrom: string, hUTo: string) {
         claimedMoves.delete(moveHash);
 
         // Before state is updated, we need the previous 'to' tile owner
-        const prevOwner = b.getTile(move.uTo.loc).ownerPubKey();
+        const tTo = b.getTile(move.uTo.loc);
         const newOwner = move.uTo.ownerPubKey();
+        const prevOwner = tTo.ownerPubKey();
+        const ownershipChanged = prevOwner !== newOwner;
+
+        // Alert all nearby players that an updateDisplay is needed
+        let updatedLocs = [move.uFrom.loc];
+        if (ownershipChanged && tTo.isCapital()) {
+            b.playerCities
+                .get(prevOwner)
+                ?.forEach((_: boolean, cityId: number) => {
+                    b.cityTiles
+                        .get(cityId)
+                        ?.forEach((_: boolean, locString: string) => {
+                            const loc = Utils.unstringifyLocation(locString);
+                            if (loc) {
+                                updatedLocs.push(loc);
+                            }
+                        });
+                });
+        } else if (ownershipChanged && tTo.isCity()) {
+            b.cityTiles
+                .get(tTo.cityId)
+                ?.forEach((_: boolean, locString: string) => {
+                    const loc = Utils.unstringifyLocation(locString);
+                    if (loc) {
+                        updatedLocs.push(loc);
+                    }
+                });
+        } else {
+            updatedLocs.push(move.uTo.loc);
+        }
 
         // Update state
         b.setTile(move.uFrom);
         b.setTile(move.uTo);
 
-        // Alert all nearby players that an updateDisplay is needed
-        let alertPlayerMap = new Map<string, Map<string, boolean>>();
-        alertPlayerMap.set(prevOwner, new Map<string, boolean>());
-        alertPlayerMap.set(newOwner, new Map<string, boolean>());
-
-        // All tiles around uFrom
-        const uFromLocString = Utils.stringifyLocation(move.uFrom.loc);
-        for (let l of b.getNearbyLocations(move.uFrom.loc)) {
-            const tileOwner = b.getTile(l).ownerPubKey();
-            const locString = Utils.stringifyLocation(l);
-
-            if (!alertPlayerMap.has(tileOwner)) {
-                alertPlayerMap.set(tileOwner, new Map<string, boolean>());
-            }
-            alertPlayerMap.get(tileOwner)?.set(uFromLocString, true);
-            alertPlayerMap.get(prevOwner)?.set(locString, true);
-            alertPlayerMap.get(newOwner)?.set(locString, true);
-        }
-        // All tiles around uTo
-        const uToLocString = Utils.stringifyLocation(move.uTo.loc);
-        for (let l of b.getNearbyLocations(move.uTo.loc)) {
-            const tileOwner = b.getTile(l).ownerPubKey();
-            const locString = Utils.stringifyLocation(l);
-
-            if (!alertPlayerMap.has(tileOwner)) {
-                alertPlayerMap.set(tileOwner, new Map<string, boolean>());
-            }
-            alertPlayerMap.get(tileOwner)?.set(uToLocString, true);
-            alertPlayerMap.get(prevOwner)?.set(locString, true);
-            alertPlayerMap.get(newOwner)?.set(locString, true);
-        }
-
-        alertPlayerMap.forEach((locs: Map<string, boolean>, pubkey: string) => {
-            alertPlayer(io, pubkey, Array.from(locs.keys()));
-        });
+        alertPlayers(io, newOwner, prevOwner, updatedLocs);
     } else {
         console.log(
             `Move: (${hUFrom}, ${hUTo}) was finalized without a signature.`
         );
     }
 
-    console.log('==player capitals: ', b.playerCapital);
-    console.log('==player cities: ', b.playerCities);
-    console.log('== city tiles: ', b.cityTiles);
+    console.log("==player capitals: ", b.playerCapital);
+    console.log("==player cities: ", b.playerCities);
+    console.log("== city tiles: ", b.cityTiles);
 }
 
 /*
- * Helper function for onMoveFinalize. Pings player when locations should be
- * decrypted.
+ * Helper function for onMoveFinalize. Pings players when locations should be
+ * decrypted. For each location in updatedLocs, the previous and new owner
+ * decrypt all tiles in the 3x3 region, and nearby players decrypt the tile in
+ * updatedLocs.
  */
-function alertPlayer(io: Server, pubkey: string, locs: string[]) {
-    const socketId = pubKeyToId.get(pubkey);
-    if (socketId) {
-        io.to(socketId).emit("updateDisplay", locs);
+function alertPlayers(
+    io: Server,
+    newOwner: string,
+    prevOwner: string,
+    updatedLocs: Location[]
+) {
+    let alertPlayerMap = new Map<string, Map<string, boolean>>();
+
+    for (let loc of updatedLocs) {
+        const locString = Utils.stringifyLocation(loc);
+        for (let l of b.getNearbyLocations(loc)) {
+            const tileOwner = b.getTile(l).ownerPubKey();
+            const lString = Utils.stringifyLocation(l);
+
+            if (!alertPlayerMap.has(tileOwner)) {
+                alertPlayerMap.set(tileOwner, new Map<string, boolean>());
+            }
+            alertPlayerMap.get(tileOwner)?.set(locString, true);
+            alertPlayerMap.get(newOwner)?.set(lString, true);
+            alertPlayerMap.get(prevOwner)?.set(lString, true);
+        }
     }
+
+    alertPlayerMap.forEach((tiles: Map<string, boolean>, pubkey: string) => {
+        const socketId = pubKeyToId.get(pubkey);
+        if (socketId) {
+            io.to(socketId).emit("updateDisplay", Array.from(tiles.keys()));
+        }
+    });
 }
 
 /*
