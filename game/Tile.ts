@@ -13,14 +13,21 @@ export class Tile {
     static UNOWNED: Player = new Player("_");
     static MYSTERY: Player = new Player("?");
 
+    // If cityId = 0 then the tile is considered unowned
+    static UNOWNED_ID: number = 0;
+
+    // tileType options
     static NORMAL_TILE: number = 0;
-    static WATER_TILE: number = 1;
-    static HILL_TILE: number = 2;
+    static CITY_TILE: number = 1;
+    static CAPITAL_TILE: number = 2;
+    static WATER_TILE: number = 3;
+    static HILL_TILE: number = 4;
 
     owner: Player;
     loc: Location;
     resources: number;
     key: BigInt;
+    cityId: number;
     latestTroopUpdateInterval: number;
     latestWaterUpdateInterval: number;
     tileType: number;
@@ -30,6 +37,7 @@ export class Tile {
         l_: Location,
         r_: number,
         k_: BigInt,
+        c_: number,
         i_: number,
         w_: number,
         t_: number
@@ -38,6 +46,7 @@ export class Tile {
         this.loc = l_;
         this.resources = r_;
         this.key = k_;
+        this.cityId = c_;
         this.latestTroopUpdateInterval = i_;
         this.latestWaterUpdateInterval = w_;
         this.tileType = t_;
@@ -49,15 +58,11 @@ export class Tile {
      */
     toCircuitInput(): string[] {
         return [
-            poseidon([
-                BigInt(this.owner.bjjPub.rawPubKey[0].toString()),
-                BigInt(this.owner.bjjPub.rawPubKey[1].toString()),
-            ]).toString(),
             this.loc.r.toString(),
             this.loc.c.toString(),
             this.resources.toString(),
             this.key.toString(),
-            this.latestTroopUpdateInterval.toString(),
+            this.cityId.toString(),
             this.latestWaterUpdateInterval.toString(),
             this.tileType.toString(),
         ];
@@ -89,6 +94,7 @@ export class Tile {
             c: this.loc.c.toString(),
             resources: this.resources.toString(),
             key: this.key.toString(10),
+            cityId: this.cityId.toString(),
             latestTroopUpdateInterval:
                 this.latestTroopUpdateInterval.toString(),
             latestWaterUpdateInterval:
@@ -101,7 +107,7 @@ export class Tile {
      * Return true if this Tile is not owned by any player.
      */
     isUnowned(): boolean {
-        return this.owner.symbol === Tile.UNOWNED.symbol;
+        return this.cityId === Tile.UNOWNED_ID;
     }
 
     /*
@@ -127,6 +133,7 @@ export class Tile {
             { r: parseInt(obj.r, 10), c: parseInt(obj.c, 10) },
             parseInt(obj.resources, 10),
             BigInt(obj.key),
+            parseInt(obj.cityId, 10),
             parseInt(obj.latestTroopUpdateInterval, 10),
             parseInt(obj.latestWaterUpdateInterval, 10),
             parseInt(obj.tileType, 10)
@@ -137,14 +144,32 @@ export class Tile {
      * Meant to represent a tile in the fog of war.
      */
     static mystery(l: Location): Tile {
-        return new Tile(Tile.MYSTERY, l, 0, BigInt(0), 0, 0, this.NORMAL_TILE);
+        return new Tile(
+            Tile.MYSTERY,
+            l,
+            0,
+            BigInt(0),
+            0,
+            0,
+            0,
+            this.NORMAL_TILE
+        );
     }
 
     /*
      * Hill tile. Players cannot move onto a hill tile.
      */
     static hill(l: Location): Tile {
-        return new Tile(Tile.UNOWNED, l, 0, genRandomSalt(), 0, 0, this.HILL_TILE);
+        return new Tile(
+            Tile.UNOWNED,
+            l,
+            0,
+            genRandomSalt(),
+            0,
+            0,
+            0,
+            this.HILL_TILE
+        );
     }
 
     /*
@@ -158,6 +183,7 @@ export class Tile {
             genRandomSalt(),
             0,
             0,
+            0,
             this.NORMAL_TILE
         );
     }
@@ -165,8 +191,16 @@ export class Tile {
     /*
      * New owned tile with random salt as the access key.
      */
-    static genOwned(o_: Player, l_: Location, r_: number, i_: number, w_: number, t_: number): Tile {
-        return new Tile(o_, l_, r_, genRandomSalt(), i_, w_, t_);
+    static genOwned(
+        o_: Player,
+        l_: Location,
+        r_: number,
+        c_: number,
+        i_: number,
+        w_: number,
+        t_: number
+    ): Tile {
+        return new Tile(o_, l_, r_, genRandomSalt(), c_, i_, w_, t_);
     }
 
     /*
@@ -178,6 +212,7 @@ export class Tile {
             l_,
             0,
             genRandomSalt(),
+            0,
             0,
             0,
             this.WATER_TILE

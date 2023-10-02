@@ -76,13 +76,14 @@ export class Board {
         l: Location,
         pl: Player,
         resource: number,
+        cityId: number,
         nStates: any
     ) {
         this.assertBounds(l);
 
         let r = l.r,
             c = l.c;
-        if (this.t[r][c].owner != Tile.UNOWNED) {
+        if (!this.t[r][c].isUnowned()) {
             throw new Error("Tried to spawn player on an owned tile.");
         }
 
@@ -93,9 +94,10 @@ export class Board {
             pl,
             { r, c },
             resource,
+            cityId,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.CAPITAL_TILE
         );
 
         this.setTile(tl);
@@ -103,7 +105,12 @@ export class Board {
         this.playerCapitals.set(pl.bjjPub.serialize(), { r, c });
 
         // Update the merkle root on-chain.
-        await nStates.spawn(this.t[r][c].hash(), nullifier);
+        await nStates.spawn(
+            pl.pubKeyHash(),
+            cityId,
+            this.t[r][c].hash(),
+            nullifier
+        );
         await Utils.sleep(200);
     }
 
@@ -249,9 +256,13 @@ export class Board {
         const isUnowned: number = tTile.isUnowned() ? 0 : 1;
         const deltaTroops: number = tTile.isWater()
             ? tTile.latestWaterUpdateInterval - currentWaterInterval
-            : currentTroopInterval - tTile.latestTroopUpdateInterval;
+            : 0;
 
-        return (tTile.resources + deltaTroops) * isUnowned;
+        let updatedTroops = (tTile.resources + deltaTroops) * isUnowned;
+        if (updatedTroops < 0) {
+            updatedTroops = 0;
+        }
+        return updatedTroops;
     }
 
     /*
@@ -276,6 +287,7 @@ export class Board {
                 tTo.owner,
                 tTo.loc,
                 updatedTroops + nMobilize,
+                tTo.cityId,
                 currentTroopInterval,
                 currentWaterInterval,
                 tTo.tileType
@@ -285,6 +297,7 @@ export class Board {
                 tFrom.owner,
                 tTo.loc,
                 nMobilize,
+                tFrom.cityId,
                 currentTroopInterval,
                 currentWaterInterval,
                 tTo.tileType
@@ -294,6 +307,7 @@ export class Board {
                 tTo.owner,
                 tTo.loc,
                 updatedTroops - nMobilize,
+                tTo.cityId,
                 currentTroopInterval,
                 currentWaterInterval,
                 tTo.tileType
@@ -301,6 +315,14 @@ export class Board {
             if (uTo.resources < 0) {
                 uTo.owner = uFrom.owner;
                 uTo.resources *= -1;
+                if (
+                    tTo.tileType != Tile.CITY_TILE &&
+                    tTo.tileType != Tile.CAPITAL_TILE
+                ) {
+                    uTo.cityId = uFrom.cityId;
+                } else if (tTo.tileType === Tile.CAPITAL_TILE) {
+                    uTo.tileType = Tile.CITY_TILE;
+                }
             }
         }
         return uTo;
@@ -317,7 +339,7 @@ export class Board {
         to: Location,
         currentTroopInterval: number,
         currentWaterInterval: number
-    ): Promise<[Tile, Tile, Tile, Tile, Groth16Proof]> {
+    ): Promise<[Tile, Tile, Tile, Tile, Groth16Proof, any]> {
         const tFrom: Tile = this.getTile(from);
         const tTo: Tile = this.getTile(to);
 
@@ -339,6 +361,7 @@ export class Board {
             tFrom.owner,
             tFrom.loc,
             fromUpdatedTroops - nMobilize,
+            tFrom.cityId,
             currentTroopInterval,
             currentWaterInterval,
             tFrom.tileType
@@ -353,6 +376,11 @@ export class Board {
             currentWaterInterval
         );
 
+        let ontoSelfOrUnowned = "0";
+        if (tTo.owner === tFrom.owner || tTo.isUnowned()) {
+            ontoSelfOrUnowned = "1";
+        }
+
         const mProofFrom = Utils.generateMerkleProof(tFrom.hash(), mTree);
         const mProofTo = Utils.generateMerkleProof(tTo.hash(), mTree);
 
@@ -361,6 +389,10 @@ export class Board {
                 root: mTree.root.toString(),
                 currentTroopInterval: currentTroopInterval.toString(),
                 currentWaterInterval: currentWaterInterval.toString(),
+                fromPkHash: tFrom.owner.pubKeyHash(),
+                fromCityId: tFrom.cityId.toString(),
+                toCityId: tTo.cityId.toString(),
+                ontoSelfOrUnowned,
                 hUFrom: uFrom.hash(),
                 hUTo: uTo.hash(),
                 rhoFrom: tFrom.nullifier(),
@@ -381,6 +413,6 @@ export class Board {
             Board.MOVE_PROVKEY
         );
 
-        return [tFrom, tTo, uFrom, uTo, proof];
+        return [tFrom, tTo, uFrom, uTo, proof, publicSignals];
     }
 }

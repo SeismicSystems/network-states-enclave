@@ -57,6 +57,11 @@ type ClaimedMove = {
 let b: Board;
 
 /*
+ * City ID given to each spawning player. Increments by one each time.
+ */
+let cityId: number = 1;
+
+/*
  * Bijection between player's public keys and their socket IDs.
  */
 let idToPubKey = new Map<string, string>();
@@ -84,7 +89,8 @@ async function login(
 
         // Spawn if player is connected for the first time
         if (!b.isSpawned(reqPlayer)) {
-            await b.spawn(l, reqPlayer, START_RESOURCES, nStates);
+            await b.spawn(l, reqPlayer, START_RESOURCES, cityId, nStates);
+            cityId++;
         }
 
         // Pair the public key and the socket ID

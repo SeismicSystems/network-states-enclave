@@ -1,3 +1,5 @@
+// @ts-ignore
+import { poseidon } from "circomlib";
 import { PrivKey, PubKey } from "maci-domainobjs";
 import {
     Signature,
@@ -71,6 +73,17 @@ export class Player {
      */
     static hForLogin(id: BigInt): BigInt {
         return hashOne(id);
+    }
+
+    /*
+     * Returns the hash of the player's public key. Circuit input for player's
+     * public key.
+     */
+    public pubKeyHash(): string {
+        return poseidon([
+            BigInt(this.bjjPub.rawPubKey[0].toString()),
+            BigInt(this.bjjPub.rawPubKey[1].toString()),
+        ]).toString();
     }
 
     /*

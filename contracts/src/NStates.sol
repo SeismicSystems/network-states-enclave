@@ -11,7 +11,7 @@ interface IVerifier {
         uint256[2] memory a,
         uint256[2][2] memory b,
         uint256[2] memory c,
-        uint256[7] memory input
+        uint256[11] memory input
     ) external view returns (bool);
 }
 
@@ -26,6 +26,10 @@ struct MoveInputs {
     uint256 root;
     uint256 troopInterval;
     uint256 waterInterval;
+    uint256 fromPkHash;
+    uint256 fromCityId;
+    uint256 toCityId;
+    uint256 ontoSelfOrUnowned;
     uint256 hUFrom;
     uint256 hUTo;
     uint256 rhoFrom;
@@ -57,6 +61,9 @@ contract NStates is IncrementalMerkleTree {
     uint256 public numBlocksInTroopUpdate;
     uint256 public numBlocksInWaterUpdate;
     mapping(uint256 => bool) public nullifiers;
+
+    mapping(uint256 => uint256) public playerToCities;
+    mapping(uint256 => uint256) public citiesToPlayer;
 
     constructor(
         address contractOwner,
@@ -91,9 +98,22 @@ contract NStates is IncrementalMerkleTree {
     /*
      * Game deployer has the ability to initialize players onto the board.
      */
-    function spawn(uint256 h, uint256 rho) public onlyOwner {
+    function spawn(
+        uint256 pkHash,
+        uint24 cityId,
+        uint256 h,
+        uint256 rho
+    ) public onlyOwner {
+        require(cityId != 0, "City ID must be a non-zero value");
+        require(playerToCities[pkHash] == 0, "Player is already spawned in");
+        require(citiesToPlayer[cityId] == 0, "City is already in game");
+
         set(h);
         nullifiers[rho] = true;
+
+        playerToCities[pkHash] = cityId;
+        citiesToPlayer[cityId] = pkHash;
+
         emit NewNullifier(rho);
     }
 
@@ -115,6 +135,18 @@ contract NStates is IncrementalMerkleTree {
         require(
             currentWaterInterval() >= moveInputs.waterInterval,
             "Move is too far into the future, change currentWaterInterval value"
+        );
+        require(
+            moveInputs.fromPkHash == citiesToPlayer[moveInputs.fromCityId],
+            "Must move from a city that you own"
+        );
+        require(
+            checkOntoSelfOrUnowned(
+                moveInputs.fromPkHash,
+                moveInputs.toCityId,
+                moveInputs.ontoSelfOrUnowned
+            ),
+            "Value of ontoSelfOrUnowned is incorrect"
         );
         require(
             !nullifiers[moveInputs.rhoFrom] && !nullifiers[moveInputs.rhoTo],
@@ -145,6 +177,23 @@ contract NStates is IncrementalMerkleTree {
         emit NewLeaf(moveInputs.hUTo);
         emit NewNullifier(moveInputs.rhoFrom);
         emit NewNullifier(moveInputs.rhoTo);
+    }
+
+    /*
+     * Helper function for move(). Checks if public signal ontoSelfOrUnowned is
+     * set correctly. ontoSelfOrUnowned is used in the ZKP, but must be
+     * checked onchain.
+     */
+    function checkOntoSelfOrUnowned(
+        uint256 fromPkHash,
+        uint256 toCityId,
+        uint256 ontoSelfOrUnowned
+    ) internal view returns (bool) {
+        uint256 toCityOwner = citiesToPlayer[toCityId];
+        if (toCityOwner == fromPkHash || toCityOwner == 0) {
+            return ontoSelfOrUnowned == 1;
+        }
+        return ontoSelfOrUnowned == 0;
     }
 
     /*
@@ -198,11 +247,15 @@ contract NStates is IncrementalMerkleTree {
 
     function toArray(
         MoveInputs memory moveInputs
-    ) internal pure returns (uint256[7] memory) {
+    ) internal pure returns (uint256[11] memory) {
         return [
             moveInputs.root,
             moveInputs.troopInterval,
             moveInputs.waterInterval,
+            moveInputs.fromPkHash,
+            moveInputs.fromCityId,
+            moveInputs.toCityId,
+            moveInputs.ontoSelfOrUnowned,
             moveInputs.hUFrom,
             moveInputs.hUTo,
             moveInputs.rhoFrom,
