@@ -76,8 +76,8 @@ let claimedMoves = new Map<string, ClaimedMove>();
 /*
  * Dev function for spawning a player on the map or logging back in.
  *
- * [TODO]: for prod, the enclave should not be calling the contract's spawn
- * function on behalf of the player.
+ * [TODO]: the enclave should not be calling the contract's spawn
+ * function on behalf of the player. In prod, client will sample cityId.
  */
 async function login(
     socket: Socket,
@@ -101,14 +101,21 @@ async function login(
         pubKeyToId.set(pubkey, socket.id);
 
         let visibleTiles = new Map<string, boolean>();
-        b.playerTiles.get(pubkey)?.forEach((_value: boolean, key: string) => {
-            const playerTile = Utils.unstringifyLocation(key);
-            if (playerTile) {
-                for (let loc of b.getNearbyLocations(playerTile)) {
-                    visibleTiles.set(Utils.stringifyLocation(loc), true);
-                }
-            }
-        });
+        b.playerCities
+            .get(pubkey)
+            ?.forEach((_value: boolean, cityId: number) => {
+                b.cityTiles.get(cityId)?.forEach((_v: boolean, key: string) => {
+                    const tl = Utils.unstringifyLocation(key);
+                    if (tl) {
+                        for (let loc of b.getNearbyLocations(tl)) {
+                            visibleTiles.set(
+                                Utils.stringifyLocation(loc),
+                                true
+                            );
+                        }
+                    }
+                });
+            });
         socket.emit("loginResponse", Array.from(visibleTiles.keys()));
     }
 }
@@ -228,6 +235,10 @@ function onMoveFinalize(io: Server, hUFrom: string, hUTo: string) {
             `Move: (${hUFrom}, ${hUTo}) was finalized without a signature.`
         );
     }
+
+    console.log('==player capitals: ', b.playerCapital);
+    console.log('==player cities: ', b.playerCities);
+    console.log('== city tiles: ', b.cityTiles);
 }
 
 /*

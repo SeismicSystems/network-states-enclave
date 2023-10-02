@@ -14,14 +14,16 @@ export class Board {
 
     t: Tile[][];
 
-    playerTiles: Map<string, Map<string, boolean>>;
-
-    playerCapitals: Map<string, string>;
+    playerCapital: Map<string, number>;
+    playerCities: Map<string, Map<number, boolean>>;
+    cityTiles: Map<number, Map<string, boolean>>;
 
     public constructor() {
         this.t = new Array<Array<Tile>>();
-        this.playerTiles = new Map<string, Map<string, boolean>>();
-        this.playerCapitals = new Map<string, string>();
+
+        this.playerCapital = new Map<string, number>();
+        this.playerCities = new Map<string, Map<number, boolean>>();
+        this.cityTiles = new Map<number, Map<string, boolean>>();
     }
 
     /*
@@ -102,9 +104,18 @@ export class Board {
 
         this.setTile(tl);
 
-        this.playerCapitals.set(
-            pl.bjjPub.serialize(),
-            Utils.stringifyLocation({ r, c })
+        const pubkey = pl.bjjPub.serialize();
+        this.playerCapital.set(pubkey, cityId);
+        this.playerCities.set(
+            pubkey,
+            new Map<number, boolean>().set(cityId, true)
+        );
+        this.cityTiles.set(
+            cityId,
+            new Map<string, boolean>().set(
+                Utils.stringifyLocation({ r, c }),
+                true
+            )
         );
 
         // Update the merkle root on-chain.
@@ -121,7 +132,7 @@ export class Board {
      * Does the player have a capital? Enclave function.
      */
     public isSpawned(pl: Player): boolean {
-        return this.playerCapitals.has(pl.bjjPub.serialize());
+        return this.playerCapital.has(pl.bjjPub.serialize());
     }
 
     /*
@@ -179,21 +190,28 @@ export class Board {
      */
     public setTile(tl: Tile) {
         const oldTile = this.t[tl.loc.r][tl.loc.c];
-        const oldPubKey = oldTile.owner.bjjPub.serialize();
-        const newPubKey = tl.owner.bjjPub.serialize();
-        const locString = Utils.stringifyLocation(tl.loc);
+        const oldOwner = oldTile.ownerPubKey();
+        const newOwner = tl.ownerPubKey();
 
-        if (oldPubKey != newPubKey) {
-            // Remove tile from old player and give to new player
-            this.playerTiles.get(oldPubKey)?.delete(locString);
+        if (oldOwner !== newOwner) {
+            // Some type of capture happened: must update state
+            if (oldTile.isCapital()) {
+                this.playerCapital.delete(oldOwner);
 
-            if (!this.playerTiles.has(newPubKey)) {
-                this.playerTiles.set(newPubKey, new Map<string, boolean>());
+                for (let cityId of this.playerCities.get(oldOwner)!.keys()) {
+                    this.playerCities.get(newOwner)?.set(cityId, true);
+                }
+                this.playerCities.delete(oldOwner);
+
+            } else if (oldTile.isCity()) {
+                this.playerCities.get(oldOwner)?.delete(tl.cityId);
+                this.playerCities.get(newOwner)?.set(tl.cityId, true);
+            } else {
+                // Normal/water tile with a new owner
+                const locString = Utils.stringifyLocation(tl.loc);
+                this.cityTiles.get(oldTile.cityId)?.delete(locString);
+                this.cityTiles.get(tl.cityId)?.set(locString, true);
             }
-            this.playerTiles.get(newPubKey)?.set(locString, true);
-
-            // If setTile is over a capital, remove capital from player
-            this.playerCapitals.delete(oldPubKey);
         }
 
         this.t[tl.loc.r][tl.loc.c] = tl;

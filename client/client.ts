@@ -156,7 +156,9 @@ async function loginResponse(locs: string[]) {
  * Update local view of game board based on enclave response.
  */
 function decryptResponse(t: any) {
-    b.setTile(Tile.fromJSON(t));
+    const tl = Tile.fromJSON(t);
+    b.t[tl.loc.r][tl.loc.c] = tl;
+
     console.clear();
     b.printView();
     process.stdout.write(MOVE_PROMPT);
