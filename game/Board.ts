@@ -15,15 +15,15 @@ export class Board {
     t: Tile[][];
 
     playerCapital: Map<string, number>;
-    playerCities: Map<string, Map<number, boolean>>;
-    cityTiles: Map<number, Map<string, boolean>>;
+    playerCities: Map<string, Set<number>>;
+    cityTiles: Map<number, Set<string>>;
 
     public constructor() {
         this.t = new Array<Array<Tile>>();
 
         this.playerCapital = new Map<string, number>();
-        this.playerCities = new Map<string, Map<number, boolean>>();
-        this.cityTiles = new Map<number, Map<string, boolean>>();
+        this.playerCities = new Map<string, Set<number>>();
+        this.cityTiles = new Map<number, Set<string>>();
     }
 
     /*
@@ -106,16 +106,10 @@ export class Board {
 
         const pubkey = pl.bjjPub.serialize();
         this.playerCapital.set(pubkey, cityId);
-        this.playerCities.set(
-            pubkey,
-            new Map<number, boolean>().set(cityId, true)
-        );
+        this.playerCities.set(pubkey, new Set<number>().add(cityId));
         this.cityTiles.set(
             cityId,
-            new Map<string, boolean>().set(
-                Utils.stringifyLocation({ r, c }),
-                true
-            )
+            new Set<string>().add(Utils.stringifyLocation({ r, c }))
         );
 
         // Update the merkle root on-chain.
@@ -198,18 +192,18 @@ export class Board {
             if (oldTile.isCapital()) {
                 this.playerCapital.delete(oldOwner);
 
-                for (let cityId of this.playerCities.get(oldOwner)!.keys()) {
-                    this.playerCities.get(newOwner)?.set(cityId, true);
+                for (let cityId of this.playerCities.get(oldOwner)!) {
+                    this.playerCities.get(newOwner)?.add(cityId);
                 }
                 this.playerCities.delete(oldOwner);
             } else if (oldTile.isCity()) {
                 this.playerCities.get(oldOwner)?.delete(tl.cityId);
-                this.playerCities.get(newOwner)?.set(tl.cityId, true);
+                this.playerCities.get(newOwner)?.add(tl.cityId);
             } else {
                 // Normal/water tile with a new owner
                 const locString = Utils.stringifyLocation(tl.loc);
                 this.cityTiles.get(oldTile.cityId)?.delete(locString);
-                this.cityTiles.get(tl.cityId)?.set(locString, true);
+                this.cityTiles.get(tl.cityId)?.add(locString);
             }
         }
 

@@ -103,23 +103,18 @@ async function login(
         idToPubKey.set(socket.id, pubkey);
         pubKeyToId.set(pubkey, socket.id);
 
-        let visibleTiles = new Map<string, boolean>();
-        b.playerCities
-            .get(pubkey)
-            ?.forEach((_value: boolean, cityId: number) => {
-                b.cityTiles.get(cityId)?.forEach((_v: boolean, key: string) => {
-                    const tl = Utils.unstringifyLocation(key);
-                    if (tl) {
-                        for (let loc of b.getNearbyLocations(tl)) {
-                            visibleTiles.set(
-                                Utils.stringifyLocation(loc),
-                                true
-                            );
-                        }
+        let visibleTiles = new Set<string>();
+        b.playerCities.get(pubkey)?.forEach((cityId: number) => {
+            b.cityTiles.get(cityId)?.forEach((locString: string) => {
+                const tl = Utils.unstringifyLocation(locString);
+                if (tl) {
+                    for (let loc of b.getNearbyLocations(tl)) {
+                        visibleTiles.add(Utils.stringifyLocation(loc));
                     }
-                });
+                }
             });
-        socket.emit("loginResponse", Array.from(visibleTiles.keys()));
+        });
+        socket.emit("loginResponse", Array.from(visibleTiles));
     }
 }
 
@@ -199,27 +194,21 @@ function onMoveFinalize(io: Server, hUFrom: string, hUTo: string) {
         // Alert all nearby players that an updateDisplay is needed
         let updatedLocs = [move.uFrom.loc];
         if (ownershipChanged && tTo.isCapital()) {
-            b.playerCities
-                .get(prevOwner)
-                ?.forEach((_: boolean, cityId: number) => {
-                    b.cityTiles
-                        .get(cityId)
-                        ?.forEach((_: boolean, locString: string) => {
-                            const loc = Utils.unstringifyLocation(locString);
-                            if (loc) {
-                                updatedLocs.push(loc);
-                            }
-                        });
-                });
-        } else if (ownershipChanged && tTo.isCity()) {
-            b.cityTiles
-                .get(tTo.cityId)
-                ?.forEach((_: boolean, locString: string) => {
+            b.playerCities.get(prevOwner)?.forEach((cityId: number) => {
+                b.cityTiles.get(cityId)?.forEach((locString: string) => {
                     const loc = Utils.unstringifyLocation(locString);
                     if (loc) {
                         updatedLocs.push(loc);
                     }
                 });
+            });
+        } else if (ownershipChanged && tTo.isCity()) {
+            b.cityTiles.get(tTo.cityId)?.forEach((locString: string) => {
+                const loc = Utils.unstringifyLocation(locString);
+                if (loc) {
+                    updatedLocs.push(loc);
+                }
+            });
         } else {
             updatedLocs.push(move.uTo.loc);
         }
@@ -248,7 +237,7 @@ function alertPlayers(
     prevOwner: string,
     updatedLocs: Location[]
 ) {
-    let alertPlayerMap = new Map<string, Map<string, boolean>>();
+    let alertPlayerMap = new Map<string, Set<string>>();
 
     for (let loc of updatedLocs) {
         const locString = Utils.stringifyLocation(loc);
@@ -257,18 +246,18 @@ function alertPlayers(
             const lString = Utils.stringifyLocation(l);
 
             if (!alertPlayerMap.has(tileOwner)) {
-                alertPlayerMap.set(tileOwner, new Map<string, boolean>());
+                alertPlayerMap.set(tileOwner, new Set<string>());
             }
-            alertPlayerMap.get(tileOwner)?.set(locString, true);
-            alertPlayerMap.get(newOwner)?.set(lString, true);
-            alertPlayerMap.get(prevOwner)?.set(lString, true);
+            alertPlayerMap.get(tileOwner)?.add(locString);
+            alertPlayerMap.get(newOwner)?.add(lString);
+            alertPlayerMap.get(prevOwner)?.add(lString);
         }
     }
 
-    alertPlayerMap.forEach((tiles: Map<string, boolean>, pubkey: string) => {
+    alertPlayerMap.forEach((tiles: Set<string>, pubkey: string) => {
         const socketId = pubKeyToId.get(pubkey);
         if (socketId) {
-            io.to(socketId).emit("updateDisplay", Array.from(tiles.keys()));
+            io.to(socketId).emit("updateDisplay", Array.from(tiles));
         }
     });
 }
