@@ -10,6 +10,8 @@ include "../utils/utils.circom";
 
 /*
  * Whether nullifiers for the previous tile states were computed correctly.
+ *
+ * [TODO]: delete
  */
 template CheckNullifiers() {
     signal input keyFrom;
@@ -30,6 +32,8 @@ template CheckNullifiers() {
  * It's this hiding commitment that's added to the on-chain merkle tree. 
  * 2) the player owns the 'from' tile, which is true when the player's 
  * private key corresponds to the tile's public key hash.
+ *
+ * [TODO]: delete
  */
 template CheckLeaves(N_TL_ATRS) {
     signal input uFrom[N_TL_ATRS];
@@ -53,6 +57,48 @@ template CheckLeaves(N_TL_ATRS) {
     out <== BatchIsEqual(3)([
         [fromPkHash, circuitFromPkHash], [hUFrom, circuitHFrom], 
         [hUTo, circuitHTo]]);
+}
+
+/*
+ * Asserts 1) the hashes of all tile states were computed correctly. It's the
+ * hiding commitment that's added on-chain. 2) the player owns the public key,
+ * which is the case when their bbj private key (hash) matches (the hash of) the 
+ * public key.
+ *
+ * [TODO]: write unit tests for
+ */
+template CheckAuth(N_TL_ATRS) {
+    signal input hTFrom;
+    signal input hTTo;
+    signal input hUFrom;
+    signal input hUTo;
+    signal input fromPkHash;
+
+    signal input tFrom[N_TL_ATRS];
+    signal input tTo[N_TL_ATRS];
+    signal input uFrom[N_TL_ATRS];
+    signal input uTo[N_TL_ATRS];
+    signal input privKeyHash;
+
+    signal output out;
+
+    // Whether player 'owns' the 'from' tile
+    component bjj = BabyPbk();
+    bjj.in <== privKeyHash;
+    signal circuitFromPkHash <== Poseidon(2)([bjj.Ax, bjj.Ay]);
+
+    // Whether hashes were computed correctly
+    signal circuitHTFrom <== Poseidon(N_TL_ATRS)(tFrom);
+    signal circuitHTTo <== Poseidon(N_TL_ATRS)(tTo);
+    signal circuitHUFrom <== Poseidon(N_TL_ATRS)(uFrom);
+    signal circuitHUTo <== Poseidon(N_TL_ATRS)(uTo);
+
+    out <== BatchIsEqual(5)([
+        [circuitFromPkHash, fromPkHash],
+        [circuitHTFrom, hTFrom],
+        [circuitHTTo, hTTo],
+        [circuitHUFrom, hUFrom],
+        [circuitHUTo, hUTo]]);
 }
 
 /*
@@ -426,10 +472,10 @@ template Move() {
     signal input ontoSelfOrUnowned;
     signal input takingCity;
     signal input takingCapital;
+    signal input hTFrom;
+    signal input hTTo;
     signal input hUFrom;
     signal input hUTo;
-    signal input rhoFrom;
-    signal input rhoTo;
 
     signal input tFrom[N_TL_ATRS];
     signal input tFromPathIndices[MERKLE_TREE_DEPTH];
@@ -452,13 +498,17 @@ template Move() {
         tTo);
     pubSignalsCorrect === 1;
 
-    signal leavesCorrect <== CheckLeaves(N_TL_ATRS)(uFrom, 
-        uTo, hUFrom, hUTo, privKeyHash, fromPkHash);
-    leavesCorrect === 1;
+    // signal leavesCorrect <== CheckLeaves(N_TL_ATRS)(uFrom, 
+    //     uTo, hUFrom, hUTo, privKeyHash, fromPkHash);
+    // leavesCorrect === 1;
 
-    signal nullifiersCorrect <== CheckNullifiers()(tFrom[KEY_IDX], 
-        tTo[KEY_IDX], rhoFrom, rhoTo);
-    nullifiersCorrect === 1;
+    // signal nullifiersCorrect <== CheckNullifiers()(tFrom[KEY_IDX], 
+    //     tTo[KEY_IDX], rhoFrom, rhoTo);
+    // nullifiersCorrect === 1;
+
+    signal authCorrect <== CheckAuth(N_TL_ATRS)(hTFrom, hTTo, hUFrom, hUTo,
+        fromPkHash, tFrom, tTo, uFrom, uTo, privKeyHash);
+    authCorrect === 1;
 
     signal stepCorrect <== CheckStep(VALID_MOVES, N_VALID_MOVES, N_TL_ATRS, 
         ROW_IDX, COL_IDX, TYPE_IDX, HILL_TYPE)(tFrom, tTo, uFrom, uTo);
@@ -471,8 +521,8 @@ template Move() {
         toUpdatedTroops, ontoMoreOrEq);
     resourcesCorrect === 1;
 
-    signal merkleProofCorrect <== CheckMerkleInclusion(N_TL_ATRS,
-        MERKLE_TREE_DEPTH)(root, tFrom, tFromPathIndices, tFromPathElements,
-        tTo, tToPathIndices, tToPathElements);
-    merkleProofCorrect === 1;
+    // signal merkleProofCorrect <== CheckMerkleInclusion(N_TL_ATRS,
+    //     MERKLE_TREE_DEPTH)(root, tFrom, tFromPathIndices, tFromPathElements,
+    //     tTo, tToPathIndices, tToPathElements);
+    // merkleProofCorrect === 1;
 }

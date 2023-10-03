@@ -89,9 +89,6 @@ export class Board {
             throw new Error("Tried to spawn player on an owned tile.");
         }
 
-        // Before tile is changed, we need the nullifier.
-        const nullifier = this.t[r][c].nullifier();
-
         const tl = Tile.genOwned(
             pl,
             { r, c },
@@ -116,8 +113,7 @@ export class Board {
         await nStates.spawn(
             pl.pubKeyHash(),
             cityId,
-            this.t[r][c].hash(),
-            nullifier
+            this.t[r][c].hash()
         );
         await Utils.sleep(200);
     }
@@ -406,10 +402,10 @@ export class Board {
                 ontoSelfOrUnowned,
                 takingCity,
                 takingCapital,
+                hTFrom: tFrom.hash(),
+                hTTo: tTo.hash(),
                 hUFrom: uFrom.hash(),
                 hUTo: uTo.hash(),
-                rhoFrom: tFrom.nullifier(),
-                rhoTo: tTo.nullifier(),
                 tFrom: tFrom.toCircuitInput(),
                 tFromPathIndices: mProofFrom.indices,
                 tFromPathElements: mProofFrom.pathElements,

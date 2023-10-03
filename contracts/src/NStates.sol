@@ -32,10 +32,10 @@ struct MoveInputs {
     uint256 ontoSelfOrUnowned;
     uint256 takingCity;
     uint256 takingCapital;
+    uint256 hTFrom;
+    uint256 hTTo;
     uint256 hUFrom;
     uint256 hUTo;
-    uint256 rhoFrom;
-    uint256 rhoTo;
 }
 
 struct ProofInputs {
@@ -57,12 +57,10 @@ contract NStates is IncrementalMerkleTree {
 
     event NewMove(uint256 hUFrom, uint256 hUTo);
     event NewLeaf(uint256 h);
-    event NewNullifier(uint256 rho);
 
     address public owner;
     uint256 public numBlocksInTroopUpdate;
     uint256 public numBlocksInWaterUpdate;
-    mapping(uint256 => bool) public nullifiers;
 
     mapping(uint256 => uint256) public citiesToPlayer;
     mapping(uint256 => uint256[]) public playerToCities;
@@ -108,14 +106,12 @@ contract NStates is IncrementalMerkleTree {
     function spawn(
         uint256 pkHash,
         uint24 cityId,
-        uint256 h,
-        uint256 rho
+        uint256 h
     ) public onlyOwner {
         require(cityId != 0, "City ID must be a non-zero value");
         require(citiesToPlayer[cityId] == 0, "City is already in game");
 
         set(h);
-        nullifiers[rho] = true;
 
         playerToCapital[pkHash] = cityId;
         capitalToPlayer[cityId] = pkHash;
@@ -123,14 +119,12 @@ contract NStates is IncrementalMerkleTree {
         citiesToPlayer[cityId] = pkHash;
         playerToCities[pkHash] = [cityId];
         indexOfCity[cityId] = 0;
-
-        emit NewNullifier(rho);
     }
 
     /*
-     * Accepts new states for tiles involved in move. Nullifies old states.
-     * Moves must operate on states that aren't nullified AND carry a ZKP
-     * anchored to a historical merkle root to be accepted.
+     * Accepts new states for tiles involved in move. Moves must operate on 
+     * states whoe commitments are on-chain, AND carry a ZKP anchored to a
+     * commited state, AND carry a signature from the enclave.
      */
     function move(
         MoveInputs memory moveInputs,
@@ -159,10 +153,6 @@ contract NStates is IncrementalMerkleTree {
             "Value of ontoSelfOrUnowned is incorrect"
         );
         require(
-            !nullifiers[moveInputs.rhoFrom] && !nullifiers[moveInputs.rhoTo],
-            "Move has already been made"
-        );
-        require(
             getSigner(moveInputs.hUFrom, moveInputs.hUTo, sig) == owner,
             "Enclave signature is incorrect"
         );
@@ -175,9 +165,6 @@ contract NStates is IncrementalMerkleTree {
             ),
             "Invalid move proof"
         );
-
-        nullifiers[moveInputs.rhoFrom] = true;
-        nullifiers[moveInputs.rhoTo] = true;
 
         insertLeaf(moveInputs.hUFrom);
         insertLeaf(moveInputs.hUTo);
@@ -207,8 +194,6 @@ contract NStates is IncrementalMerkleTree {
         emit NewMove(moveInputs.hUFrom, moveInputs.hUTo);
         emit NewLeaf(moveInputs.hUFrom);
         emit NewLeaf(moveInputs.hUTo);
-        emit NewNullifier(moveInputs.rhoFrom);
-        emit NewNullifier(moveInputs.rhoTo);
     }
 
     /*
@@ -319,10 +304,10 @@ contract NStates is IncrementalMerkleTree {
             moveInputs.ontoSelfOrUnowned,
             moveInputs.takingCity,
             moveInputs.takingCapital,
+            moveInputs.hTFrom,
+            moveInputs.hTTo,
             moveInputs.hUFrom,
-            moveInputs.hUTo,
-            moveInputs.rhoFrom,
-            moveInputs.rhoTo
+            moveInputs.hUTo
         ];
     }
 }

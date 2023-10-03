@@ -4,4 +4,4 @@ include "move.func.circom";
 
 component main { public [ root, currentTroopInterval, currentWaterInterval, 
     fromPkHash, fromCityId, toCityId, ontoSelfOrUnowned, takingCity, 
-    takingCapital, hUFrom, hUTo, rhoFrom, rhoTo ] } = Move();
+    takingCapital, hTFrom, hTTo, hUFrom, hUTo ] } = Move();
