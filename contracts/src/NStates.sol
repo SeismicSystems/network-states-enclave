@@ -162,6 +162,29 @@ contract NStates {
         hMoves[moveInputs.hUFrom] = true;
         hMoves[moveInputs.hUTo] = true;
 
+        if (moveInputs.capturedTile == 1) {
+            if (moveInputs.ontoSelfOrUnowned == 1) {
+                // Moving onto an unowned tile
+                ++cityArea[moveInputs.fromCityId];
+            } else {
+                // Moving onto enemy with less resources
+                cityResources[moveInputs.fromCityId] -= moveInputs.enemyLoss;
+                ++cityArea[moveInputs.fromCityId];
+                cityResources[moveInputs.toCityId] -= moveInputs.enemyLoss;
+                --cityArea[moveInputs.toCityId];
+            }
+        } else {
+            if (moveInputs.ontoSelfOrUnowned == 1) {
+                // Moving onto one of player's own cities
+                cityResources[moveInputs.fromCityId] -= moveInputs.numTroopsMoved;
+                cityResources[moveInputs.toCityId] += moveInputs.numTroopsMoved;
+            } else {
+                // Moving onto enemy with more/eq. resources
+                cityResources[moveInputs.fromCityId] -= moveInputs.enemyLoss;
+                cityResources[moveInputs.toCityId] -= moveInputs.enemyLoss;
+            }
+        }
+
         if (moveInputs.takingCity == 1) {
             transferCityOwnership(
                 moveInputs.fromPkHash,
