@@ -110,11 +110,7 @@ export class Board {
         );
 
         // Update the merkle root on-chain.
-        await nStates.spawn(
-            pl.pubKeyHash(),
-            cityId,
-            this.t[r][c].hash()
-        );
+        await nStates.spawn(pl.pubKeyHash(), cityId, this.t[r][c].hash());
         await Utils.sleep(200);
     }
 
@@ -334,7 +330,6 @@ export class Board {
      * troops from one tile to another. Moves all but one troop for development.
      */
     public async constructMove(
-        mTree: IncrementalQuinTree,
         bjjPrivKeyHash: BigInt,
         from: Location,
         to: Location,
@@ -388,12 +383,8 @@ export class Board {
                 ? "1"
                 : "0";
 
-        const mProofFrom = Utils.generateMerkleProof(tFrom.hash(), mTree);
-        const mProofTo = Utils.generateMerkleProof(tTo.hash(), mTree);
-
         const { proof, publicSignals } = await groth16.fullProve(
             {
-                root: mTree.root.toString(),
                 currentTroopInterval: currentTroopInterval.toString(),
                 currentWaterInterval: currentWaterInterval.toString(),
                 fromPkHash: tFrom.owner.pubKeyHash(),

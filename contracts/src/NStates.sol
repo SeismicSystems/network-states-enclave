@@ -11,7 +11,7 @@ interface IVerifier {
         uint256[2] memory a,
         uint256[2][2] memory b,
         uint256[2] memory c,
-        uint256[13] memory input
+        uint256[12] memory input
     ) external view returns (bool);
 }
 
@@ -23,7 +23,6 @@ interface IHasherT3 {
 }
 
 struct MoveInputs {
-    uint256 root;
     uint256 troopInterval;
     uint256 waterInterval;
     uint256 fromPkHash;
@@ -56,7 +55,6 @@ contract NStates is IncrementalMerkleTree {
         IVerifier(0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512);
 
     event NewMove(uint256 hUFrom, uint256 hUTo);
-    event NewLeaf(uint256 h);
 
     address public owner;
     uint256 public numBlocksInTroopUpdate;
@@ -69,6 +67,8 @@ contract NStates is IncrementalMerkleTree {
 
     // A city's index in player's list of cities. Maintained for O(1) deletion
     mapping(uint256 => uint256) public indexOfCity;
+
+    mapping(uint256 => bool) public hMoves;
 
     constructor(
         address contractOwner,
@@ -96,18 +96,13 @@ contract NStates is IncrementalMerkleTree {
      * initialization.
      */
     function set(uint256 h) public onlyOwner {
-        emit NewLeaf(h);
-        insertLeaf(h);
+        hMoves[h] = true;
     }
 
     /*
      * Game deployer has the ability to initialize players onto the board.
      */
-    function spawn(
-        uint256 pkHash,
-        uint24 cityId,
-        uint256 h
-    ) public onlyOwner {
+    function spawn(uint256 pkHash, uint24 cityId, uint256 h) public onlyOwner {
         require(cityId != 0, "City ID must be a non-zero value");
         require(citiesToPlayer[cityId] == 0, "City is already in game");
 
@@ -122,7 +117,7 @@ contract NStates is IncrementalMerkleTree {
     }
 
     /*
-     * Accepts new states for tiles involved in move. Moves must operate on 
+     * Accepts new states for tiles involved in move. Moves must operate on
      * states whoe commitments are on-chain, AND carry a ZKP anchored to a
      * commited state, AND carry a signature from the enclave.
      */
@@ -131,7 +126,10 @@ contract NStates is IncrementalMerkleTree {
         ProofInputs memory moveProof,
         SignatureInputs memory sig
     ) public {
-        require(rootHistory[moveInputs.root], "Root must be in root history");
+        require(
+            hMoves[moveInputs.hTFrom] && hMoves[moveInputs.hTTo],
+            "Old tile states must be valid"
+        );
         require(
             currentTroopInterval() >= moveInputs.troopInterval,
             "Move is too far into the future, change currentTroopInterval value"
@@ -166,8 +164,11 @@ contract NStates is IncrementalMerkleTree {
             "Invalid move proof"
         );
 
-        insertLeaf(moveInputs.hUFrom);
-        insertLeaf(moveInputs.hUTo);
+        hMoves[moveInputs.hTFrom] = false;
+        hMoves[moveInputs.hTTo] = false;
+
+        hMoves[moveInputs.hUFrom] = true;
+        hMoves[moveInputs.hUTo] = true;
 
         if (moveInputs.takingCity == 1) {
             transferCityOwnership(
@@ -192,8 +193,6 @@ contract NStates is IncrementalMerkleTree {
         }
 
         emit NewMove(moveInputs.hUFrom, moveInputs.hUTo);
-        emit NewLeaf(moveInputs.hUFrom);
-        emit NewLeaf(moveInputs.hUTo);
     }
 
     /*
@@ -243,14 +242,6 @@ contract NStates is IncrementalMerkleTree {
     }
 
     /*
-     * Number of leaves in the merkle tree. Value is roughly double the number
-     * of historic accepted moves.
-     */
-    function getNumLeaves() public view returns (uint256) {
-        return nextLeafIndex;
-    }
-
-    /*
      * Compute poseidon hash of two child hashes.
      */
     function _hashLeftRight(
@@ -293,9 +284,8 @@ contract NStates is IncrementalMerkleTree {
 
     function toArray(
         MoveInputs memory moveInputs
-    ) internal pure returns (uint256[13] memory) {
+    ) internal pure returns (uint256[12] memory) {
         return [
-            moveInputs.root,
             moveInputs.troopInterval,
             moveInputs.waterInterval,
             moveInputs.fromPkHash,

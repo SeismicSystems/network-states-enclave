@@ -460,7 +460,6 @@ template Move() {
 
     var SYS_BITS = 252;
 
-    signal input root;
     signal input currentTroopInterval;
     signal input currentWaterInterval;
     signal input fromPkHash;
