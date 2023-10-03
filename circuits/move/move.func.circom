@@ -386,6 +386,8 @@ template Move() {
     signal input fromCityId;
     signal input toCityId;
     signal input ontoSelfOrUnowned;
+    signal input numTroopsMoved;
+    signal input capturedTile;
     signal input takingCity;
     signal input takingCapital;
     signal input hTFrom;

@@ -361,12 +361,9 @@ export class Board {
             tTo.ownerPubKey() === tFrom.ownerPubKey() || tTo.isUnowned()
                 ? "1"
                 : "0";
-        const takingCity =
-            tTo.isCity() && uTo.ownerPubKey() != tTo.ownerPubKey() ? "1" : "0";
-        const takingCapital =
-            tTo.isCapital() && uTo.ownerPubKey() != tTo.ownerPubKey()
-                ? "1"
-                : "0";
+        const capturedTile = uTo.ownerPubKey() != tTo.ownerPubKey();
+        const takingCity = tTo.isCity() && capturedTile ? "1" : "0";
+        const takingCapital = tTo.isCapital() && capturedTile ? "1" : "0";
 
         const { proof, publicSignals } = await groth16.fullProve(
             {
@@ -375,6 +372,8 @@ export class Board {
                 fromCityId: tFrom.cityId.toString(),
                 toCityId: tTo.cityId.toString(),
                 ontoSelfOrUnowned,
+                numTroopsMoved: nMobilize.toString(),
+                capturedTile: capturedTile ? "1" : "0",
                 takingCity,
                 takingCapital,
                 hTFrom: tFrom.hash(),
