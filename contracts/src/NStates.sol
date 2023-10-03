@@ -168,43 +168,57 @@ contract NStates {
                 ++cityArea[moveInputs.fromCityId];
             } else {
                 // Moving onto enemy with less resources
-                cityResources[moveInputs.fromCityId] -= moveInputs.enemyLoss;
-                ++cityArea[moveInputs.fromCityId];
-                cityResources[moveInputs.toCityId] -= moveInputs.enemyLoss;
-                --cityArea[moveInputs.toCityId];
+                if (moveInputs.takingCity == 1) {
+                    cityResources[moveInputs.fromCityId] -= moveInputs
+                        .numTroopsMoved;
+                    cityResources[moveInputs.toCityId] +=
+                        moveInputs.numTroopsMoved -
+                        moveInputs.enemyLoss;
+
+                    transferCityOwnership(
+                        moveInputs.fromPkHash,
+                        moveInputs.toCityId,
+                        moveInputs.ontoSelfOrUnowned
+                    );
+                } else if (moveInputs.takingCapital == 1) {
+                    cityResources[moveInputs.fromCityId] -= moveInputs
+                        .numTroopsMoved;
+                    cityResources[moveInputs.toCityId] +=
+                        moveInputs.numTroopsMoved -
+                        moveInputs.enemyLoss;
+
+                    uint256 enemy = capitalToPlayer[moveInputs.toCityId];
+
+                    while (playerToCities[enemy].length > 0) {
+                        uint256 lastIndex = playerToCities[enemy].length - 1;
+                        transferCityOwnership(
+                            moveInputs.fromPkHash,
+                            playerToCities[enemy][lastIndex],
+                            0
+                        );
+                    }
+
+                    playerToCapital[enemy] = 0;
+                    capitalToPlayer[moveInputs.toCityId] = 0;
+                } else {
+                    cityResources[moveInputs.fromCityId] -= moveInputs
+                        .enemyLoss;
+                    ++cityArea[moveInputs.fromCityId];
+                    cityResources[moveInputs.toCityId] -= moveInputs.enemyLoss;
+                    --cityArea[moveInputs.toCityId];
+                }
             }
         } else {
             if (moveInputs.ontoSelfOrUnowned == 1) {
                 // Moving onto one of player's own cities
-                cityResources[moveInputs.fromCityId] -= moveInputs.numTroopsMoved;
+                cityResources[moveInputs.fromCityId] -= moveInputs
+                    .numTroopsMoved;
                 cityResources[moveInputs.toCityId] += moveInputs.numTroopsMoved;
             } else {
                 // Moving onto enemy with more/eq. resources
                 cityResources[moveInputs.fromCityId] -= moveInputs.enemyLoss;
                 cityResources[moveInputs.toCityId] -= moveInputs.enemyLoss;
             }
-        }
-
-        if (moveInputs.takingCity == 1) {
-            transferCityOwnership(
-                moveInputs.fromPkHash,
-                moveInputs.toCityId,
-                moveInputs.ontoSelfOrUnowned
-            );
-        } else if (moveInputs.takingCapital == 1) {
-            uint256 enemy = capitalToPlayer[moveInputs.toCityId];
-
-            while (playerToCities[enemy].length > 0) {
-                uint256 lastIndex = playerToCities[enemy].length - 1;
-                transferCityOwnership(
-                    moveInputs.fromPkHash,
-                    playerToCities[enemy][lastIndex],
-                    0
-                );
-            }
-
-            playerToCapital[enemy] = 0;
-            capitalToPlayer[moveInputs.toCityId] = 0;
         }
 
         emit NewMove(moveInputs.hUFrom, moveInputs.hUTo);
