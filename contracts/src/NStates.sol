@@ -49,6 +49,7 @@ contract NStates {
 
     address public owner;
     uint256 public numBlocksInInterval;
+    uint256 public numStartingResources;
 
     mapping(uint256 => uint256) public citiesToPlayer;
     mapping(uint256 => uint256[]) public playerToCities;
@@ -58,11 +59,19 @@ contract NStates {
     // A city's index in player's list of cities. Maintained for O(1) deletion
     mapping(uint256 => uint256) public indexOfCity;
 
+    mapping(uint256 => uint256) public cityArea;
+    mapping(uint256 => uint256) public cityResources;
+
     mapping(uint256 => bool) public hMoves;
 
-    constructor(address contractOwner, uint256 nBlocksInInterval) {
+    constructor(
+        address contractOwner,
+        uint256 nBlocksInInterval,
+        uint256 nStartingResources
+    ) {
         owner = contractOwner;
         numBlocksInInterval = nBlocksInInterval;
+        numStartingResources = nStartingResources;
     }
 
     /*
@@ -97,6 +106,9 @@ contract NStates {
         citiesToPlayer[cityId] = pkHash;
         playerToCities[pkHash] = [cityId];
         indexOfCity[cityId] = 0;
+
+        cityArea[cityId] = 1;
+        cityResources[cityId] = numStartingResources;
     }
 
     /*
