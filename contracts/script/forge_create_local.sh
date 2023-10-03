@@ -5,5 +5,5 @@ source ../../.env
 forge create src/NStates.sol:NStates \
     --rpc-url $RPC_URL \
     --private-key $DEV_PRIV_KEY \
-    --constructor-args $DEV_CONTRACT_OWNER $TREE_DEPTH $NOTHING_UP_MY_SLEEVE \
-        $TROOP_UPDATE_INTERVAL $WATER_UPDATE_INTERVAL
+    --constructor-args $DEV_CONTRACT_OWNER $TROOP_UPDATE_INTERVAL \
+        $WATER_UPDATE_INTERVAL

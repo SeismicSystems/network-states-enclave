@@ -355,7 +355,7 @@ template CheckPublicSignals(N_TL_ATRS, CITY_IDX, UNOWNED_ID, TYPE_IDX,
 
 /*
  * Asserts 1) valid state transitions for the `from` and `to` tiles, 2) 
- * inclusion of old states in a merkle root, and 3) proper permissions to 
+ * old states are on-chain as hashes, and 3) proper permissions to 
  * initiate the move.
  */
 template Move() {

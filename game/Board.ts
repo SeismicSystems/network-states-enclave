@@ -27,7 +27,7 @@ export class Board {
 
     /*
      * Seed game board by sampling access key for each tile, updating on-chain
-     * merkle tree along the way. Doesn't do any sampling if isInit flag is off.
+     * hashes along the way. Doesn't do any sampling if isInit flag is off.
      * With that setting, it only initializes board with mystery tiles.
      */
     public async seed(sz: number, isInit: boolean, nStates: any) {
@@ -108,7 +108,7 @@ export class Board {
             new Set<string>().add(Utils.stringifyLocation({ r, c }))
         );
 
-        // Update the merkle root on-chain.
+        // Update the global state on-chain.
         await nStates.spawn(pl.pubKeyHash(), cityId, this.t[r][c].hash());
         await Utils.sleep(200);
     }
