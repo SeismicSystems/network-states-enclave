@@ -80,8 +80,8 @@ const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
 );
 
 /*
- * Iterates through entire board, asking enclave to reveal all secrets this
- * player is privy to. If location is given, then the update is local.
+ * Submits a signature of the location to the enclave, in order to decrypt
+ * hidden state.
  */
 function updatePlayerView(l: Location) {
     const sig = PLAYER.genSig(Player.hForDecrypt(l));
@@ -145,7 +145,7 @@ async function move(inp: string) {
  * After logging in, player recieves a list of locations that they should
  * decrypt.
  */
-async function loginResponse(locs: Location[]) {
+async function loginResponse(locs: string[]) {
     updateDisplay(locs);
 
     await Utils.sleep(UPDATE_MLS);
@@ -156,7 +156,9 @@ async function loginResponse(locs: Location[]) {
  * Update local view of game board based on enclave response.
  */
 function decryptResponse(t: any) {
-    b.setTile(Tile.fromJSON(t));
+    const tl = Tile.fromJSON(t);
+    b.t[tl.loc.r][tl.loc.c] = tl;
+
     console.clear();
     b.printView();
     process.stdout.write(MOVE_PROMPT);
@@ -177,10 +179,12 @@ async function getSignatureResponse(sig: string, uFrom: any, uTo: any) {
         fromCityId: formattedProof.input[4],
         toCityId: formattedProof.input[5],
         ontoSelfOrUnowned: formattedProof.input[6],
-        hUFrom: formattedProof.input[7],
-        hUTo: formattedProof.input[8],
-        rhoFrom: formattedProof.input[9],
-        rhoTo: formattedProof.input[10],
+        takingCity: formattedProof.input[7],
+        takingCapital: formattedProof.input[8],
+        hUFrom: formattedProof.input[9],
+        hUTo: formattedProof.input[10],
+        rhoFrom: formattedProof.input[11],
+        rhoTo: formattedProof.input[12],
     };
     const moveProof = {
         a: formattedProof.a,
@@ -202,9 +206,12 @@ async function getSignatureResponse(sig: string, uFrom: any, uTo: any) {
  * Refreshes the user's game board view. Done in response to enclave ping that
  * a relevant move was made.
  */
-async function updateDisplay(locs: Location[]) {
+async function updateDisplay(locs: string[]) {
     for (let l of locs) {
-        updatePlayerView(l);
+        const unstringified = Utils.unstringifyLocation(l);
+        if (unstringified) {
+            updatePlayerView(unstringified);
+        }
     }
 }
 

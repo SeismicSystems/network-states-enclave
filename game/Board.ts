@@ -14,14 +14,16 @@ export class Board {
 
     t: Tile[][];
 
-    playerTiles: Map<string, Location[]>;
-
-    playerCapitals: Map<string, Location>;
+    playerCapital: Map<string, number>;
+    playerCities: Map<string, Set<number>>;
+    cityTiles: Map<number, Set<string>>;
 
     public constructor() {
         this.t = new Array<Array<Tile>>();
-        this.playerTiles = new Map<string, Location[]>();
-        this.playerCapitals = new Map<string, Location>();
+
+        this.playerCapital = new Map<string, number>();
+        this.playerCities = new Map<string, Set<number>>();
+        this.cityTiles = new Map<number, Set<string>>();
     }
 
     /*
@@ -102,7 +104,13 @@ export class Board {
 
         this.setTile(tl);
 
-        this.playerCapitals.set(pl.bjjPub.serialize(), { r, c });
+        const pubkey = pl.bjjPub.serialize();
+        this.playerCapital.set(pubkey, cityId);
+        this.playerCities.set(pubkey, new Set<number>().add(cityId));
+        this.cityTiles.set(
+            cityId,
+            new Set<string>().add(Utils.stringifyLocation({ r, c }))
+        );
 
         // Update the merkle root on-chain.
         await nStates.spawn(
@@ -118,7 +126,7 @@ export class Board {
      * Does the player have a capital? Enclave function.
      */
     public isSpawned(pl: Player): boolean {
-        return this.playerCapitals.has(pl.bjjPub.serialize());
+        return this.playerCapital.has(pl.bjjPub.serialize());
     }
 
     /*
@@ -176,31 +184,26 @@ export class Board {
      */
     public setTile(tl: Tile) {
         const oldTile = this.t[tl.loc.r][tl.loc.c];
-        const oldPubKey = oldTile.owner.bjjPub.serialize();
-        const newPubKey = tl.owner.bjjPub.serialize();
-        if (oldPubKey != newPubKey) {
-            // Remove tile from old player and give to new player
-            const index = this.playerTiles.get(oldPubKey)?.indexOf(tl.loc);
-            if (index) {
-                this.playerTiles.get(oldPubKey)?.splice(index, 1);
-            }
+        const oldOwner = oldTile.ownerPubKey();
+        const newOwner = tl.ownerPubKey();
 
-            const newPubKey = tl.owner.bjjPub.serialize();
-            const newOwnerTiles = this.playerTiles.get(newPubKey);
-            if (newOwnerTiles) {
-                newOwnerTiles.push(tl.loc);
+        if (oldOwner !== newOwner) {
+            // Some type of capture happened: must update state
+            if (oldTile.isCapital()) {
+                this.playerCapital.delete(oldOwner);
+
+                for (let cityId of this.playerCities.get(oldOwner)!) {
+                    this.playerCities.get(newOwner)?.add(cityId);
+                }
+                this.playerCities.delete(oldOwner);
+            } else if (oldTile.isCity()) {
+                this.playerCities.get(oldOwner)?.delete(tl.cityId);
+                this.playerCities.get(newOwner)?.add(tl.cityId);
             } else {
-                this.playerTiles.set(newPubKey, [tl.loc]);
-            }
-
-            // If setTile is over a capital, remove capital from player
-            const capitalLoc = this.playerCapitals.get(oldPubKey);
-            if (
-                capitalLoc &&
-                capitalLoc.r === tl.loc.r &&
-                capitalLoc.c === tl.loc.c
-            ) {
-                this.playerCapitals.delete(oldPubKey);
+                // Normal/water tile with a new owner
+                const locString = Utils.stringifyLocation(tl.loc);
+                this.cityTiles.get(oldTile.cityId)?.delete(locString);
+                this.cityTiles.get(tl.cityId)?.add(locString);
             }
         }
 
@@ -220,7 +223,9 @@ export class Board {
                 nc = c + dx;
             if (
                 this.inBounds(nr, nc) &&
-                this.t[nr][nc].owner.bjjPub.equals(reqPlayer.bjjPub)
+                this.playerCities
+                    .get(reqPlayer.bjjPub.serialize())
+                    ?.has(this.t[nr][nc].cityId)
             ) {
                 foundNeighbor = true;
             }
@@ -282,7 +287,7 @@ export class Board {
             throw Error("Cannot move without mobilizing at least 1 troop.");
         }
         let uTo: Tile;
-        if (tTo.owner === tFrom.owner) {
+        if (tTo.ownerPubKey() === tFrom.ownerPubKey()) {
             uTo = Tile.genOwned(
                 tTo.owner,
                 tTo.loc,
@@ -376,10 +381,16 @@ export class Board {
             currentWaterInterval
         );
 
-        let ontoSelfOrUnowned = "0";
-        if (tTo.owner === tFrom.owner || tTo.isUnowned()) {
-            ontoSelfOrUnowned = "1";
-        }
+        const ontoSelfOrUnowned =
+            tTo.ownerPubKey() === tFrom.ownerPubKey() || tTo.isUnowned()
+                ? "1"
+                : "0";
+        const takingCity =
+            tTo.isCity() && uTo.ownerPubKey() != tTo.ownerPubKey() ? "1" : "0";
+        const takingCapital =
+            tTo.isCapital() && uTo.ownerPubKey() != tTo.ownerPubKey()
+                ? "1"
+                : "0";
 
         const mProofFrom = Utils.generateMerkleProof(tFrom.hash(), mTree);
         const mProofTo = Utils.generateMerkleProof(tTo.hash(), mTree);
@@ -393,6 +404,8 @@ export class Board {
                 fromCityId: tFrom.cityId.toString(),
                 toCityId: tTo.cityId.toString(),
                 ontoSelfOrUnowned,
+                takingCity,
+                takingCapital,
                 hUFrom: uFrom.hash(),
                 hUTo: uTo.hash(),
                 rhoFrom: tFrom.nullifier(),

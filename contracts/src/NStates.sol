@@ -11,7 +11,7 @@ interface IVerifier {
         uint256[2] memory a,
         uint256[2][2] memory b,
         uint256[2] memory c,
-        uint256[11] memory input
+        uint256[13] memory input
     ) external view returns (bool);
 }
 
@@ -30,6 +30,8 @@ struct MoveInputs {
     uint256 fromCityId;
     uint256 toCityId;
     uint256 ontoSelfOrUnowned;
+    uint256 takingCity;
+    uint256 takingCapital;
     uint256 hUFrom;
     uint256 hUTo;
     uint256 rhoFrom;
@@ -62,8 +64,13 @@ contract NStates is IncrementalMerkleTree {
     uint256 public numBlocksInWaterUpdate;
     mapping(uint256 => bool) public nullifiers;
 
-    mapping(uint256 => uint256) public playerToCities;
     mapping(uint256 => uint256) public citiesToPlayer;
+    mapping(uint256 => uint256[]) public playerToCities;
+    mapping(uint256 => uint256) public playerToCapital;
+    mapping(uint256 => uint256) public capitalToPlayer;
+
+    // A city's index in player's list of cities. Maintained for O(1) deletion
+    mapping(uint256 => uint256) public indexOfCity;
 
     constructor(
         address contractOwner,
@@ -105,14 +112,17 @@ contract NStates is IncrementalMerkleTree {
         uint256 rho
     ) public onlyOwner {
         require(cityId != 0, "City ID must be a non-zero value");
-        require(playerToCities[pkHash] == 0, "Player is already spawned in");
         require(citiesToPlayer[cityId] == 0, "City is already in game");
 
         set(h);
         nullifiers[rho] = true;
 
-        playerToCities[pkHash] = cityId;
+        playerToCapital[pkHash] = cityId;
+        capitalToPlayer[cityId] = pkHash;
+
         citiesToPlayer[cityId] = pkHash;
+        playerToCities[pkHash] = [cityId];
+        indexOfCity[cityId] = 0;
 
         emit NewNullifier(rho);
     }
@@ -172,6 +182,28 @@ contract NStates is IncrementalMerkleTree {
         insertLeaf(moveInputs.hUFrom);
         insertLeaf(moveInputs.hUTo);
 
+        if (moveInputs.takingCity == 1) {
+            transferCityOwnership(
+                moveInputs.fromPkHash,
+                moveInputs.toCityId,
+                moveInputs.ontoSelfOrUnowned
+            );
+        } else if (moveInputs.takingCapital == 1) {
+            uint256 enemy = capitalToPlayer[moveInputs.toCityId];
+
+            while (playerToCities[enemy].length > 0) {
+                uint256 lastIndex = playerToCities[enemy].length - 1;
+                transferCityOwnership(
+                    moveInputs.fromPkHash,
+                    playerToCities[enemy][lastIndex],
+                    0
+                );
+            }
+
+            playerToCapital[enemy] = 0;
+            capitalToPlayer[moveInputs.toCityId] = 0;
+        }
+
         emit NewMove(moveInputs.hUFrom, moveInputs.hUTo);
         emit NewLeaf(moveInputs.hUFrom);
         emit NewLeaf(moveInputs.hUTo);
@@ -194,6 +226,35 @@ contract NStates is IncrementalMerkleTree {
             return ontoSelfOrUnowned == 1;
         }
         return ontoSelfOrUnowned == 0;
+    }
+
+    /*
+     * Transfers ownership of one city to its new owner.
+     */
+    function transferCityOwnership(
+        uint256 newOwner,
+        uint256 toCityId,
+        uint256 ontoSelfOrUnowned
+    ) internal {
+        // If player is moving onto an enemy's city
+        if (ontoSelfOrUnowned == 0) {
+            uint256 enemy = citiesToPlayer[toCityId];
+
+            // Pop toCityId from enemyCityList
+            uint256 lastIndex = playerToCities[enemy].length - 1;
+            uint256 lastElement = playerToCities[enemy][lastIndex];
+            playerToCities[enemy][indexOfCity[toCityId]] = lastElement;
+            playerToCities[enemy].pop();
+
+            // The new index of lastElement is where toCityId was
+            indexOfCity[lastElement] = indexOfCity[toCityId];
+        }
+
+        uint256[] storage cityList = playerToCities[newOwner];
+        indexOfCity[toCityId] = cityList.length;
+        cityList.push(toCityId);
+        playerToCities[newOwner] = cityList;
+        citiesToPlayer[toCityId] = newOwner;
     }
 
     /*
@@ -247,7 +308,7 @@ contract NStates is IncrementalMerkleTree {
 
     function toArray(
         MoveInputs memory moveInputs
-    ) internal pure returns (uint256[11] memory) {
+    ) internal pure returns (uint256[13] memory) {
         return [
             moveInputs.root,
             moveInputs.troopInterval,
@@ -256,6 +317,8 @@ contract NStates is IncrementalMerkleTree {
             moveInputs.fromCityId,
             moveInputs.toCityId,
             moveInputs.ontoSelfOrUnowned,
+            moveInputs.takingCity,
+            moveInputs.takingCapital,
             moveInputs.hUFrom,
             moveInputs.hUTo,
             moveInputs.rhoFrom,

@@ -1,10 +1,10 @@
 import { Location, Player } from "../game";
 
 interface ServerToClientEvents {
-    loginResponse: (locs: Location[]) => void;
+    loginResponse: (locs: string[]) => void;
     decryptResponse: (t: any) => void;
     getSignatureResponse: (sig: string, uFrom: any, uTo: any) => void;
-    updateDisplay: (locs: Location[]) => void;
+    updateDisplay: (locs: string[]) => void;
 }
 
 interface ClientToServerEvents {
