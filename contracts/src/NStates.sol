@@ -9,7 +9,7 @@ interface IVerifier {
         uint256[2] memory a,
         uint256[2][2] memory b,
         uint256[2] memory c,
-        uint256[13] memory input
+        uint256[14] memory input
     ) external view returns (bool);
 }
 
@@ -20,6 +20,7 @@ struct MoveInputs {
     uint256 toCityId;
     uint256 ontoSelfOrUnowned;
     uint256 numTroopsMoved;
+    uint256 enemyLoss;
     uint256 capturedTile;
     uint256 takingCity;
     uint256 takingCapital;
@@ -94,7 +95,7 @@ contract NStates {
     /*
      * Game deployer has the ability to initialize players onto the board.
      */
-    function spawn(uint256 pkHash, uint24 cityId, uint256 h) public onlyOwner {
+    function spawn(uint256 pkHash, uint256 cityId, uint256 h) public onlyOwner {
         require(cityId != 0, "City ID must be a non-zero value");
         require(citiesToPlayer[cityId] == 0, "City is already in game");
 
@@ -258,7 +259,7 @@ contract NStates {
 
     function toArray(
         MoveInputs memory moveInputs
-    ) internal pure returns (uint256[13] memory) {
+    ) internal pure returns (uint256[14] memory) {
         return [
             moveInputs.currentInterval,
             moveInputs.fromPkHash,
@@ -266,6 +267,7 @@ contract NStates {
             moveInputs.toCityId,
             moveInputs.ontoSelfOrUnowned,
             moveInputs.numTroopsMoved,
+            moveInputs.enemyLoss,
             moveInputs.capturedTile,
             moveInputs.takingCity,
             moveInputs.takingCapital,

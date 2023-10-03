@@ -394,6 +394,7 @@ template Move() {
     signal input toCityId;
     signal input ontoSelfOrUnowned;
     signal input numTroopsMoved;
+    signal input enemyLoss;
     signal input capturedTile;
     signal input takingCity;
     signal input takingCapital;
@@ -411,9 +412,12 @@ template Move() {
     signal input privKeyHash;
 
 
-    numTroopsMoved === fromUpdatedTroops - uFrom[RSRC_IDX];
     signal ontoMoreOrEq <== GreaterEqThan(SYS_BITS)([toUpdatedTroops, 
         numTroopsMoved]);
+    numTroopsMoved === fromUpdatedTroops - uFrom[RSRC_IDX];
+    signal circuitEnemyLoss <== Mux1()(
+        [toUpdatedTroops, numTroopsMoved], ontoMoreOrEq);
+    circuitEnemyLoss === enemyLoss;
 
     signal pubSignalsCorrect <== CheckPublicSignals(N_TL_ATRS, CITY_IDX, 
         UNOWNED_ID, TYPE_IDX, CITY_TYPE, CAPITAL_TYPE)(fromCityId, toCityId, 
