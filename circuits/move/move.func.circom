@@ -314,6 +314,7 @@ template CheckPublicSignals(N_TL_ATRS, CITY_IDX, UNOWNED_ID, TYPE_IDX,
     signal input fromCityId;
     signal input toCityId;
     signal input ontoSelfOrUnowned;
+    signal input capturedTile;
     signal input takingCity;
     signal input takingCapital;
     signal input ontoMoreOrEq;
@@ -326,6 +327,7 @@ template CheckPublicSignals(N_TL_ATRS, CITY_IDX, UNOWNED_ID, TYPE_IDX,
     signal fromCityIdCorrect <== IsEqual()([fromCityId, tFrom[CITY_IDX]]);
     signal toCityIdCorrect <== IsEqual()([toCityId, tTo[CITY_IDX]]);
     signal cityIdCorrect <== AND()(fromCityIdCorrect, toCityIdCorrect);
+    signal cityIdIncorrect <== NOT()(cityIdCorrect);
 
     // Capturing requires moving more troops than on the to tile
     signal ontoLess <== NOT()(ontoMoreOrEq);
@@ -336,20 +338,25 @@ template CheckPublicSignals(N_TL_ATRS, CITY_IDX, UNOWNED_ID, TYPE_IDX,
     signal ontoSelf <== AND()(ontoSelfOrUnowned, notOntoUnowned);
     signal notOntoSelf <== NOT()(ontoSelf);
 
-    signal capturingOther <== AND()(ontoLess, notOntoSelf);
+    signal circuitCapturedTile <== AND()(ontoLess, notOntoSelf);
+    signal capturedTileCorrect <== IsEqual()(
+        [circuitCapturedTile, capturedTile]);
+    signal capturedTileIncorrect <== NOT()(capturedTileCorrect);
 
     signal ontoCity <== IsEqual()([tTo[TYPE_IDX], CITY_TYPE]);
-    signal circuitTakingCity <== AND()(ontoCity, capturingOther);
+    signal circuitTakingCity <== AND()(ontoCity, capturedTile);
     signal takingCityCorrect <== IsEqual()([takingCity, circuitTakingCity]);
 
     signal ontoCapital <== IsEqual()([tTo[TYPE_IDX], CAPITAL_TYPE]);
-    signal circuitTakingCapital <== AND()(ontoCapital, capturingOther);
+    signal circuitTakingCapital <== AND()(ontoCapital, capturedTile);
     signal takingCapitalCorrect <== IsEqual()(
         [takingCapital, circuitTakingCapital]);
 
     signal takingCorrect <== AND()(takingCityCorrect, takingCapitalCorrect);
+    signal takingIncorrect <== NOT()(takingCorrect);
 
-    out <== AND()(cityIdCorrect, takingCorrect);
+    out <== BatchIsZero(3)([cityIdIncorrect, capturedTileIncorrect, 
+        takingIncorrect]);
 }
 
 /*
@@ -403,13 +410,15 @@ template Move() {
     signal input toUpdatedTroops;
     signal input privKeyHash;
 
+
+    numTroopsMoved === fromUpdatedTroops - uFrom[RSRC_IDX];
     signal ontoMoreOrEq <== GreaterEqThan(SYS_BITS)([toUpdatedTroops, 
-        fromUpdatedTroops - uFrom[RSRC_IDX]]);
+        numTroopsMoved]);
 
     signal pubSignalsCorrect <== CheckPublicSignals(N_TL_ATRS, CITY_IDX, 
         UNOWNED_ID, TYPE_IDX, CITY_TYPE, CAPITAL_TYPE)(fromCityId, toCityId, 
-        ontoSelfOrUnowned, takingCity, takingCapital, ontoMoreOrEq, tFrom, 
-        tTo);
+        ontoSelfOrUnowned, capturedTile, takingCity, takingCapital, 
+        ontoMoreOrEq, tFrom, tTo);
     pubSignalsCorrect === 1;
 
     signal authCorrect <== CheckAuth(N_TL_ATRS)(hTFrom, hTTo, hUFrom, hUTo,
