@@ -8,57 +8,6 @@ include "../node_modules/maci-circuits/node_modules/circomlib/circuits/babyjub.c
 include "../utils/utils.circom";
 
 /*
- * Whether nullifiers for the previous tile states were computed correctly.
- *
- * [TODO]: delete
- */
-template CheckNullifiers() {
-    signal input keyFrom;
-    signal input keyTo;
-    signal input rhoFrom;
-    signal input rhoTo;
-
-    signal output out;
-
-    signal circuitRhoFrom <== Poseidon(1)([keyFrom]);
-    signal circuitRhoTo <== Poseidon(1)([keyTo]);
-
-    out <== BatchIsEqual(2)([[rhoFrom, circuitRhoFrom], [rhoTo, circuitRhoTo]]);
-}
-
-/*
- * Asserts 1) the hashes of the new tile states were computed correctly. 
- * It's this hiding commitment that's added to the on-chain merkle tree. 
- * 2) the player owns the 'from' tile, which is true when the player's 
- * private key corresponds to the tile's public key hash.
- *
- * [TODO]: delete
- */
-template CheckLeaves(N_TL_ATRS) {
-    signal input uFrom[N_TL_ATRS];
-    signal input uTo[N_TL_ATRS];
-    signal input hUFrom;
-    signal input hUTo;
-
-    signal input privKeyHash;
-    signal input fromPkHash;
-
-    signal output out;
-
-    // Whether player 'owns' the 'from' tile
-    component bjj = BabyPbk();
-    bjj.in <== privKeyHash;
-
-    signal circuitHFrom <== Poseidon(N_TL_ATRS)(uFrom);
-    signal circuitHTo <== Poseidon(N_TL_ATRS)(uTo);
-    signal circuitFromPkHash <== Poseidon(2)([bjj.Ax, bjj.Ay]);
-
-    out <== BatchIsEqual(3)([
-        [fromPkHash, circuitFromPkHash], [hUFrom, circuitHFrom], 
-        [hUTo, circuitHTo]]);
-}
-
-/*
  * Asserts 1) the hashes of all tile states were computed correctly. It's the
  * hiding commitment that's added on-chain. 2) the player owns the public key,
  * which is the case when their bbj private key (hash) matches (the hash of) the 
@@ -356,33 +305,6 @@ template CheckTypeConsistency(N_TL_ATRS, TYPE_IDX, CITY_TYPE, CAPITAL_TYPE) {
 
     out <== AND()(fromTypeCorrect, toTypeCorrect);
 }
-
-/*
- * The hashes of the old tiles must be included in the merkle root. If so,
- * this proves that these tiles were computed from prior moves.
- */
-// template CheckMerkleInclusion(N_TL_ATRS, MERKLE_TREE_DEPTH) {
-//     signal input root;
-    
-//     signal input tFrom[N_TL_ATRS];
-//     signal input tFromPathIndices[MERKLE_TREE_DEPTH];
-//     signal input tFromPathElements[MERKLE_TREE_DEPTH][1];
-//     signal input tTo[N_TL_ATRS];
-//     signal input tToPathIndices[MERKLE_TREE_DEPTH];
-//     signal input tToPathElements[MERKLE_TREE_DEPTH][1];
-
-//     signal output out;
-
-//     signal hTFrom <== Poseidon(N_TL_ATRS)(tFrom);
-//     signal hTTo <== Poseidon(N_TL_ATRS)(tTo);
-
-//     signal fromPrfRoot <== MerkleTreeInclusionProof(MERKLE_TREE_DEPTH)(hTFrom,
-//         tFromPathIndices, tFromPathElements);
-//     signal toPrfRoot <== MerkleTreeInclusionProof(MERKLE_TREE_DEPTH)(hTTo,
-//         tToPathIndices, tToPathElements);
-
-//     out <== BatchIsEqual(2)([[root, fromPrfRoot], [root, toPrfRoot]]);
-// }
 
 /*
  * Checks that the public signals that the contract logic uses are computed

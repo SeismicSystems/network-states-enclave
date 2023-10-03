@@ -3,7 +3,6 @@ import { groth16 } from "snarkjs";
 import { Groth16Proof, Utils } from "./Utils";
 import { Player } from "./Player";
 import { Tile, Location } from "./Tile";
-import { IncrementalQuinTree } from "maci-crypto";
 
 export class Board {
     static MOVE_WASM: string = "../circuits/move/move.wasm";
