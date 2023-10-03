@@ -5,7 +5,6 @@ include "../node_modules/maci-circuits/node_modules/circomlib/circuits/comparato
 include "../node_modules/maci-circuits/node_modules/circomlib/circuits/mux1.circom";
 include "../node_modules/maci-circuits/node_modules/circomlib/circuits/mux2.circom";
 include "../node_modules/maci-circuits/node_modules/circomlib/circuits/babyjub.circom";
-include "../node_modules/maci-circuits/circom/trees/IncrementalMerkleTree.circom";
 include "../utils/utils.circom";
 
 /*
@@ -65,7 +64,7 @@ template CheckLeaves(N_TL_ATRS) {
  * which is the case when their bbj private key (hash) matches (the hash of) the 
  * public key.
  *
- * [TODO]: write unit tests for
+ * [TODO]: write unit tests
  */
 template CheckAuth(N_TL_ATRS) {
     signal input hTFrom;
@@ -362,28 +361,28 @@ template CheckTypeConsistency(N_TL_ATRS, TYPE_IDX, CITY_TYPE, CAPITAL_TYPE) {
  * The hashes of the old tiles must be included in the merkle root. If so,
  * this proves that these tiles were computed from prior moves.
  */
-template CheckMerkleInclusion(N_TL_ATRS, MERKLE_TREE_DEPTH) {
-    signal input root;
+// template CheckMerkleInclusion(N_TL_ATRS, MERKLE_TREE_DEPTH) {
+//     signal input root;
     
-    signal input tFrom[N_TL_ATRS];
-    signal input tFromPathIndices[MERKLE_TREE_DEPTH];
-    signal input tFromPathElements[MERKLE_TREE_DEPTH][1];
-    signal input tTo[N_TL_ATRS];
-    signal input tToPathIndices[MERKLE_TREE_DEPTH];
-    signal input tToPathElements[MERKLE_TREE_DEPTH][1];
+//     signal input tFrom[N_TL_ATRS];
+//     signal input tFromPathIndices[MERKLE_TREE_DEPTH];
+//     signal input tFromPathElements[MERKLE_TREE_DEPTH][1];
+//     signal input tTo[N_TL_ATRS];
+//     signal input tToPathIndices[MERKLE_TREE_DEPTH];
+//     signal input tToPathElements[MERKLE_TREE_DEPTH][1];
 
-    signal output out;
+//     signal output out;
 
-    signal hTFrom <== Poseidon(N_TL_ATRS)(tFrom);
-    signal hTTo <== Poseidon(N_TL_ATRS)(tTo);
+//     signal hTFrom <== Poseidon(N_TL_ATRS)(tFrom);
+//     signal hTTo <== Poseidon(N_TL_ATRS)(tTo);
 
-    signal fromPrfRoot <== MerkleTreeInclusionProof(MERKLE_TREE_DEPTH)(hTFrom,
-        tFromPathIndices, tFromPathElements);
-    signal toPrfRoot <== MerkleTreeInclusionProof(MERKLE_TREE_DEPTH)(hTTo,
-        tToPathIndices, tToPathElements);
+//     signal fromPrfRoot <== MerkleTreeInclusionProof(MERKLE_TREE_DEPTH)(hTFrom,
+//         tFromPathIndices, tFromPathElements);
+//     signal toPrfRoot <== MerkleTreeInclusionProof(MERKLE_TREE_DEPTH)(hTTo,
+//         tToPathIndices, tToPathElements);
 
-    out <== BatchIsEqual(2)([[root, fromPrfRoot], [root, toPrfRoot]]);
-}
+//     out <== BatchIsEqual(2)([[root, fromPrfRoot], [root, toPrfRoot]]);
+// }
 
 /*
  * Checks that the public signals that the contract logic uses are computed
@@ -441,8 +440,6 @@ template Move() {
     var N_VALID_MOVES = 4;
     var VALID_MOVES[N_VALID_MOVES][2] = [[0, 1], [0, -1], [1, 0], [-1, 0]];
 
-    var MERKLE_TREE_DEPTH = 8;
-
     var N_TL_ATRS = 7;
     var ROW_IDX = 0;
     var COL_IDX = 1;
@@ -478,11 +475,7 @@ template Move() {
     signal input hUTo;
 
     signal input tFrom[N_TL_ATRS];
-    signal input tFromPathIndices[MERKLE_TREE_DEPTH];
-    signal input tFromPathElements[MERKLE_TREE_DEPTH][1];
     signal input tTo[N_TL_ATRS];
-    signal input tToPathIndices[MERKLE_TREE_DEPTH];
-    signal input tToPathElements[MERKLE_TREE_DEPTH][1];
     signal input uFrom[N_TL_ATRS];
     signal input uTo[N_TL_ATRS];
     signal input fromUpdatedTroops;
@@ -498,14 +491,6 @@ template Move() {
         tTo);
     pubSignalsCorrect === 1;
 
-    // signal leavesCorrect <== CheckLeaves(N_TL_ATRS)(uFrom, 
-    //     uTo, hUFrom, hUTo, privKeyHash, fromPkHash);
-    // leavesCorrect === 1;
-
-    // signal nullifiersCorrect <== CheckNullifiers()(tFrom[KEY_IDX], 
-    //     tTo[KEY_IDX], rhoFrom, rhoTo);
-    // nullifiersCorrect === 1;
-
     signal authCorrect <== CheckAuth(N_TL_ATRS)(hTFrom, hTTo, hUFrom, hUTo,
         fromPkHash, tFrom, tTo, uFrom, uTo, privKeyHash);
     authCorrect === 1;
@@ -520,9 +505,4 @@ template Move() {
         ontoSelfOrUnowned, tFrom, tTo, uFrom, uTo, fromUpdatedTroops, 
         toUpdatedTroops, ontoMoreOrEq);
     resourcesCorrect === 1;
-
-    // signal merkleProofCorrect <== CheckMerkleInclusion(N_TL_ATRS,
-    //     MERKLE_TREE_DEPTH)(root, tFrom, tFromPathIndices, tFromPathElements,
-    //     tTo, tToPathIndices, tToPathElements);
-    // merkleProofCorrect === 1;
 }
