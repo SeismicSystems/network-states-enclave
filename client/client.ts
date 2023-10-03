@@ -106,13 +106,8 @@ async function move(inp: string) {
     const nr = cursor.r + MOVE_KEYS[inp][0],
         nc = cursor.c + MOVE_KEYS[inp][1];
 
-    // Get the current troop/water interval.
-    const currentTroopInterval = (
-        await nStates.currentTroopInterval()
-    ).toNumber();
-    const currentWaterInterval = (
-        await nStates.currentWaterInterval()
-    ).toNumber();
+    // Get the current interval.
+    const currentInterval = (await nStates.currentInterval()).toNumber();
 
     if (PLAYER.bjjPrivHash === undefined) {
         throw Error("Can't move without a Baby Jubjub private key.");
@@ -122,8 +117,7 @@ async function move(inp: string) {
         PLAYER.bjjPrivHash,
         cursor,
         { r: nr, c: nc },
-        currentTroopInterval,
-        currentWaterInterval
+        currentInterval
     );
 
     formattedProof = await Utils.exportCallDataGroth16(prf, pubSignals);
@@ -166,18 +160,17 @@ async function getSignatureResponse(sig: string, uFrom: any, uTo: any) {
     const unpackedSig: Signature = ethers.utils.splitSignature(sig);
 
     const moveInputs = {
-        troopInterval: formattedProof.input[0],
-        waterInterval: formattedProof.input[1],
-        fromPkHash: formattedProof.input[2],
-        fromCityId: formattedProof.input[3],
-        toCityId: formattedProof.input[4],
-        ontoSelfOrUnowned: formattedProof.input[5],
-        takingCity: formattedProof.input[6],
-        takingCapital: formattedProof.input[7],
-        hTFrom: formattedProof.input[8],
-        hTTo: formattedProof.input[9],
-        hUFrom: formattedProof.input[10],
-        hUTo: formattedProof.input[11],
+        currentInterval: formattedProof.input[0],
+        fromPkHash: formattedProof.input[1],
+        fromCityId: formattedProof.input[2],
+        toCityId: formattedProof.input[3],
+        ontoSelfOrUnowned: formattedProof.input[4],
+        takingCity: formattedProof.input[5],
+        takingCapital: formattedProof.input[6],
+        hTFrom: formattedProof.input[7],
+        hTTo: formattedProof.input[8],
+        hUFrom: formattedProof.input[9],
+        hUTo: formattedProof.input[10],
     };
     const moveProof = {
         a: formattedProof.a,

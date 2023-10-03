@@ -85,8 +85,7 @@ template CheckStep(VALID_MOVES, N_VALID_MOVES, N_TL_ATRS, ROW_IDX, COL_IDX,
  */
 template CheckRsrc(N_TL_ATRS, RSRC_IDX, CITY_IDX, WTR_UPD_IDX, TYPE_IDX, 
     CITY_TYPE, CAPITAL_TYPE, WATER_TYPE, UNOWNED_ID, SYS_BITS) {
-    signal input currentTroopInterval;
-    signal input currentWaterInterval;
+    signal input currentInterval;
     signal input ontoSelfOrUnowned;
 
     signal input tFrom[N_TL_ATRS];
@@ -110,10 +109,10 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, CITY_IDX, WTR_UPD_IDX, TYPE_IDX,
 
     // Updates for water tiles
     signal fromCheckWaterUpdates <== CheckWaterUpdates(N_TL_ATRS, RSRC_IDX,
-        WTR_UPD_IDX, TYPE_IDX, WATER_TYPE, SYS_BITS)(currentWaterInterval, 
+        WTR_UPD_IDX, TYPE_IDX, WATER_TYPE, SYS_BITS)(currentInterval, 
         tFrom, uFrom, fromUpdatedTroops);
     signal toCheckWaterUpdates <== CheckWaterUpdates(N_TL_ATRS, RSRC_IDX,
-        WTR_UPD_IDX, TYPE_IDX, WATER_TYPE, SYS_BITS)(currentWaterInterval, tTo, 
+        WTR_UPD_IDX, TYPE_IDX, WATER_TYPE, SYS_BITS)(currentInterval, tTo, 
         uTo, toUpdatedTroops);
 
     signal waterUpdatesCorrect <== AND()(fromCheckWaterUpdates, 
@@ -149,7 +148,7 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, CITY_IDX, WTR_UPD_IDX, TYPE_IDX,
  * any troop updates that should have occurred.
  */
 template CheckTroopUpdates(N_TL_ATRS, RSRC_IDX, TRP_UPD_IDX) {
-    signal input currentTroopInterval;
+    signal input currentInterval;
 
     signal input tTile[N_TL_ATRS];
     signal input uTile[N_TL_ATRS];
@@ -159,14 +158,14 @@ template CheckTroopUpdates(N_TL_ATRS, RSRC_IDX, TRP_UPD_IDX) {
     signal output out;
 
     // Make sure updated troop counts are computed correctly
-    signal circuitUpdatedTroops <== (tTile[RSRC_IDX] + currentTroopInterval 
+    signal circuitUpdatedTroops <== (tTile[RSRC_IDX] + currentInterval 
         - tTile[TRP_UPD_IDX]) * isSelfOrEnemy;
     signal troopRsrcCorrect <== IsEqual()(
         [circuitUpdatedTroops, updatedTroops]);
 
     // Troop updates should be accounted for in new tile states
     signal troopsCounted <== IsEqual()(
-        [currentTroopInterval, uTile[TRP_UPD_IDX]]);
+        [currentInterval, uTile[TRP_UPD_IDX]]);
 
     out <== AND()(troopRsrcCorrect, troopsCounted);
 }
@@ -177,7 +176,7 @@ template CheckTroopUpdates(N_TL_ATRS, RSRC_IDX, TRP_UPD_IDX) {
  */
 template CheckWaterUpdates(N_TL_ATRS, RSRC_IDX, WTR_UPD_IDX, TYPE_IDX, 
     WATER_TYPE, SYS_BITS) {
-    signal input currentWaterInterval;
+    signal input currentInterval;
 
     signal input tTile[N_TL_ATRS];
     signal input uTile[N_TL_ATRS];
@@ -189,11 +188,11 @@ template CheckWaterUpdates(N_TL_ATRS, RSRC_IDX, WTR_UPD_IDX, TYPE_IDX,
 
     // Forces updatedTroops to be 0 when all troops die
     signal notAllDead <== GreaterEqThan(SYS_BITS)([tTile[RSRC_IDX], 
-        currentWaterInterval - tTile[WTR_UPD_IDX]]);
+        currentInterval - tTile[WTR_UPD_IDX]]);
 
     // Updated troop count if tile is a water tile
     signal circuitUpdatedTroops <== (tTile[RSRC_IDX] + tTile[WTR_UPD_IDX] - 
-        currentWaterInterval) * notAllDead;
+        currentInterval) * notAllDead;
 
     // Case when on a non-water tile
     signal case1 <== IsEqual()([updatedTroops, tTile[RSRC_IDX]]);
@@ -205,7 +204,7 @@ template CheckWaterUpdates(N_TL_ATRS, RSRC_IDX, WTR_UPD_IDX, TYPE_IDX,
     signal troopRsrcCorrect <== Mux1()([case1, case2], onWater);
 
     signal troopsCounted <== IsEqual()(
-        [currentWaterInterval, uTile[WTR_UPD_IDX]]);
+        [currentInterval, uTile[WTR_UPD_IDX]]);
 
     out <== AND()(troopRsrcCorrect, troopsCounted);
 }
@@ -382,8 +381,7 @@ template Move() {
 
     var SYS_BITS = 252;
 
-    signal input currentTroopInterval;
-    signal input currentWaterInterval;
+    signal input currentInterval;
     signal input fromPkHash;
     signal input fromCityId;
     signal input toCityId;
@@ -422,8 +420,7 @@ template Move() {
 
     signal resourcesCorrect <== CheckRsrc(N_TL_ATRS, RSRC_IDX, CITY_IDX, 
         WTR_UPD_IDX, TYPE_IDX, CITY_TYPE, CAPITAL_TYPE, WATER_TYPE, 
-        UNOWNED_ID, SYS_BITS)(currentTroopInterval, currentWaterInterval, 
-        ontoSelfOrUnowned, tFrom, tTo, uFrom, uTo, fromUpdatedTroops, 
-        toUpdatedTroops, ontoMoreOrEq);
+        UNOWNED_ID, SYS_BITS)(currentInterval, ontoSelfOrUnowned, tFrom, tTo, 
+        uFrom, uTo, fromUpdatedTroops, toUpdatedTroops, ontoMoreOrEq);
     resourcesCorrect === 1;
 }

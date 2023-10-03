@@ -94,7 +94,6 @@ export class Board {
             resource,
             cityId,
             0,
-            0,
             Tile.CAPITAL_TILE
         );
 
@@ -244,14 +243,10 @@ export class Board {
      * Computes the number of troops on tile after considering troop/water
      * updates.
      */
-    static computeUpdatedTroops(
-        tTile: Tile,
-        currentTroopInterval: number,
-        currentWaterInterval: number
-    ): number {
+    static computeUpdatedTroops(tTile: Tile, currentInterval: number): number {
         const isUnowned: number = tTile.isUnowned() ? 0 : 1;
         const deltaTroops: number = tTile.isWater()
-            ? tTile.latestWaterUpdateInterval - currentWaterInterval
+            ? tTile.latestUpdateInterval - currentInterval
             : 0;
 
         let updatedTroops = (tTile.resources + deltaTroops) * isUnowned;
@@ -271,8 +266,7 @@ export class Board {
         uFrom: Tile,
         updatedTroops: number,
         nMobilize: number,
-        currentTroopInterval: number,
-        currentWaterInterval: number
+        currentInterval: number
     ): Tile {
         if (nMobilize < 1) {
             throw Error("Cannot move without mobilizing at least 1 troop.");
@@ -284,8 +278,7 @@ export class Board {
                 tTo.loc,
                 updatedTroops + nMobilize,
                 tTo.cityId,
-                currentTroopInterval,
-                currentWaterInterval,
+                currentInterval,
                 tTo.tileType
             );
         } else if (tTo.isUnowned()) {
@@ -294,8 +287,7 @@ export class Board {
                 tTo.loc,
                 nMobilize,
                 tFrom.cityId,
-                currentTroopInterval,
-                currentWaterInterval,
+                currentInterval,
                 tTo.tileType
             );
         } else {
@@ -304,8 +296,7 @@ export class Board {
                 tTo.loc,
                 updatedTroops - nMobilize,
                 tTo.cityId,
-                currentTroopInterval,
-                currentWaterInterval,
+                currentInterval,
                 tTo.tileType
             );
             if (uTo.resources < 0) {
@@ -332,8 +323,7 @@ export class Board {
         bjjPrivKeyHash: BigInt,
         from: Location,
         to: Location,
-        currentTroopInterval: number,
-        currentWaterInterval: number
+        currentInterval: number
     ): Promise<[Tile, Tile, Tile, Tile, Groth16Proof, any]> {
         const tFrom: Tile = this.getTile(from);
         const tTo: Tile = this.getTile(to);
@@ -341,13 +331,11 @@ export class Board {
         // Most recent troop counts
         const fromUpdatedTroops = Board.computeUpdatedTroops(
             tFrom,
-            currentTroopInterval,
-            currentWaterInterval
+            currentInterval
         );
         const toUpdatedTroops = Board.computeUpdatedTroops(
             tTo,
-            currentTroopInterval,
-            currentWaterInterval
+            currentInterval
         );
 
         const nMobilize = fromUpdatedTroops - 1;
@@ -357,8 +345,7 @@ export class Board {
             tFrom.loc,
             fromUpdatedTroops - nMobilize,
             tFrom.cityId,
-            currentTroopInterval,
-            currentWaterInterval,
+            currentInterval,
             tFrom.tileType
         );
         const uTo: Tile = Board.computeOntoTile(
@@ -367,8 +354,7 @@ export class Board {
             uFrom,
             toUpdatedTroops,
             nMobilize,
-            currentTroopInterval,
-            currentWaterInterval
+            currentInterval
         );
 
         const ontoSelfOrUnowned =
@@ -384,8 +370,7 @@ export class Board {
 
         const { proof, publicSignals } = await groth16.fullProve(
             {
-                currentTroopInterval: currentTroopInterval.toString(),
-                currentWaterInterval: currentWaterInterval.toString(),
+                currentInterval: currentInterval.toString(),
                 fromPkHash: tFrom.owner.pubKeyHash(),
                 fromCityId: tFrom.cityId.toString(),
                 toCityId: tTo.cityId.toString(),

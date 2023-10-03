@@ -9,13 +9,12 @@ interface IVerifier {
         uint256[2] memory a,
         uint256[2][2] memory b,
         uint256[2] memory c,
-        uint256[12] memory input
+        uint256[11] memory input
     ) external view returns (bool);
 }
 
 struct MoveInputs {
-    uint256 troopInterval;
-    uint256 waterInterval;
+    uint256 currentInterval;
     uint256 fromPkHash;
     uint256 fromCityId;
     uint256 toCityId;
@@ -47,8 +46,7 @@ contract NStates {
     event NewMove(uint256 hUFrom, uint256 hUTo);
 
     address public owner;
-    uint256 public numBlocksInTroopUpdate;
-    uint256 public numBlocksInWaterUpdate;
+    uint256 public numBlocksInInterval;
 
     mapping(uint256 => uint256) public citiesToPlayer;
     mapping(uint256 => uint256[]) public playerToCities;
@@ -60,14 +58,9 @@ contract NStates {
 
     mapping(uint256 => bool) public hMoves;
 
-    constructor(
-        address contractOwner,
-        uint256 nBlocksInTroopUpdate,
-        uint256 nBlocksInWaterUpdate
-    ) {
+    constructor(address contractOwner, uint256 nBlocksInInterval) {
         owner = contractOwner;
-        numBlocksInTroopUpdate = nBlocksInTroopUpdate;
-        numBlocksInWaterUpdate = nBlocksInWaterUpdate;
+        numBlocksInInterval = nBlocksInInterval;
     }
 
     /*
@@ -119,12 +112,8 @@ contract NStates {
             "Old tile states must be valid"
         );
         require(
-            currentTroopInterval() >= moveInputs.troopInterval,
-            "Move is too far into the future, change currentTroopInterval value"
-        );
-        require(
-            currentWaterInterval() >= moveInputs.waterInterval,
-            "Move is too far into the future, change currentWaterInterval value"
+            currentInterval() >= moveInputs.currentInterval,
+            "Move is too far into the future, change currentInterval value"
         );
         require(
             moveInputs.fromPkHash == citiesToPlayer[moveInputs.fromCityId],
@@ -230,18 +219,11 @@ contract NStates {
     }
 
     /*
-     * Troop updates are counted in intervals, where the current interval is
+     * Troop/water updates are counted in intervals, where the current interval is
      * the current block height divided by interval length.
      */
-    function currentTroopInterval() public view returns (uint256) {
-        return block.number / numBlocksInTroopUpdate;
-    }
-
-    /*
-     * Same as troop updates, but how when players lose troops on water tiles.
-     */
-    function currentWaterInterval() public view returns (uint256) {
-        return block.number / numBlocksInWaterUpdate;
+    function currentInterval() public view returns (uint256) {
+        return block.number / numBlocksInInterval;
     }
 
     /*
@@ -262,10 +244,9 @@ contract NStates {
 
     function toArray(
         MoveInputs memory moveInputs
-    ) internal pure returns (uint256[12] memory) {
+    ) internal pure returns (uint256[11] memory) {
         return [
-            moveInputs.troopInterval,
-            moveInputs.waterInterval,
+            moveInputs.currentInterval,
             moveInputs.fromPkHash,
             moveInputs.fromCityId,
             moveInputs.toCityId,

@@ -28,8 +28,7 @@ export class Tile {
     resources: number;
     key: BigInt;
     cityId: number;
-    latestTroopUpdateInterval: number;
-    latestWaterUpdateInterval: number;
+    latestUpdateInterval: number;
     tileType: number;
 
     constructor(
@@ -39,7 +38,6 @@ export class Tile {
         k_: BigInt,
         c_: number,
         i_: number,
-        w_: number,
         t_: number
     ) {
         this.owner = o_;
@@ -47,8 +45,7 @@ export class Tile {
         this.resources = r_;
         this.key = k_;
         this.cityId = c_;
-        this.latestTroopUpdateInterval = i_;
-        this.latestWaterUpdateInterval = w_;
+        this.latestUpdateInterval = i_;
         this.tileType = t_;
     }
 
@@ -63,7 +60,7 @@ export class Tile {
             this.resources.toString(),
             this.key.toString(),
             this.cityId.toString(),
-            this.latestWaterUpdateInterval.toString(),
+            this.latestUpdateInterval.toString(),
             this.tileType.toString(),
         ];
     }
@@ -102,10 +99,7 @@ export class Tile {
             resources: this.resources.toString(),
             key: this.key.toString(10),
             cityId: this.cityId.toString(),
-            latestTroopUpdateInterval:
-                this.latestTroopUpdateInterval.toString(),
-            latestWaterUpdateInterval:
-                this.latestWaterUpdateInterval.toString(),
+            latestUpdateInterval: this.latestUpdateInterval.toString(),
             tileType: this.tileType.toString(),
         };
     }
@@ -155,8 +149,7 @@ export class Tile {
             parseInt(obj.resources, 10),
             BigInt(obj.key),
             parseInt(obj.cityId, 10),
-            parseInt(obj.latestTroopUpdateInterval, 10),
-            parseInt(obj.latestWaterUpdateInterval, 10),
+            parseInt(obj.latestUpdateInterval, 10),
             parseInt(obj.tileType, 10)
         );
     }
@@ -165,16 +158,7 @@ export class Tile {
      * Meant to represent a tile in the fog of war.
      */
     static mystery(l: Location): Tile {
-        return new Tile(
-            Tile.MYSTERY,
-            l,
-            0,
-            BigInt(0),
-            0,
-            0,
-            0,
-            this.NORMAL_TILE
-        );
+        return new Tile(Tile.MYSTERY, l, 0, BigInt(0), 0, 0, this.NORMAL_TILE);
     }
 
     /*
@@ -186,7 +170,6 @@ export class Tile {
             l,
             0,
             genRandomSalt(),
-            0,
             0,
             0,
             this.HILL_TILE
@@ -204,7 +187,6 @@ export class Tile {
             genRandomSalt(),
             0,
             0,
-            0,
             this.NORMAL_TILE
         );
     }
@@ -218,10 +200,9 @@ export class Tile {
         r_: number,
         c_: number,
         i_: number,
-        w_: number,
         t_: number
     ): Tile {
-        return new Tile(o_, l_, r_, genRandomSalt(), c_, i_, w_, t_);
+        return new Tile(o_, l_, r_, genRandomSalt(), c_, i_, t_);
     }
 
     /*
@@ -233,7 +214,6 @@ export class Tile {
             l_,
             0,
             genRandomSalt(),
-            0,
             0,
             0,
             this.WATER_TILE
