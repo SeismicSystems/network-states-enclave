@@ -144,33 +144,6 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, CITY_IDX, WTR_UPD_IDX, TYPE_IDX,
 }
 
 /*
- * Asserts that the attacker's and defender's resources prior to moving reflect
- * any troop updates that should have occurred.
- */
-template CheckTroopUpdates(N_TL_ATRS, RSRC_IDX, TRP_UPD_IDX) {
-    signal input currentInterval;
-
-    signal input tTile[N_TL_ATRS];
-    signal input uTile[N_TL_ATRS];
-    signal input updatedTroops;
-    signal input isSelfOrEnemy;
-
-    signal output out;
-
-    // Make sure updated troop counts are computed correctly
-    signal circuitUpdatedTroops <== (tTile[RSRC_IDX] + currentInterval 
-        - tTile[TRP_UPD_IDX]) * isSelfOrEnemy;
-    signal troopRsrcCorrect <== IsEqual()(
-        [circuitUpdatedTroops, updatedTroops]);
-
-    // Troop updates should be accounted for in new tile states
-    signal troopsCounted <== IsEqual()(
-        [currentInterval, uTile[TRP_UPD_IDX]]);
-
-    out <== AND()(troopRsrcCorrect, troopsCounted);
-}
-
-/*
  * If a player is on the water, they should lose troops. Constrains
  * updatedTroops post water update.
  */
@@ -309,25 +282,43 @@ template CheckTypeConsistency(N_TL_ATRS, TYPE_IDX, CITY_TYPE, CAPITAL_TYPE) {
  * Checks that the public signals that the contract logic uses are computed
  * correctly.
  */
-template CheckPublicSignals(N_TL_ATRS, CITY_IDX, UNOWNED_ID, TYPE_IDX, 
+template CheckPublicSignals(N_TL_ATRS, RSRC_IDX, CITY_IDX, UNOWNED_ID, TYPE_IDX, 
     CITY_TYPE, CAPITAL_TYPE) {
     signal input fromCityId;
     signal input toCityId;
     signal input ontoSelfOrUnowned;
+    signal input numTroopsMoved;
+    signal input enemyLoss;
     signal input capturedTile;
     signal input takingCity;
     signal input takingCapital;
-    signal input ontoMoreOrEq;
 
+    signal input ontoMoreOrEq;
     signal input tFrom[N_TL_ATRS];
     signal input tTo[N_TL_ATRS];
+    signal input uFrom[N_TL_ATRS];
+    signal input uTo[N_TL_ATRS];
+    signal input fromUpdatedTroops;
+    signal input toUpdatedTroops;
 
     signal output out;
 
+    // City Ids are consistent with tile states
     signal fromCityIdCorrect <== IsEqual()([fromCityId, tFrom[CITY_IDX]]);
     signal toCityIdCorrect <== IsEqual()([toCityId, tTo[CITY_IDX]]);
     signal cityIdCorrect <== AND()(fromCityIdCorrect, toCityIdCorrect);
     signal cityIdIncorrect <== NOT()(cityIdCorrect);
+
+    // numTroopsMoved is before - after
+    signal numTroopsMovedCorrect <== IsEqual()(
+        [numTroopsMoved, fromUpdatedTroops - uFrom[RSRC_IDX]]);
+    signal numTroopsMovedIncorrect <== NOT()(numTroopsMovedCorrect);
+
+    // enemyLoss is number of troops that the enemy loses in a move
+    signal circuitEnemyLoss <== Mux1()(
+        [toUpdatedTroops, numTroopsMoved], ontoMoreOrEq);
+    signal enemyLossCorrect <== IsEqual()([enemyLoss, circuitEnemyLoss]);
+    signal enemyLossIncorrect <== NOT()(enemyLossCorrect);
 
     // Capturing requires moving more troops than on the to tile
     signal ontoLess <== NOT()(ontoMoreOrEq);
@@ -355,8 +346,8 @@ template CheckPublicSignals(N_TL_ATRS, CITY_IDX, UNOWNED_ID, TYPE_IDX,
     signal takingCorrect <== AND()(takingCityCorrect, takingCapitalCorrect);
     signal takingIncorrect <== NOT()(takingCorrect);
 
-    out <== BatchIsZero(3)([cityIdIncorrect, capturedTileIncorrect, 
-        takingIncorrect]);
+    out <== BatchIsZero(5)([cityIdIncorrect, numTroopsMovedIncorrect, 
+        enemyLossIncorrect, capturedTileIncorrect, takingIncorrect]);
 }
 
 /*
@@ -414,15 +405,12 @@ template Move() {
 
     signal ontoMoreOrEq <== GreaterEqThan(SYS_BITS)([toUpdatedTroops, 
         numTroopsMoved]);
-    numTroopsMoved === fromUpdatedTroops - uFrom[RSRC_IDX];
-    signal circuitEnemyLoss <== Mux1()(
-        [toUpdatedTroops, numTroopsMoved], ontoMoreOrEq);
-    circuitEnemyLoss === enemyLoss;
 
-    signal pubSignalsCorrect <== CheckPublicSignals(N_TL_ATRS, CITY_IDX, 
-        UNOWNED_ID, TYPE_IDX, CITY_TYPE, CAPITAL_TYPE)(fromCityId, toCityId, 
-        ontoSelfOrUnowned, capturedTile, takingCity, takingCapital, 
-        ontoMoreOrEq, tFrom, tTo);
+    signal pubSignalsCorrect <== CheckPublicSignals(N_TL_ATRS, RSRC_IDX, 
+        CITY_IDX, UNOWNED_ID, TYPE_IDX, CITY_TYPE, CAPITAL_TYPE)(fromCityId, 
+        toCityId, ontoSelfOrUnowned, numTroopsMoved, enemyLoss, capturedTile, 
+        takingCity, takingCapital, ontoMoreOrEq, tFrom, tTo, uFrom, uTo, 
+        fromUpdatedTroops,toUpdatedTroops);
     pubSignalsCorrect === 1;
 
     signal authCorrect <== CheckAuth(N_TL_ATRS)(hTFrom, hTTo, hUFrom, hUTo,
