@@ -58,7 +58,7 @@ contract NStates {
     // A city's index in player's list of cities. Maintained for O(1) deletion
     mapping(uint256 => uint256) public indexOfCity;
 
-    mapping(uint256 => bool) public hMoves;
+    mapping(uint256 => bool) public tileCommitments;
 
     constructor(
         address contractOwner,
@@ -84,7 +84,7 @@ contract NStates {
      * initialization.
      */
     function set(uint256 h) public onlyOwner {
-        hMoves[h] = true;
+        tileCommitments[h] = true;
     }
 
     /*
@@ -115,7 +115,7 @@ contract NStates {
         SignatureInputs memory sig
     ) public {
         require(
-            hMoves[moveInputs.hTFrom] && hMoves[moveInputs.hTTo],
+            tileCommitments[moveInputs.hTFrom] && tileCommitments[moveInputs.hTTo],
             "Old tile states must be valid"
         );
         require(
@@ -152,11 +152,11 @@ contract NStates {
             "Invalid move proof"
         );
 
-        hMoves[moveInputs.hTFrom] = false;
-        hMoves[moveInputs.hTTo] = false;
+        delete tileCommitments[moveInputs.hTFrom];
+        delete tileCommitments[moveInputs.hTTo];
 
-        hMoves[moveInputs.hUFrom] = true;
-        hMoves[moveInputs.hUTo] = true;
+        tileCommitments[moveInputs.hUFrom] = true;
+        tileCommitments[moveInputs.hUTo] = true;
 
         if (moveInputs.takingCity == 1) {
             transferCityOwnership(
