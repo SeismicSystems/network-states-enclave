@@ -138,7 +138,6 @@ async function move(inp: string) {
         socket.emit("getSignature", uFrom.toJSON(), uTo.toJSON());
     } catch (error) {
         console.log(error);
-        return;
     }
 }
 
