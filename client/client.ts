@@ -100,33 +100,46 @@ function updatePlayerView(l: Location) {
  * tile.
  */
 async function move(inp: string) {
-    canMove = false;
+    try {
+        if (inp !== "w" && inp !== "a" && inp !== "s" && inp !== "d") {
+            throw new Error("Invalid move input.");
+        }
 
-    // Construct move states
-    const nr = cursor.r + MOVE_KEYS[inp][0],
-        nc = cursor.c + MOVE_KEYS[inp][1];
+        // Construct move states
+        const nr = cursor.r + MOVE_KEYS[inp][0],
+            nc = cursor.c + MOVE_KEYS[inp][1];
 
-    // Get the current interval.
-    const currentInterval = (await nStates.currentInterval()).toNumber();
+        if (!b.inBounds(nr, nc)) {
+            throw new Error("Cannot move off the board.");
+        }
 
-    if (PLAYER.bjjPrivHash === undefined) {
-        throw Error("Can't move without a Baby Jubjub private key.");
+        if (PLAYER.bjjPrivHash === undefined) {
+            throw new Error("Can't move without a Baby Jubjub private key.");
+        }
+
+        // Get the current interval.
+        const currentInterval = (await nStates.currentInterval()).toNumber();
+
+        const [tFrom, tTo, uFrom, uTo, prf, pubSignals] = await b.constructMove(
+            PLAYER.bjjPrivHash,
+            cursor,
+            { r: nr, c: nc },
+            currentInterval
+        );
+
+        formattedProof = await Utils.exportCallDataGroth16(prf, pubSignals);
+
+        // Update player position
+        cursor = { r: nr, c: nc };
+
+        canMove = false;
+
+        // Alert enclave of intended move
+        socket.emit("getSignature", uFrom.toJSON(), uTo.toJSON());
+    } catch (error) {
+        console.log(error);
+        return;
     }
-
-    const [tFrom, tTo, uFrom, uTo, prf, pubSignals] = await b.constructMove(
-        PLAYER.bjjPrivHash,
-        cursor,
-        { r: nr, c: nc },
-        currentInterval
-    );
-
-    formattedProof = await Utils.exportCallDataGroth16(prf, pubSignals);
-
-    // Update player position
-    cursor = { r: nr, c: nc };
-
-    // Alert enclave of intended move
-    socket.emit("getSignature", uFrom.toJSON(), uTo.toJSON());
 }
 
 /*
