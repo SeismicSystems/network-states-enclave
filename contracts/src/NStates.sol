@@ -123,7 +123,8 @@ contract NStates {
         SignatureInputs memory sig
     ) public {
         require(
-            tileCommitments[moveInputs.hTFrom] && tileCommitments[moveInputs.hTTo],
+            tileCommitments[moveInputs.hTFrom] &&
+                tileCommitments[moveInputs.hTTo],
             "Old tile states must be valid"
         );
         require(
@@ -162,66 +163,49 @@ contract NStates {
         tileCommitments[moveInputs.hUFrom] = true;
         tileCommitments[moveInputs.hUTo] = true;
 
-        if (moveInputs.capturedTile == 1) {
-            if (moveInputs.ontoSelfOrUnowned == 1) {
-                // Moving onto an unowned tile
-                ++cityArea[moveInputs.fromCityId];
-            } else {
-                // Moving onto enemy with less resources
-                if (moveInputs.takingCity == 1) {
-                    cityResources[moveInputs.fromCityId] -= moveInputs
-                        .numTroopsMoved;
-                    cityResources[moveInputs.toCityId] +=
-                        moveInputs.numTroopsMoved -
-                        moveInputs.enemyLoss;
-
-                    transferCityOwnership(
-                        moveInputs.fromPkHash,
-                        moveInputs.toCityId,
-                        moveInputs.ontoSelfOrUnowned
-                    );
-                } else if (moveInputs.takingCapital == 1) {
-                    cityResources[moveInputs.fromCityId] -= moveInputs
-                        .numTroopsMoved;
-                    cityResources[moveInputs.toCityId] +=
-                        moveInputs.numTroopsMoved -
-                        moveInputs.enemyLoss;
-
-                    uint256 enemy = capitalToPlayer[moveInputs.toCityId];
-
-                    while (playerToCities[enemy].length > 0) {
-                        uint256 lastIndex = playerToCities[enemy].length - 1;
-                        transferCityOwnership(
-                            moveInputs.fromPkHash,
-                            playerToCities[enemy][lastIndex],
-                            0
-                        );
-                    }
-
-                    playerToCapital[enemy] = 0;
-                    capitalToPlayer[moveInputs.toCityId] = 0;
-                } else {
-                    cityResources[moveInputs.fromCityId] -= moveInputs
-                        .enemyLoss;
-                    ++cityArea[moveInputs.fromCityId];
-                    cityResources[moveInputs.toCityId] -= moveInputs.enemyLoss;
-                    --cityArea[moveInputs.toCityId];
-                }
-            }
-        } else {
-            if (moveInputs.ontoSelfOrUnowned == 1) {
-                // Moving onto one of player's own cities
-                cityResources[moveInputs.fromCityId] -= moveInputs
-                    .numTroopsMoved;
-                cityResources[moveInputs.toCityId] += moveInputs.numTroopsMoved;
-            } else {
-                // Moving onto enemy with more/eq. resources
-                cityResources[moveInputs.fromCityId] -= moveInputs.enemyLoss;
-                cityResources[moveInputs.toCityId] -= moveInputs.enemyLoss;
-            }
-        }
+        updateCityResources(moveInputs);
 
         emit NewMove(moveInputs.hUFrom, moveInputs.hUTo);
+    }
+
+    function updateCityResources(MoveInputs memory mv) internal {
+        // cityResources[fromCityId]
+        if (
+            mv.takingCity == 1 ||
+            mv.takingCapital == 1 ||
+            (mv.ontoSelfOrUnowned == 1 && mv.toCityId != 0)
+        ) {
+            cityResources[mv.fromCityId] -= mv.numTroopsMoved;
+        } else if (mv.ontoSelfOrUnowned == 0) {
+            cityResources[mv.fromCityId] -= mv.enemyLoss;
+        }
+
+        // cityResources[toCityId]
+        if (mv.ontoSelfOrUnowned == 1 && mv.toCityId != 0) {
+            cityResources[mv.toCityId] += mv.numTroopsMoved;
+        } else if (mv.takingCity == 1 || mv.takingCapital == 1) {
+            cityResources[mv.toCityId] += mv.numTroopsMoved - mv.enemyLoss;
+        } else if (mv.ontoSelfOrUnowned == 0) {
+            cityResources[mv.toCityId] -= mv.enemyLoss;
+        }
+
+        // cityArea[fromCityId]
+        if (
+            (mv.ontoSelfOrUnowned == 0 &&
+                mv.takingCity == 0 &&
+                mv.takingCapital == 0) || mv.toCityId == 0
+        ) {
+            cityArea[mv.fromCityId]++;
+        }
+
+        // cityArea[toCityId]
+        if (
+            mv.ontoSelfOrUnowned == 0 &&
+            mv.takingCity == 0 &&
+            mv.takingCapital == 0
+        ) {
+            cityArea[mv.toCityId]--;
+        }
     }
 
     /*
