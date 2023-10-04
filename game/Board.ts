@@ -3,7 +3,6 @@ import { groth16 } from "snarkjs";
 import { Groth16Proof, Utils } from "./Utils";
 import { Player } from "./Player";
 import { Tile, Location } from "./Tile";
-import { IncrementalQuinTree } from "maci-crypto";
 
 export class Board {
     static MOVE_WASM: string = "../circuits/move/move.wasm";
@@ -28,7 +27,7 @@ export class Board {
 
     /*
      * Seed game board by sampling access key for each tile, updating on-chain
-     * merkle tree along the way. Doesn't do any sampling if isInit flag is off.
+     * hashes along the way. Doesn't do any sampling if isInit flag is off.
      * With that setting, it only initializes board with mystery tiles.
      */
     public async seed(sz: number, isInit: boolean, nStates: any) {
@@ -89,9 +88,6 @@ export class Board {
             throw new Error("Tried to spawn player on an owned tile.");
         }
 
-        // Before tile is changed, we need the nullifier.
-        const nullifier = this.t[r][c].nullifier();
-
         const tl = Tile.genOwned(
             pl,
             { r, c },
@@ -112,13 +108,8 @@ export class Board {
             new Set<string>().add(Utils.stringifyLocation({ r, c }))
         );
 
-        // Update the merkle root on-chain.
-        await nStates.spawn(
-            pl.pubKeyHash(),
-            cityId,
-            this.t[r][c].hash(),
-            nullifier
-        );
+        // Update the global state on-chain.
+        await nStates.spawn(pl.pubKeyHash(), cityId, this.t[r][c].hash());
         await Utils.sleep(200);
     }
 
@@ -338,7 +329,6 @@ export class Board {
      * troops from one tile to another. Moves all but one troop for development.
      */
     public async constructMove(
-        mTree: IncrementalQuinTree,
         bjjPrivKeyHash: BigInt,
         from: Location,
         to: Location,
@@ -392,12 +382,8 @@ export class Board {
                 ? "1"
                 : "0";
 
-        const mProofFrom = Utils.generateMerkleProof(tFrom.hash(), mTree);
-        const mProofTo = Utils.generateMerkleProof(tTo.hash(), mTree);
-
         const { proof, publicSignals } = await groth16.fullProve(
             {
-                root: mTree.root.toString(),
                 currentTroopInterval: currentTroopInterval.toString(),
                 currentWaterInterval: currentWaterInterval.toString(),
                 fromPkHash: tFrom.owner.pubKeyHash(),
@@ -406,16 +392,12 @@ export class Board {
                 ontoSelfOrUnowned,
                 takingCity,
                 takingCapital,
+                hTFrom: tFrom.hash(),
+                hTTo: tTo.hash(),
                 hUFrom: uFrom.hash(),
                 hUTo: uTo.hash(),
-                rhoFrom: tFrom.nullifier(),
-                rhoTo: tTo.nullifier(),
                 tFrom: tFrom.toCircuitInput(),
-                tFromPathIndices: mProofFrom.indices,
-                tFromPathElements: mProofFrom.pathElements,
                 tTo: tTo.toCircuitInput(),
-                tToPathIndices: mProofTo.indices,
-                tToPathElements: mProofTo.pathElements,
                 uFrom: uFrom.toCircuitInput(),
                 uTo: uTo.toCircuitInput(),
                 fromUpdatedTroops: fromUpdatedTroops.toString(),

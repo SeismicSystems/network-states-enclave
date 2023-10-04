@@ -1,12 +1,7 @@
 // @ts-ignore
 import { groth16 } from "snarkjs";
-import {
-    Signature,
-    NOTHING_UP_MY_SLEEVE,
-    IncrementalQuinTree,
-    hash2,
-} from "maci-crypto";
-import { ethers, BigNumber } from "ethers";
+import { Signature } from "maci-crypto";
+import { BigNumber } from "ethers";
 import { Location } from "./Tile";
 
 export type Groth16Proof = {
@@ -96,72 +91,6 @@ export class Utils {
             return undefined;
         }
         return { r, c };
-    }
-
-    /*
-     * Wrapper function for instantiating a new Merkle Tree.
-     */
-    static newTree(treeDepth: number): IncrementalQuinTree {
-        return new IncrementalQuinTree(
-            treeDepth,
-            NOTHING_UP_MY_SLEEVE,
-            2,
-            hash2
-        );
-    }
-
-    /*
-     * Use all emitted NewLeaf() events from contract to reconstruct on-chain
-     * merkle tree.
-     *
-     * [TODO] Memoize using local or third party indexer.
-     */
-    static async reconstructMerkleTree(
-        treeDepth: number,
-        nStates: ethers.Contract
-    ): Promise<IncrementalQuinTree> {
-        const newLeafEvents = await nStates.queryFilter(
-            nStates.filters.NewLeaf()
-        );
-        const leaves = newLeafEvents.map((e) => e.args?.h);
-        let tree = Utils.newTree(treeDepth);
-
-        leaves.forEach((lh: BigInt) => {
-            tree.insert(lh);
-        });
-        return tree;
-    }
-
-    /*
-     * Constructs a proof that a given leaf (tileHash) is in the merkle root.
-     * Uses IncrementalQuinTree's genMerklePath(_index)
-     */
-    static generateMerkleProof(tileHash: string, mTree: IncrementalQuinTree) {
-        const h = Utils.hIntoBigNumber(tileHash);
-        const numLeaves = mTree.leavesPerNode ** mTree.depth;
-
-        let leafIndex: number | undefined;
-        for (let i = 0; i < numLeaves; i++) {
-            if (h.eq(mTree.getNode(i))) {
-                leafIndex = i;
-            }
-        }
-        if (leafIndex === undefined) {
-            throw Error(
-                "Cannot construct Merkle proof for a hash not in root. " +
-                    "Hash: " +
-                    tileHash
-            );
-        }
-        const mProof = mTree.genMerklePath(leafIndex);
-
-        // Format indices and pathElements.
-        return {
-            indices: mProof.indices.map((i: number) => i.toString()),
-            pathElements: mProof.pathElements.map((e: BigInt[]) => [
-                e[0].toString(),
-            ]),
-        };
     }
 
     /*

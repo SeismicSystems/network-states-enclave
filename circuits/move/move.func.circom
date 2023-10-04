@@ -5,54 +5,48 @@ include "../node_modules/maci-circuits/node_modules/circomlib/circuits/comparato
 include "../node_modules/maci-circuits/node_modules/circomlib/circuits/mux1.circom";
 include "../node_modules/maci-circuits/node_modules/circomlib/circuits/mux2.circom";
 include "../node_modules/maci-circuits/node_modules/circomlib/circuits/babyjub.circom";
-include "../node_modules/maci-circuits/circom/trees/IncrementalMerkleTree.circom";
 include "../utils/utils.circom";
 
 /*
- * Whether nullifiers for the previous tile states were computed correctly.
+ * Asserts 1) the hashes of all tile states were computed correctly. It's the
+ * hiding commitment that's added on-chain. 2) the player owns the public key,
+ * which is the case when their bbj private key (hash) matches (the hash of) the 
+ * public key.
+ *
+ * [TODO]: write unit tests
  */
-template CheckNullifiers() {
-    signal input keyFrom;
-    signal input keyTo;
-    signal input rhoFrom;
-    signal input rhoTo;
-
-    signal output out;
-
-    signal circuitRhoFrom <== Poseidon(1)([keyFrom]);
-    signal circuitRhoTo <== Poseidon(1)([keyTo]);
-
-    out <== BatchIsEqual(2)([[rhoFrom, circuitRhoFrom], [rhoTo, circuitRhoTo]]);
-}
-
-/*
- * Asserts 1) the hashes of the new tile states were computed correctly. 
- * It's this hiding commitment that's added to the on-chain merkle tree. 
- * 2) the player owns the 'from' tile, which is true when the player's 
- * private key corresponds to the tile's public key hash.
- */
-template CheckLeaves(N_TL_ATRS) {
-    signal input uFrom[N_TL_ATRS];
-    signal input uTo[N_TL_ATRS];
+template CheckAuth(N_TL_ATRS) {
+    signal input hTFrom;
+    signal input hTTo;
     signal input hUFrom;
     signal input hUTo;
-
-    signal input privKeyHash;
     signal input fromPkHash;
+
+    signal input tFrom[N_TL_ATRS];
+    signal input tTo[N_TL_ATRS];
+    signal input uFrom[N_TL_ATRS];
+    signal input uTo[N_TL_ATRS];
+    signal input privKeyHash;
 
     signal output out;
 
     // Whether player 'owns' the 'from' tile
     component bjj = BabyPbk();
     bjj.in <== privKeyHash;
-
-    signal circuitHFrom <== Poseidon(N_TL_ATRS)(uFrom);
-    signal circuitHTo <== Poseidon(N_TL_ATRS)(uTo);
     signal circuitFromPkHash <== Poseidon(2)([bjj.Ax, bjj.Ay]);
 
-    out <== BatchIsEqual(3)([
-        [fromPkHash, circuitFromPkHash], [hUFrom, circuitHFrom], 
-        [hUTo, circuitHTo]]);
+    // Whether hashes were computed correctly
+    signal circuitHTFrom <== Poseidon(N_TL_ATRS)(tFrom);
+    signal circuitHTTo <== Poseidon(N_TL_ATRS)(tTo);
+    signal circuitHUFrom <== Poseidon(N_TL_ATRS)(uFrom);
+    signal circuitHUTo <== Poseidon(N_TL_ATRS)(uTo);
+
+    out <== BatchIsEqual(5)([
+        [circuitFromPkHash, fromPkHash],
+        [circuitHTFrom, hTFrom],
+        [circuitHTTo, hTTo],
+        [circuitHUFrom, hUFrom],
+        [circuitHUTo, hUTo]]);
 }
 
 /*
@@ -313,33 +307,6 @@ template CheckTypeConsistency(N_TL_ATRS, TYPE_IDX, CITY_TYPE, CAPITAL_TYPE) {
 }
 
 /*
- * The hashes of the old tiles must be included in the merkle root. If so,
- * this proves that these tiles were computed from prior moves.
- */
-template CheckMerkleInclusion(N_TL_ATRS, MERKLE_TREE_DEPTH) {
-    signal input root;
-    
-    signal input tFrom[N_TL_ATRS];
-    signal input tFromPathIndices[MERKLE_TREE_DEPTH];
-    signal input tFromPathElements[MERKLE_TREE_DEPTH][1];
-    signal input tTo[N_TL_ATRS];
-    signal input tToPathIndices[MERKLE_TREE_DEPTH];
-    signal input tToPathElements[MERKLE_TREE_DEPTH][1];
-
-    signal output out;
-
-    signal hTFrom <== Poseidon(N_TL_ATRS)(tFrom);
-    signal hTTo <== Poseidon(N_TL_ATRS)(tTo);
-
-    signal fromPrfRoot <== MerkleTreeInclusionProof(MERKLE_TREE_DEPTH)(hTFrom,
-        tFromPathIndices, tFromPathElements);
-    signal toPrfRoot <== MerkleTreeInclusionProof(MERKLE_TREE_DEPTH)(hTTo,
-        tToPathIndices, tToPathElements);
-
-    out <== BatchIsEqual(2)([[root, fromPrfRoot], [root, toPrfRoot]]);
-}
-
-/*
  * Checks that the public signals that the contract logic uses are computed
  * correctly.
  */
@@ -388,14 +355,12 @@ template CheckPublicSignals(N_TL_ATRS, CITY_IDX, UNOWNED_ID, TYPE_IDX,
 
 /*
  * Asserts 1) valid state transitions for the `from` and `to` tiles, 2) 
- * inclusion of old states in a merkle root, and 3) proper permissions to 
+ * old states are on-chain as hashes, and 3) proper permissions to 
  * initiate the move.
  */
 template Move() {
     var N_VALID_MOVES = 4;
     var VALID_MOVES[N_VALID_MOVES][2] = [[0, 1], [0, -1], [1, 0], [-1, 0]];
-
-    var MERKLE_TREE_DEPTH = 8;
 
     var N_TL_ATRS = 7;
     var ROW_IDX = 0;
@@ -417,7 +382,6 @@ template Move() {
 
     var SYS_BITS = 252;
 
-    signal input root;
     signal input currentTroopInterval;
     signal input currentWaterInterval;
     signal input fromPkHash;
@@ -426,17 +390,13 @@ template Move() {
     signal input ontoSelfOrUnowned;
     signal input takingCity;
     signal input takingCapital;
+    signal input hTFrom;
+    signal input hTTo;
     signal input hUFrom;
     signal input hUTo;
-    signal input rhoFrom;
-    signal input rhoTo;
 
     signal input tFrom[N_TL_ATRS];
-    signal input tFromPathIndices[MERKLE_TREE_DEPTH];
-    signal input tFromPathElements[MERKLE_TREE_DEPTH][1];
     signal input tTo[N_TL_ATRS];
-    signal input tToPathIndices[MERKLE_TREE_DEPTH];
-    signal input tToPathElements[MERKLE_TREE_DEPTH][1];
     signal input uFrom[N_TL_ATRS];
     signal input uTo[N_TL_ATRS];
     signal input fromUpdatedTroops;
@@ -452,13 +412,9 @@ template Move() {
         tTo);
     pubSignalsCorrect === 1;
 
-    signal leavesCorrect <== CheckLeaves(N_TL_ATRS)(uFrom, 
-        uTo, hUFrom, hUTo, privKeyHash, fromPkHash);
-    leavesCorrect === 1;
-
-    signal nullifiersCorrect <== CheckNullifiers()(tFrom[KEY_IDX], 
-        tTo[KEY_IDX], rhoFrom, rhoTo);
-    nullifiersCorrect === 1;
+    signal authCorrect <== CheckAuth(N_TL_ATRS)(hTFrom, hTTo, hUFrom, hUTo,
+        fromPkHash, tFrom, tTo, uFrom, uTo, privKeyHash);
+    authCorrect === 1;
 
     signal stepCorrect <== CheckStep(VALID_MOVES, N_VALID_MOVES, N_TL_ATRS, 
         ROW_IDX, COL_IDX, TYPE_IDX, HILL_TYPE)(tFrom, tTo, uFrom, uTo);
@@ -470,9 +426,4 @@ template Move() {
         ontoSelfOrUnowned, tFrom, tTo, uFrom, uTo, fromUpdatedTroops, 
         toUpdatedTroops, ontoMoreOrEq);
     resourcesCorrect === 1;
-
-    signal merkleProofCorrect <== CheckMerkleInclusion(N_TL_ATRS,
-        MERKLE_TREE_DEPTH)(root, tFrom, tFromPathIndices, tFromPathElements,
-        tTo, tToPathIndices, tToPathElements);
-    merkleProofCorrect === 1;
 }

@@ -105,11 +105,6 @@ async function move(inp: string) {
     // Construct move states
     const nr = cursor.r + MOVE_KEYS[inp][0],
         nc = cursor.c + MOVE_KEYS[inp][1];
-    const mTree = await Utils.reconstructMerkleTree(
-        Number(process.env.TREE_DEPTH),
-        nStates
-    );
-    const mRoot = mTree.root;
 
     // Get the current troop/water interval.
     const currentTroopInterval = (
@@ -124,7 +119,6 @@ async function move(inp: string) {
     }
 
     const [tFrom, tTo, uFrom, uTo, prf, pubSignals] = await b.constructMove(
-        mTree,
         PLAYER.bjjPrivHash,
         cursor,
         { r: nr, c: nc },
@@ -172,19 +166,18 @@ async function getSignatureResponse(sig: string, uFrom: any, uTo: any) {
     const unpackedSig: Signature = ethers.utils.splitSignature(sig);
 
     const moveInputs = {
-        root: formattedProof.input[0],
-        troopInterval: formattedProof.input[1],
-        waterInterval: formattedProof.input[2],
-        fromPkHash: formattedProof.input[3],
-        fromCityId: formattedProof.input[4],
-        toCityId: formattedProof.input[5],
-        ontoSelfOrUnowned: formattedProof.input[6],
-        takingCity: formattedProof.input[7],
-        takingCapital: formattedProof.input[8],
-        hUFrom: formattedProof.input[9],
-        hUTo: formattedProof.input[10],
-        rhoFrom: formattedProof.input[11],
-        rhoTo: formattedProof.input[12],
+        troopInterval: formattedProof.input[0],
+        waterInterval: formattedProof.input[1],
+        fromPkHash: formattedProof.input[2],
+        fromCityId: formattedProof.input[3],
+        toCityId: formattedProof.input[4],
+        ontoSelfOrUnowned: formattedProof.input[5],
+        takingCity: formattedProof.input[6],
+        takingCapital: formattedProof.input[7],
+        hTFrom: formattedProof.input[8],
+        hTTo: formattedProof.input[9],
+        hUFrom: formattedProof.input[10],
+        hUTo: formattedProof.input[11],
     };
     const moveProof = {
         a: formattedProof.a,
