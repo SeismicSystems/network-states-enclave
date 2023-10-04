@@ -189,22 +189,16 @@ contract NStates {
             cityResources[mv.toCityId] -= mv.enemyLoss;
         }
 
-        // cityArea[fromCityId]
-        if (
-            (mv.ontoSelfOrUnowned == 0 &&
-                mv.takingCity == 0 &&
-                mv.takingCapital == 0) || mv.toCityId == 0
-        ) {
-            cityArea[mv.fromCityId]++;
-        }
-
-        // cityArea[toCityId]
+        // cityArea[fromCityId] and cityArea[toCityId]
         if (
             mv.ontoSelfOrUnowned == 0 &&
             mv.takingCity == 0 &&
             mv.takingCapital == 0
         ) {
+            cityArea[mv.fromCityId]++;
             cityArea[mv.toCityId]--;
+        } else if (mv.toCityId == 0) {
+            cityArea[mv.fromCityId]++;
         }
     }
 
