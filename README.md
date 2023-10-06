@@ -5,20 +5,27 @@
 anvil
 ```
 
+### Compile circuit
+```
+cd circuits/
+yarn dev:move
+# This takes a while: it compiles the circuit and runs a smoke test
+```
+
 ### Deploy contracts
-``` 
-cd contracts/src deploy_poseidon.ts
-ts-node deploy_poseidon.ts
-# copy over hasher address to contracts/src/NStates.sol
-cd contracts/script
+```
+cd contracts/scripts
+bash forge_create_local_verifier.sh
+# copy over deploy address to verifierContract in contract/src/NStates.sol
 bash forge_create_local.sh
-# copy over deploy address to {client/client.ts, client/analytics.ts, enclave/server.ts}
+# copy over deploy address to CONTRACT_ADDR in .env
 ```
 
 ### Run server
 ```
 cd enclave/
 yarn dev
+# Wait for "Server running..." log
 ```
 
 ### Run client

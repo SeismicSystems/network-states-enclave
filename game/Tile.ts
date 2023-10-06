@@ -51,7 +51,6 @@ export class Tile {
 
     /*
      * Represent Tile as an array of BigInt values to pass into the circuit.
-     * The bjj pub keys are hashed together to keep # inputs to Poseidon <= 8.
      */
     toCircuitInput(): string[] {
         return [
@@ -69,7 +68,22 @@ export class Tile {
      * Compute hash of this Tile and convert it into a decimal string.
      */
     hash(): string {
-        return poseidon(this.toCircuitInput().map((e) => BigInt(e))).toString();
+        const hash1 = poseidon([
+            BigInt(this.loc.r.toString()),
+            BigInt(this.loc.c.toString()),
+            BigInt(this.tileType.toString()),
+        ]);
+        const hash2 = poseidon([
+            BigInt(this.resources.toString()),
+            BigInt(this.key.toString()),
+            BigInt(this.cityId.toString()),
+            BigInt(this.latestUpdateInterval.toString()),
+        ]);
+
+        return poseidon([
+            BigInt(hash1.toString()),
+            BigInt(hash2.toString()),
+        ]).toString();
     }
 
     /*
