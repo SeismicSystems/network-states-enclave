@@ -117,14 +117,11 @@ async function move(inp: string) {
             throw new Error("Can't move without a Baby Jubjub private key.");
         }
 
-        // Get the current interval.
-        const currentInterval = (await nStates.currentInterval()).toNumber();
-
         const [tFrom, tTo, uFrom, uTo, prf, pubSignals] = await b.constructMove(
             PLAYER.bjjPrivHash,
             cursor,
             { r: nr, c: nc },
-            currentInterval
+            nStates,
         );
 
         formattedProof = await Utils.exportCallDataGroth16(prf, pubSignals);

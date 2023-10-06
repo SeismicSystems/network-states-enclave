@@ -243,17 +243,23 @@ export class Board {
      * Computes the number of troops on tile after considering troop/water
      * updates.
      */
-    static computeUpdatedTroops(tTile: Tile, currentInterval: number): number {
-        const isUnowned: number = tTile.isUnowned() ? 0 : 1;
-        const deltaTroops: number = tTile.isWater()
-            ? tTile.latestUpdateInterval - currentInterval
-            : 0;
-
-        let updatedTroops = (tTile.resources + deltaTroops) * isUnowned;
-        if (updatedTroops < 0) {
-            updatedTroops = 0;
+    static computeUpdatedTroops(
+        tTile: Tile,
+        cityTroops: number,
+        currentInterval: number
+    ): number {
+        if (tTile.isWater()) {
+            const deltaTroops = tTile.latestUpdateInterval - currentInterval;
+            let updatedTroops = tTile.resources + deltaTroops;
+            if (updatedTroops < 0) {
+                updatedTroops = 0;
+            }
+            return updatedTroops;
+        } else if (tTile.isCity() || tTile.isCapital()) {
+            return cityTroops;
         }
-        return updatedTroops;
+
+        return tTile.resources;
     }
 
     /*
@@ -323,18 +329,28 @@ export class Board {
         bjjPrivKeyHash: BigInt,
         from: Location,
         to: Location,
-        currentInterval: number
+        nStates: any
     ): Promise<[Tile, Tile, Tile, Tile, Groth16Proof, any]> {
         const tFrom: Tile = this.getTile(from);
         const tTo: Tile = this.getTile(to);
 
+        const currentInterval = (await nStates.currentInterval()).toNumber();
+        const fromCityTroops = (
+            await nStates.getCityTileResources(tFrom.cityId)
+        ).toNumber();
+        const toCityTroops = (
+            await nStates.getCityTileResources(tTo.cityId)
+        ).toNumber();
+
         // Most recent troop counts
         const fromUpdatedTroops = Board.computeUpdatedTroops(
             tFrom,
+            fromCityTroops,
             currentInterval
         );
         const toUpdatedTroops = Board.computeUpdatedTroops(
             tTo,
+            toCityTroops,
             currentInterval
         );
 
@@ -381,8 +397,8 @@ export class Board {
                 toIsCityTile: tTo.isCity() || tTo.isCapital() ? "1" : "0",
                 takingCity,
                 takingCapital,
-                fromCityTroops: tFrom.resources.toString(),
-                toCityTroops: tTo.resources.toString(),
+                fromCityTroops: fromCityTroops.toString(),
+                toCityTroops: toCityTroops.toString(),
                 hTFrom: tFrom.hash(),
                 hTTo: tTo.hash(),
                 hUFrom: uFrom.hash(),

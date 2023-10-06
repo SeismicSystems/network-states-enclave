@@ -66,7 +66,9 @@ contract NStates {
 
     mapping(uint256 => uint256) public cityArea;
     mapping(uint256 => uint256) public cityResources;
+
     mapping(uint256 => uint256) public cityTileResources;
+    mapping(uint256 => uint256) public cityLatestUpdateBlock;
 
     mapping(uint256 => bool) public tileCommitments;
 
@@ -115,7 +117,9 @@ contract NStates {
 
         cityArea[cityId] = 1;
         cityResources[cityId] = numStartingResources;
+
         cityTileResources[cityId] = numStartingResources;
+        cityLatestUpdateBlock[cityId] = block.number;
     }
 
     /*
@@ -231,7 +235,7 @@ contract NStates {
                 mv.fromIsCityTile
             );
         } else if (mv.ontoSelfOrUnowned == 0) {
-            // Moving onto enemy non-city tile
+            // Capturing enemy non-city tile or attacking enemy
             decrementCityResources(
                 mv.fromCityId,
                 mv.enemyLoss,
@@ -258,7 +262,7 @@ contract NStates {
                 mv.toIsCityTile
             );
         } else if (mv.ontoSelfOrUnowned == 0) {
-            // Moving onto enemy non-city tile
+            // Capturing enemy non-city tile or attacking enemy
             decrementCityResources(mv.toCityId, mv.enemyLoss, mv.toIsCityTile);
         }
 
@@ -272,6 +276,22 @@ contract NStates {
             cityArea[mv.toCityId]--;
         } else if (mv.toCityId == 0) {
             cityArea[mv.fromCityId]++;
+        }
+
+        incrementCityResources(
+            mv.fromCityId,
+            troopUpdateIncrement(mv.fromCityId),
+            1
+        );
+        cityLatestUpdateBlock[mv.fromCityId] = block.number;
+
+        if (mv.toCityId != 0) {
+            incrementCityResources(
+                mv.toCityId,
+                troopUpdateIncrement(mv.toCityId),
+                1
+            );
+            cityLatestUpdateBlock[mv.toCityId] = block.number;
         }
     }
 
@@ -303,6 +323,29 @@ contract NStates {
         if (isCityTile == 1) {
             cityTileResources[cityId] -= dTroops;
         }
+    }
+
+    /*
+     * Computes the troop update that a city tile deserves.
+     *
+     * [TODO]: use the correct formula instead of a temporary one.
+     */
+    function troopUpdateIncrement(
+        uint256 cityId
+    ) public view returns (uint256) {
+        uint256[] memory cities = playerToCities[citiesToPlayer[cityId]];
+        uint256 numCities = cities.length;
+        uint256 totalArea = 0;
+        uint256 totalResources = 0;
+        uint256 latestUpdateBlock = cityLatestUpdateBlock[cityId];
+
+        for (uint256 i = 0; i < numCities; i++) {
+            totalArea += cityArea[cities[i]];
+            totalResources += cityResources[cities[i]];
+        }
+        return
+            ((block.number - latestUpdateBlock) * totalArea * totalResources) /
+            numCities;
     }
 
     /*
@@ -340,6 +383,16 @@ contract NStates {
      */
     function currentInterval() public view returns (uint256) {
         return block.number / numBlocksInInterval;
+    }
+
+    /*
+     * Getter for cityTileResources. Used by client to set fromCityTroops and
+     * toCityTroops.
+     */
+    function getCityTileResources(
+        uint256 cityId
+    ) public view returns (uint256) {
+        return cityTileResources[cityId];
     }
 
     /*
