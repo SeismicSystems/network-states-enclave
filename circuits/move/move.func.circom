@@ -346,7 +346,6 @@ template CheckPublicSignals(N_TL_ATRS, RSRC_IDX, CITY_IDX, UNOWNED_ID, TYPE_IDX,
     signal input ontoSelfOrUnowned;
     signal input numTroopsMoved;
     signal input enemyLoss;
-    signal input capturedTile;
     signal input fromIsCityTile;
     signal input toIsCityTile;
     signal input takingCity;
@@ -388,10 +387,7 @@ template CheckPublicSignals(N_TL_ATRS, RSRC_IDX, CITY_IDX, UNOWNED_ID, TYPE_IDX,
     signal ontoSelf <== AND()(ontoSelfOrUnowned, notOntoUnowned);
     signal notOntoSelf <== NOT()(ontoSelf);
 
-    signal circuitCapturedTile <== AND()(ontoLess, notOntoSelf);
-    signal capturedTileCorrect <== IsEqual()(
-        [circuitCapturedTile, capturedTile]);
-    signal capturedTileIncorrect <== NOT()(capturedTileCorrect);
+    signal capturedTile <== AND()(ontoLess, notOntoSelf);
 
     signal fromCity <== IsEqual()([tFrom[TYPE_IDX], CITY_TYPE]);
     signal fromCapital <== IsEqual()([tFrom[TYPE_IDX], CAPITAL_TYPE]);
@@ -417,9 +413,8 @@ template CheckPublicSignals(N_TL_ATRS, RSRC_IDX, CITY_IDX, UNOWNED_ID, TYPE_IDX,
     signal isCityCorrect <== AND()(fromIsCityTileCorrect, toIsCityTileCorrect);
     signal isCityIncorrect <== NOT()(isCityCorrect);
 
-    out <== BatchIsZero(6)([cityIdIncorrect, numTroopsMovedIncorrect, 
-        enemyLossIncorrect, capturedTileIncorrect, takingIncorrect, 
-        isCityIncorrect]);
+    out <== BatchIsZero(5)([cityIdIncorrect, numTroopsMovedIncorrect, 
+        enemyLossIncorrect, takingIncorrect, isCityIncorrect]);
 }
 
 /*
@@ -458,7 +453,6 @@ template Move() {
     signal input ontoSelfOrUnowned;
     signal input numTroopsMoved;
     signal input enemyLoss;
-    signal input capturedTile;
     signal input fromIsCityTile;
     signal input toIsCityTile;
     signal input takingCity;
@@ -483,9 +477,9 @@ template Move() {
 
     signal pubSignalsCorrect <== CheckPublicSignals(N_TL_ATRS, RSRC_IDX, 
         CITY_IDX, UNOWNED_ID, TYPE_IDX, CITY_TYPE, CAPITAL_TYPE)(fromCityId, 
-        toCityId, ontoSelfOrUnowned, numTroopsMoved, enemyLoss, capturedTile, 
-        fromIsCityTile, toIsCityTile, takingCity, takingCapital, ontoMoreOrEq, 
-        tFrom, tTo, uFrom, uTo, fromUpdatedTroops,toUpdatedTroops);
+        toCityId, ontoSelfOrUnowned, numTroopsMoved, enemyLoss, fromIsCityTile, 
+        toIsCityTile, takingCity, takingCapital, ontoMoreOrEq, tFrom, tTo, 
+        uFrom, uTo, fromUpdatedTroops, toUpdatedTroops);
     pubSignalsCorrect === 1;
 
     signal authCorrect <== CheckAuth(N_TL_ATRS, ROW_IDX, COL_IDX, RSRC_IDX, 

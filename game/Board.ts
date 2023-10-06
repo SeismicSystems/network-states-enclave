@@ -374,7 +374,6 @@ export class Board {
         );
 
         const enemyLoss = Math.min(toUpdatedTroops, nMobilize);
-
         const ontoSelfOrUnowned =
             tTo.ownerPubKey() === tFrom.ownerPubKey() || tTo.isUnowned()
                 ? "1"
@@ -392,7 +391,6 @@ export class Board {
                 ontoSelfOrUnowned,
                 numTroopsMoved: nMobilize.toString(),
                 enemyLoss: enemyLoss.toString(),
-                capturedTile: capturedTile ? "1" : "0",
                 fromIsCityTile: tFrom.isCity() || tFrom.isCapital() ? "1" : "0",
                 toIsCityTile: tTo.isCity() || tTo.isCapital() ? "1" : "0",
                 takingCity,

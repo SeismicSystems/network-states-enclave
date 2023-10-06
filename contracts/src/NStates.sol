@@ -9,7 +9,7 @@ interface IVerifier {
         uint256[2] memory a,
         uint256[2][2] memory b,
         uint256[2] memory c,
-        uint256[18] memory input
+        uint256[17] memory input
     ) external view returns (bool);
 }
 
@@ -21,7 +21,6 @@ struct MoveInputs {
     uint256 ontoSelfOrUnowned;
     uint256 numTroopsMoved;
     uint256 enemyLoss;
-    uint256 capturedTile;
     uint256 fromIsCityTile;
     uint256 toIsCityTile;
     uint256 takingCity;
@@ -406,7 +405,7 @@ contract NStates {
 
     function toArray(
         MoveInputs memory moveInputs
-    ) internal pure returns (uint256[18] memory) {
+    ) internal pure returns (uint256[17] memory) {
         return [
             moveInputs.currentInterval,
             moveInputs.fromPkHash,
@@ -415,7 +414,6 @@ contract NStates {
             moveInputs.ontoSelfOrUnowned,
             moveInputs.numTroopsMoved,
             moveInputs.enemyLoss,
-            moveInputs.capturedTile,
             moveInputs.fromIsCityTile,
             moveInputs.toIsCityTile,
             moveInputs.takingCity,
