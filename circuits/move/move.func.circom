@@ -8,7 +8,7 @@ include "../node_modules/maci-circuits/node_modules/circomlib/circuits/babyjub.c
 include "../utils/utils.circom";
 
 template CheckTileHash(N_TL_ATRS, ROW_IDX, COL_IDX, RSRC_IDX, KEY_IDX, CITY_IDX, 
-    WTR_UPD_IDX, TYPE_IDX) {
+    UPD_IDX, TYPE_IDX) {
         signal input tileHash;
         signal input tile[N_TL_ATRS];
 
@@ -17,7 +17,7 @@ template CheckTileHash(N_TL_ATRS, ROW_IDX, COL_IDX, RSRC_IDX, KEY_IDX, CITY_IDX,
         signal firstHash <== Poseidon(3)([tile[ROW_IDX], tile[COL_IDX], 
             tile[TYPE_IDX]]);
         signal secondHash <== Poseidon(4)([tile[RSRC_IDX], tile[KEY_IDX], 
-            tile[CITY_IDX], tile[WTR_UPD_IDX]]);
+            tile[CITY_IDX], tile[UPD_IDX]]);
         signal circuitTileHash <== Poseidon(2)([firstHash, secondHash]);
 
         out <== IsEqual()([circuitTileHash, tileHash]);
@@ -32,7 +32,7 @@ template CheckTileHash(N_TL_ATRS, ROW_IDX, COL_IDX, RSRC_IDX, KEY_IDX, CITY_IDX,
  * [TODO]: write unit tests
  */
 template CheckAuth(N_TL_ATRS, ROW_IDX, COL_IDX, RSRC_IDX, KEY_IDX, CITY_IDX, 
-    WTR_UPD_IDX, TYPE_IDX) {
+    UPD_IDX, TYPE_IDX) {
     signal input hTFrom;
     signal input hTTo;
     signal input hUFrom;
@@ -56,19 +56,19 @@ template CheckAuth(N_TL_ATRS, ROW_IDX, COL_IDX, RSRC_IDX, KEY_IDX, CITY_IDX,
 
     // Whether hashes were computed correctly
     signal hTFromCorrect <== CheckTileHash(N_TL_ATRS, ROW_IDX, COL_IDX, 
-        RSRC_IDX, KEY_IDX, CITY_IDX, WTR_UPD_IDX, TYPE_IDX)(hTFrom, tFrom);
+        RSRC_IDX, KEY_IDX, CITY_IDX, UPD_IDX, TYPE_IDX)(hTFrom, tFrom);
     signal hTFromIncorrect <== NOT()(hTFromCorrect);
 
     signal hTToCorrect <== CheckTileHash(N_TL_ATRS, ROW_IDX, COL_IDX, 
-        RSRC_IDX, KEY_IDX, CITY_IDX, WTR_UPD_IDX, TYPE_IDX)(hTTo, tTo);
+        RSRC_IDX, KEY_IDX, CITY_IDX, UPD_IDX, TYPE_IDX)(hTTo, tTo);
     signal hTToIncorrect <== NOT()(hTToCorrect);
 
     signal hUFromCorrect <== CheckTileHash(N_TL_ATRS, ROW_IDX, COL_IDX, 
-        RSRC_IDX, KEY_IDX, CITY_IDX, WTR_UPD_IDX, TYPE_IDX)(hUFrom, uFrom);
+        RSRC_IDX, KEY_IDX, CITY_IDX, UPD_IDX, TYPE_IDX)(hUFrom, uFrom);
     signal hUFromIncorrect <== NOT()(hUFromCorrect);
 
     signal hUToCorrect <== CheckTileHash(N_TL_ATRS, ROW_IDX, COL_IDX, 
-        RSRC_IDX, KEY_IDX, CITY_IDX, WTR_UPD_IDX, TYPE_IDX)(hUTo, uTo);
+        RSRC_IDX, KEY_IDX, CITY_IDX, UPD_IDX, TYPE_IDX)(hUTo, uTo);
     signal hUToIncorrect <== NOT()(hUToCorrect);
 
     out <== BatchIsZero(5)([pkHashIncorrect, hTFromIncorrect, hTToIncorrect, 
@@ -106,13 +106,59 @@ template CheckStep(VALID_MOVES, N_VALID_MOVES, N_TL_ATRS, ROW_IDX, COL_IDX,
 }
 
 /*
+ * Ensures that the updatedTroops signal reflects the number of resources at a
+ * tile post-troop/water update. A city update should add troopIncrement's, and
+ * a water update should remove troops.
+ */
+template CheckTroopUpdates(N_TL_ATRS, RSRC_IDX, CITY_IDX, UPD_IDX, TYPE_IDX, 
+    UNOWNED_ID, CITY_TYPE, CAPITAL_TYPE, WATER_TYPE, SYS_BITS) {
+        signal input currentInterval;
+        signal input troopIncrement;
+
+        signal input tTile[N_TL_ATRS];
+        signal input uTile[N_TL_ATRS];
+        signal input updatedTroops;
+
+        signal output out;
+
+        signal waterTile <== IsEqual()([tTile[TYPE_IDX], WATER_TYPE]);
+        signal cityTile <== IsEqual()([tTile[TYPE_IDX], CITY_TYPE]);
+        signal capitalTile <== IsEqual()([tTile[TYPE_IDX], CAPITAL_TYPE]);
+        signal cityOrCapital <== OR()(cityTile, capitalTile);
+
+        // Not a water tile or city/capital
+        signal case1 <== IsEqual()([updatedTroops, tTile[RSRC_IDX]]);
+
+        // Water tile
+        signal case2 <== CheckWaterUpdates(N_TL_ATRS, RSRC_IDX, UPD_IDX, 
+            TYPE_IDX, WATER_TYPE, SYS_BITS)(currentInterval, tTile, 
+            updatedTroops);
+
+        // City or capital
+        signal deltaTroops <== troopIncrement * 
+            (currentInterval - tTile[UPD_IDX]);
+        signal case3 <== IsEqual()(
+            [updatedTroops, tTile[RSRC_IDX] + deltaTroops]);
+
+        signal incrementCorrect <== Mux2()(
+            [case1, case2, case3, case3], [waterTile, cityOrCapital]);
+
+        // The new latestUpdateInterval of the tile should be currentInterval
+        signal troopsCounted <== IsEqual()([uTile[UPD_IDX], currentInterval]);
+
+        out <== AND()(incrementCorrect, troopsCounted);
+}
+
+/*
  * Must preserve resource management logic- what happens when armies expand to
  * unowned or enemy territories. 
  */
-template CheckRsrc(N_TL_ATRS, RSRC_IDX, CITY_IDX, WTR_UPD_IDX, TYPE_IDX, 
+template CheckRsrc(N_TL_ATRS, RSRC_IDX, CITY_IDX, UPD_IDX, TYPE_IDX, 
     CITY_TYPE, CAPITAL_TYPE, WATER_TYPE, UNOWNED_ID, SYS_BITS) {
     signal input currentInterval;
     signal input ontoSelfOrUnowned;
+    signal input fromTroopIncrement;
+    signal input toTroopIncrement;
 
     signal input tFrom[N_TL_ATRS];
     signal input tTo[N_TL_ATRS];
@@ -134,16 +180,29 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, CITY_IDX, WTR_UPD_IDX, TYPE_IDX,
     signal movedAllTroops <== IsZero()(uFrom[RSRC_IDX]);
 
     // Updates for water tiles
-    signal fromCheckWaterUpdates <== CheckWaterUpdates(N_TL_ATRS, RSRC_IDX,
-        WTR_UPD_IDX, TYPE_IDX, WATER_TYPE, SYS_BITS)(currentInterval, 
-        tFrom, uFrom, fromUpdatedTroops);
-    signal toCheckWaterUpdates <== CheckWaterUpdates(N_TL_ATRS, RSRC_IDX,
-        WTR_UPD_IDX, TYPE_IDX, WATER_TYPE, SYS_BITS)(currentInterval, tTo, 
-        uTo, toUpdatedTroops);
+    // signal fromCheckWaterUpdates <== CheckWaterUpdates(N_TL_ATRS, RSRC_IDX,
+    //     UPD_IDX, TYPE_IDX, WATER_TYPE, SYS_BITS)(currentInterval, 
+    //     tFrom, uFrom, fromUpdatedTroops);
+    // signal toCheckWaterUpdates <== CheckWaterUpdates(N_TL_ATRS, RSRC_IDX,
+    //     UPD_IDX, TYPE_IDX, WATER_TYPE, SYS_BITS)(currentInterval, tTo, 
+    //     uTo, toUpdatedTroops);
 
-    signal waterUpdatesCorrect <== AND()(fromCheckWaterUpdates, 
-        toCheckWaterUpdates);
-    signal waterUpdatesIncorrect <== NOT()(waterUpdatesCorrect);
+    // signal waterUpdatesCorrect <== AND()(fromCheckWaterUpdates, 
+    //     toCheckWaterUpdates);
+    // signal waterUpdatesIncorrect <== NOT()(waterUpdatesCorrect);
+
+    // Troop updates: water and city/capital tiles
+    signal fromTroopUpdatesCorrect <== CheckTroopUpdates(N_TL_ATRS, RSRC_IDX, 
+        CITY_IDX, UPD_IDX, TYPE_IDX, UNOWNED_ID, CITY_TYPE, CAPITAL_TYPE, 
+        WATER_TYPE, SYS_BITS)(currentInterval, fromTroopIncrement, tFrom, uFrom,
+        fromUpdatedTroops);
+    signal toTroopUpdatesCorrect <== CheckTroopUpdates(N_TL_ATRS, RSRC_IDX, 
+        CITY_IDX, UPD_IDX, TYPE_IDX, UNOWNED_ID, CITY_TYPE, CAPITAL_TYPE, 
+        WATER_TYPE, SYS_BITS)(currentInterval, toTroopIncrement, tTo, uTo,
+        toUpdatedTroops);
+    signal troopUpdatesCorrect <== AND()(fromTroopUpdatesCorrect, 
+        toTroopUpdatesCorrect);
+    signal troopUpdatesIncorrect <== NOT()(troopUpdatesCorrect);
 
     // Make sure resource management can't be broken via overflow
     signal overflowFrom <== GreaterEqThan(SYS_BITS)([uFrom[RSRC_IDX], 
@@ -164,48 +223,34 @@ template CheckRsrc(N_TL_ATRS, RSRC_IDX, CITY_IDX, WTR_UPD_IDX, TYPE_IDX,
         CAPITAL_TYPE)(tFrom, tTo, uFrom, uTo, ontoEnemy, ontoMoreOrEq);
     signal typeLogicIncorrect <== NOT()(typeLogic);
 
-    out <== BatchIsZero(7)([movedAllTroops, waterUpdatesIncorrect, overflowFrom, 
+    out <== BatchIsZero(7)([movedAllTroops, troopUpdatesIncorrect, overflowFrom, 
         overflowTo, rsrcLogicIncorrect, cityIdLogicIncorrect, 
         typeLogicIncorrect]);
 }
 
 /*
  * If a player is on the water, they should lose troops. Constrains
- * updatedTroops post water update.
+ * updatedTroops post water update, assuming that the tile is a water tile.
  */
-template CheckWaterUpdates(N_TL_ATRS, RSRC_IDX, WTR_UPD_IDX, TYPE_IDX, 
+template CheckWaterUpdates(N_TL_ATRS, RSRC_IDX, UPD_IDX, TYPE_IDX, 
     WATER_TYPE, SYS_BITS) {
     signal input currentInterval;
 
     signal input tTile[N_TL_ATRS];
-    signal input uTile[N_TL_ATRS];
     signal input updatedTroops;
 
     signal output out;
 
-    signal onWater <== IsEqual()([tTile[TYPE_IDX], WATER_TYPE]);
-
     // Forces updatedTroops to be 0 when all troops die
     signal notAllDead <== GreaterEqThan(SYS_BITS)([tTile[RSRC_IDX], 
-        currentInterval - tTile[WTR_UPD_IDX]]);
+        currentInterval - tTile[UPD_IDX]]);
 
     // Updated troop count if tile is a water tile
-    signal circuitUpdatedTroops <== (tTile[RSRC_IDX] + tTile[WTR_UPD_IDX] - 
+    signal circuitUpdatedTroops <== (tTile[RSRC_IDX] + tTile[UPD_IDX] - 
         currentInterval) * notAllDead;
 
-    // Case when on a non-water tile
-    signal case1 <== IsEqual()([updatedTroops, tTile[RSRC_IDX]]);
-
-    // Case when on a water tile
-    signal case2 <== IsEqual()([updatedTroops, circuitUpdatedTroops]);
-
-    // The water update applies iff onWater is true
-    signal troopRsrcCorrect <== Mux1()([case1, case2], onWater);
-
-    signal troopsCounted <== IsEqual()(
-        [currentInterval, uTile[WTR_UPD_IDX]]);
-
-    out <== AND()(troopRsrcCorrect, troopsCounted);
+    // The water update applies if onWater is true
+    out <== IsEqual()([circuitUpdatedTroops, updatedTroops]);
 }
 
 template CheckRsrcCases(N_TL_ATRS, RSRC_IDX) {
@@ -391,7 +436,7 @@ template Move() {
     var RSRC_IDX = 2;
     var KEY_IDX = 3;
     var CITY_IDX = 4;
-    var WTR_UPD_IDX = 5;
+    var UPD_IDX = 5;
     var TYPE_IDX = 6;
 
     // cityId used to look for unowned tiles
@@ -415,6 +460,8 @@ template Move() {
     signal input capturedTile;
     signal input takingCity;
     signal input takingCapital;
+    signal input fromTroopIncrement;
+    signal input toTroopIncrement;
     signal input hTFrom;
     signal input hTTo;
     signal input hUFrom;
@@ -440,7 +487,7 @@ template Move() {
     pubSignalsCorrect === 1;
 
     signal authCorrect <== CheckAuth(N_TL_ATRS, ROW_IDX, COL_IDX, RSRC_IDX, 
-        KEY_IDX, CITY_IDX, WTR_UPD_IDX, TYPE_IDX)(hTFrom, hTTo, hUFrom, hUTo,
+        KEY_IDX, CITY_IDX, UPD_IDX, TYPE_IDX)(hTFrom, hTTo, hUFrom, hUTo,
         fromPkHash, tFrom, tTo, uFrom, uTo, privKeyHash);
     authCorrect === 1;
 
@@ -449,8 +496,9 @@ template Move() {
     stepCorrect === 1;
 
     signal resourcesCorrect <== CheckRsrc(N_TL_ATRS, RSRC_IDX, CITY_IDX, 
-        WTR_UPD_IDX, TYPE_IDX, CITY_TYPE, CAPITAL_TYPE, WATER_TYPE, 
-        UNOWNED_ID, SYS_BITS)(currentInterval, ontoSelfOrUnowned, tFrom, tTo, 
-        uFrom, uTo, fromUpdatedTroops, toUpdatedTroops, ontoMoreOrEq);
+        UPD_IDX, TYPE_IDX, CITY_TYPE, CAPITAL_TYPE, WATER_TYPE, 
+        UNOWNED_ID, SYS_BITS)(currentInterval, ontoSelfOrUnowned, 
+        fromTroopIncrement, toTroopIncrement, tFrom, tTo, uFrom, uTo, 
+        fromUpdatedTroops, toUpdatedTroops, ontoMoreOrEq);
     resourcesCorrect === 1;
 }

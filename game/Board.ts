@@ -379,6 +379,8 @@ export class Board {
                 capturedTile: capturedTile ? "1" : "0",
                 takingCity,
                 takingCapital,
+                fromTroopIncrement: "0",
+                toTroopIncrement: "0",
                 hTFrom: tFrom.hash(),
                 hTTo: tTo.hash(),
                 hUFrom: uFrom.hash(),

@@ -182,10 +182,12 @@ async function getSignatureResponse(sig: string, uFrom: any, uTo: any) {
         capturedTile: formattedProof.input[7],
         takingCity: formattedProof.input[8],
         takingCapital: formattedProof.input[9],
-        hTFrom: formattedProof.input[10],
-        hTTo: formattedProof.input[11],
-        hUFrom: formattedProof.input[12],
-        hUTo: formattedProof.input[13],
+        fromTroopIncrement: formattedProof.input[10],
+        toTroopIncrement: formattedProof.input[11],
+        hTFrom: formattedProof.input[12],
+        hTTo: formattedProof.input[13],
+        hUFrom: formattedProof.input[14],
+        hUTo: formattedProof.input[15],
     };
     const moveProof = {
         a: formattedProof.a,
