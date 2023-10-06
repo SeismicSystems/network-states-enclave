@@ -100,39 +100,42 @@ function updatePlayerView(l: Location) {
  * tile.
  */
 async function move(inp: string) {
-    canMove = false;
+    try {
+        if (inp !== "w" && inp !== "a" && inp !== "s" && inp !== "d") {
+            throw new Error("Invalid move input.");
+        }
 
-    // Construct move states
-    const nr = cursor.r + MOVE_KEYS[inp][0],
-        nc = cursor.c + MOVE_KEYS[inp][1];
+        // Construct move states
+        const nr = cursor.r + MOVE_KEYS[inp][0],
+            nc = cursor.c + MOVE_KEYS[inp][1];
 
-    // Get the current troop/water interval.
-    const currentTroopInterval = (
-        await nStates.currentTroopInterval()
-    ).toNumber();
-    const currentWaterInterval = (
-        await nStates.currentWaterInterval()
-    ).toNumber();
+        if (!b.inBounds(nr, nc)) {
+            throw new Error("Cannot move off the board.");
+        }
 
-    if (PLAYER.bjjPrivHash === undefined) {
-        throw Error("Can't move without a Baby Jubjub private key.");
+        if (PLAYER.bjjPrivHash === undefined) {
+            throw new Error("Can't move without a Baby Jubjub private key.");
+        }
+
+        const [tFrom, tTo, uFrom, uTo, prf, pubSignals] = await b.constructMove(
+            PLAYER.bjjPrivHash,
+            cursor,
+            { r: nr, c: nc },
+            nStates,
+        );
+
+        formattedProof = await Utils.exportCallDataGroth16(prf, pubSignals);
+
+        // Update player position
+        cursor = { r: nr, c: nc };
+
+        canMove = false;
+
+        // Alert enclave of intended move
+        socket.emit("getSignature", uFrom.toJSON(), uTo.toJSON());
+    } catch (error) {
+        console.log(error);
     }
-
-    const [tFrom, tTo, uFrom, uTo, prf, pubSignals] = await b.constructMove(
-        PLAYER.bjjPrivHash,
-        cursor,
-        { r: nr, c: nc },
-        currentTroopInterval,
-        currentWaterInterval
-    );
-
-    formattedProof = await Utils.exportCallDataGroth16(prf, pubSignals);
-
-    // Update player position
-    cursor = { r: nr, c: nc };
-
-    // Alert enclave of intended move
-    socket.emit("getSignature", uFrom.toJSON(), uTo.toJSON());
 }
 
 /*
@@ -166,18 +169,23 @@ async function getSignatureResponse(sig: string, uFrom: any, uTo: any) {
     const unpackedSig: Signature = ethers.utils.splitSignature(sig);
 
     const moveInputs = {
-        troopInterval: formattedProof.input[0],
-        waterInterval: formattedProof.input[1],
-        fromPkHash: formattedProof.input[2],
-        fromCityId: formattedProof.input[3],
-        toCityId: formattedProof.input[4],
-        ontoSelfOrUnowned: formattedProof.input[5],
-        takingCity: formattedProof.input[6],
-        takingCapital: formattedProof.input[7],
-        hTFrom: formattedProof.input[8],
-        hTTo: formattedProof.input[9],
-        hUFrom: formattedProof.input[10],
-        hUTo: formattedProof.input[11],
+        currentWaterInterval: formattedProof.input[0],
+        fromPkHash: formattedProof.input[1],
+        fromCityId: formattedProof.input[2],
+        toCityId: formattedProof.input[3],
+        ontoSelfOrUnowned: formattedProof.input[4],
+        numTroopsMoved: formattedProof.input[5],
+        enemyLoss: formattedProof.input[6],
+        fromIsCityTile: formattedProof.input[7],
+        toIsCityTile: formattedProof.input[8],
+        takingCity: formattedProof.input[9],
+        takingCapital: formattedProof.input[10],
+        fromCityTroops: formattedProof.input[11],
+        toCityTroops: formattedProof.input[12],
+        hTFrom: formattedProof.input[13],
+        hTTo: formattedProof.input[14],
+        hUFrom: formattedProof.input[15],
+        hUTo: formattedProof.input[16],
     };
     const moveProof = {
         a: formattedProof.a,

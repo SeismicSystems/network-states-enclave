@@ -9,32 +9,37 @@ interface IVerifier {
         uint256[2] memory a,
         uint256[2][2] memory b,
         uint256[2] memory c,
-        uint256[12] memory input
+        uint256[17] memory input
     ) external view returns (bool);
 }
 
 struct MoveInputs {
-    uint256 troopInterval;
-    uint256 waterInterval;
+    uint256 currentWaterInterval;
     uint256 fromPkHash;
     uint256 fromCityId;
     uint256 toCityId;
     uint256 ontoSelfOrUnowned;
+    uint256 numTroopsMoved;
+    uint256 enemyLoss;
+    uint256 fromIsCityTile;
+    uint256 toIsCityTile;
     uint256 takingCity;
     uint256 takingCapital;
+    uint256 fromCityTroops;
+    uint256 toCityTroops;
     uint256 hTFrom;
     uint256 hTTo;
     uint256 hUFrom;
     uint256 hUTo;
 }
 
-struct ProofInputs {
+struct Groth16Proof {
     uint256[2] a;
     uint256[2][2] b;
     uint256[2] c;
 }
 
-struct SignatureInputs {
+struct Signature {
     uint8 v;
     bytes32 r;
     bytes32 s;
@@ -47,8 +52,8 @@ contract NStates {
     event NewMove(uint256 hUFrom, uint256 hUTo);
 
     address public owner;
-    uint256 public numBlocksInTroopUpdate;
-    uint256 public numBlocksInWaterUpdate;
+    uint256 public numBlocksInInterval;
+    uint256 public numStartingResources;
 
     mapping(uint256 => uint256) public citiesToPlayer;
     mapping(uint256 => uint256[]) public playerToCities;
@@ -58,16 +63,22 @@ contract NStates {
     // A city's index in player's list of cities. Maintained for O(1) deletion
     mapping(uint256 => uint256) public indexOfCity;
 
+    mapping(uint256 => uint256) public cityArea;
+    mapping(uint256 => uint256) public cityResources;
+
+    mapping(uint256 => uint256) public cityTileResources;
+    mapping(uint256 => uint256) public playerLatestUpdateBlock;
+
     mapping(uint256 => bool) public tileCommitments;
 
     constructor(
         address contractOwner,
-        uint256 nBlocksInTroopUpdate,
-        uint256 nBlocksInWaterUpdate
+        uint256 nBlocksInInterval,
+        uint256 nStartingResources
     ) {
         owner = contractOwner;
-        numBlocksInTroopUpdate = nBlocksInTroopUpdate;
-        numBlocksInWaterUpdate = nBlocksInWaterUpdate;
+        numBlocksInInterval = nBlocksInInterval;
+        numStartingResources = nStartingResources;
     }
 
     /*
@@ -90,7 +101,7 @@ contract NStates {
     /*
      * Game deployer has the ability to initialize players onto the board.
      */
-    function spawn(uint256 pkHash, uint24 cityId, uint256 h) public onlyOwner {
+    function spawn(uint256 pkHash, uint256 cityId, uint256 h) public onlyOwner {
         require(cityId != 0, "City ID must be a non-zero value");
         require(citiesToPlayer[cityId] == 0, "City is already in game");
 
@@ -102,28 +113,31 @@ contract NStates {
         citiesToPlayer[cityId] = pkHash;
         playerToCities[pkHash] = [cityId];
         indexOfCity[cityId] = 0;
+
+        cityArea[cityId] = 1;
+        cityResources[cityId] = numStartingResources;
+
+        cityTileResources[cityId] = numStartingResources;
+        playerLatestUpdateBlock[pkHash] = block.number;
     }
 
     /*
      * Accepts new states for tiles involved in move. Moves must operate on
-     * states whoe commitments are on-chain, AND carry a ZKP anchored to a
+     * states whose commitments are on-chain, AND carry a ZKP anchored to a
      * commited state, AND carry a signature from the enclave.
      */
     function move(
         MoveInputs memory moveInputs,
-        ProofInputs memory moveProof,
-        SignatureInputs memory sig
+        Groth16Proof memory moveProof,
+        Signature memory sig
     ) public {
         require(
-            tileCommitments[moveInputs.hTFrom] && tileCommitments[moveInputs.hTTo],
+            tileCommitments[moveInputs.hTFrom] &&
+                tileCommitments[moveInputs.hTTo],
             "Old tile states must be valid"
         );
         require(
-            currentTroopInterval() >= moveInputs.troopInterval,
-            "Move is too far into the future, change currentTroopInterval value"
-        );
-        require(
-            currentWaterInterval() >= moveInputs.waterInterval,
+            currentWaterInterval() >= moveInputs.currentWaterInterval,
             "Move is too far into the future, change currentWaterInterval value"
         );
         require(
@@ -131,12 +145,12 @@ contract NStates {
             "Must move from a city that you own"
         );
         require(
-            checkOntoSelfOrUnowned(
-                moveInputs.fromPkHash,
-                moveInputs.toCityId,
-                moveInputs.ontoSelfOrUnowned
-            ),
+            checkOntoSelfOrUnowned(moveInputs),
             "Value of ontoSelfOrUnowned is incorrect"
+        );
+        require(
+            checkCityTroops(moveInputs),
+            "Value of fromCityTroops or toCityTroops is incorrect"
         );
         require(
             getSigner(moveInputs.hUFrom, moveInputs.hUTo, sig) == owner,
@@ -158,27 +172,7 @@ contract NStates {
         tileCommitments[moveInputs.hUFrom] = true;
         tileCommitments[moveInputs.hUTo] = true;
 
-        if (moveInputs.takingCity == 1) {
-            transferCityOwnership(
-                moveInputs.fromPkHash,
-                moveInputs.toCityId,
-                moveInputs.ontoSelfOrUnowned
-            );
-        } else if (moveInputs.takingCapital == 1) {
-            uint256 enemy = capitalToPlayer[moveInputs.toCityId];
-
-            while (playerToCities[enemy].length > 0) {
-                uint256 lastIndex = playerToCities[enemy].length - 1;
-                transferCityOwnership(
-                    moveInputs.fromPkHash,
-                    playerToCities[enemy][lastIndex],
-                    0
-                );
-            }
-
-            playerToCapital[enemy] = 0;
-            capitalToPlayer[moveInputs.toCityId] = 0;
-        }
+        updateCityResources(moveInputs);
 
         emit NewMove(moveInputs.hUFrom, moveInputs.hUTo);
     }
@@ -189,15 +183,161 @@ contract NStates {
      * checked onchain.
      */
     function checkOntoSelfOrUnowned(
-        uint256 fromPkHash,
-        uint256 toCityId,
-        uint256 ontoSelfOrUnowned
+        MoveInputs memory mv
     ) internal view returns (bool) {
-        uint256 toCityOwner = citiesToPlayer[toCityId];
-        if (toCityOwner == fromPkHash || toCityOwner == 0) {
-            return ontoSelfOrUnowned == 1;
+        uint256 toCityOwner = citiesToPlayer[mv.toCityId];
+        if (toCityOwner == mv.fromPkHash || toCityOwner == 0) {
+            return mv.ontoSelfOrUnowned == 1;
         }
-        return ontoSelfOrUnowned == 0;
+        return mv.ontoSelfOrUnowned == 0;
+    }
+
+    function checkCityTroops(
+        MoveInputs memory mv
+    ) internal view returns (bool) {
+        bool fromCorrect = true;
+        bool toCorrect = true;
+        if (
+            mv.fromIsCityTile == 1 &&
+            mv.fromCityTroops != cityTileResources[mv.fromCityId]
+        ) {
+            fromCorrect = false;
+        }
+        if (
+            mv.toIsCityTile == 1 &&
+            mv.toCityTroops != cityTileResources[mv.toCityId]
+        ) {
+            toCorrect = false;
+        }
+        return fromCorrect && toCorrect;
+    }
+
+    /*
+     * Helper function for move(). Updates city resource values onchain based on
+     * resource management logic.
+     *
+     * [TODO]: Currently cityTileResources[cityId] = cityResources[cityId]
+     * always. Proper city troop updates increments cityTileResources on every
+     * move.
+     */
+    function updateCityResources(MoveInputs memory mv) internal {
+        // cityResources[fromCityId]
+        if (
+            mv.takingCity == 1 ||
+            mv.takingCapital == 1 ||
+            (mv.ontoSelfOrUnowned == 1 && mv.toCityId != 0)
+        ) {
+            // Taking city/capital, or moving onto self-owned tile
+            decrementCityResources(
+                mv.fromCityId,
+                mv.numTroopsMoved,
+                mv.fromIsCityTile
+            );
+        } else if (mv.ontoSelfOrUnowned == 0) {
+            // Capturing enemy non-city tile or attacking enemy
+            decrementCityResources(
+                mv.fromCityId,
+                mv.enemyLoss,
+                mv.fromIsCityTile
+            );
+        } else if (mv.fromIsCityTile == 1) {
+            // Moving onto unowned tile
+            cityTileResources[mv.fromCityId] -= mv.numTroopsMoved;
+        }
+
+        // cityResources[toCityId]
+        if (mv.ontoSelfOrUnowned == 1 && mv.toCityId != 0) {
+            // Moving onto self-owned tile
+            incrementCityResources(
+                mv.toCityId,
+                mv.numTroopsMoved,
+                mv.toIsCityTile
+            );
+        } else if (mv.takingCity == 1 || mv.takingCapital == 1) {
+            // Taking enemy city/capital
+            incrementCityResources(
+                mv.toCityId,
+                mv.numTroopsMoved - mv.enemyLoss,
+                mv.toIsCityTile
+            );
+        } else if (mv.ontoSelfOrUnowned == 0) {
+            // Capturing enemy non-city tile or attacking enemy
+            decrementCityResources(mv.toCityId, mv.enemyLoss, mv.toIsCityTile);
+        }
+
+        // cityArea[fromCityId] and cityArea[toCityId]
+        if (
+            mv.ontoSelfOrUnowned == 0 &&
+            mv.takingCity == 0 &&
+            mv.takingCapital == 0
+        ) {
+            cityArea[mv.fromCityId]++;
+            cityArea[mv.toCityId]--;
+        } else if (mv.toCityId == 0) {
+            cityArea[mv.fromCityId]++;
+        }
+
+        // Troop updates for all players' cities
+        troopUpdate(citiesToPlayer[mv.fromCityId]);
+        if (mv.toCityId != 0) {
+            troopUpdate(citiesToPlayer[mv.toCityId]);
+        }
+    }
+
+    /*
+     * Adds troops to a city's resource count. If moving onto the actual city
+     * tile, then increment the tile resource count as well.
+     */
+    function incrementCityResources(
+        uint256 cityId,
+        uint256 dTroops,
+        uint256 isCityTile
+    ) internal {
+        cityResources[cityId] += dTroops;
+        if (isCityTile == 1) {
+            cityTileResources[cityId] += dTroops;
+        }
+    }
+
+    /*
+     * Serves same purpose as incrementCityResources, except for subtracting
+     * troops.
+     */
+    function decrementCityResources(
+        uint256 cityId,
+        uint256 dTroops,
+        uint256 isCityTile
+    ) internal {
+        cityResources[cityId] -= dTroops;
+        if (isCityTile == 1) {
+            cityTileResources[cityId] -= dTroops;
+        }
+    }
+
+    /*
+     * Cities troop update. On each move, all of both players' cities are given
+     * troop updates accordingly.
+     *
+     * [TODO]: use the correct formula instead of a temporary one.
+     */
+    function troopUpdate(uint256 pkHash) internal {
+        uint256[] memory cities = playerToCities[pkHash];
+        uint256 numCities = cities.length;
+        uint256 totalArea = 0;
+        uint256 totalResources = 0;
+
+        for (uint256 i = 0; i < numCities; i++) {
+            totalArea += cityArea[cities[i]];
+            totalResources += cityResources[cities[i]];
+        }
+        // [TODO]: fix this formula
+        uint256 inc = ((block.number - playerLatestUpdateBlock[pkHash]) *
+            totalArea *
+            totalResources) / numCities;
+        for (uint256 i = 0; i < numCities; i++) {
+            incrementCityResources(cities[i], inc, 1);
+        }
+        playerLatestUpdateBlock[pkHash] = block.number;
     }
 
     /*
@@ -230,18 +370,21 @@ contract NStates {
     }
 
     /*
-     * Troop updates are counted in intervals, where the current interval is
+     * Troop/water updates are counted in intervals, where the current interval is
      * the current block height divided by interval length.
      */
-    function currentTroopInterval() public view returns (uint256) {
-        return block.number / numBlocksInTroopUpdate;
+    function currentWaterInterval() public view returns (uint256) {
+        return block.number / numBlocksInInterval;
     }
 
     /*
-     * Same as troop updates, but how when players lose troops on water tiles.
+     * Getter for cityTileResources. Used by client to set fromCityTroops and
+     * toCityTroops.
      */
-    function currentWaterInterval() public view returns (uint256) {
-        return block.number / numBlocksInWaterUpdate;
+    function getCityTileResources(
+        uint256 cityId
+    ) public view returns (uint256) {
+        return cityTileResources[cityId];
     }
 
     /*
@@ -251,7 +394,7 @@ contract NStates {
     function getSigner(
         uint256 hUFrom,
         uint256 hUTo,
-        SignatureInputs memory sig
+        Signature memory sig
     ) public pure returns (address) {
         bytes32 hash = keccak256(abi.encode(hUFrom, hUTo));
         bytes32 prefixedHash = keccak256(
@@ -262,16 +405,21 @@ contract NStates {
 
     function toArray(
         MoveInputs memory moveInputs
-    ) internal pure returns (uint256[12] memory) {
+    ) internal pure returns (uint256[17] memory) {
         return [
-            moveInputs.troopInterval,
-            moveInputs.waterInterval,
+            moveInputs.currentWaterInterval,
             moveInputs.fromPkHash,
             moveInputs.fromCityId,
             moveInputs.toCityId,
             moveInputs.ontoSelfOrUnowned,
+            moveInputs.numTroopsMoved,
+            moveInputs.enemyLoss,
+            moveInputs.fromIsCityTile,
+            moveInputs.toIsCityTile,
             moveInputs.takingCity,
             moveInputs.takingCapital,
+            moveInputs.fromCityTroops,
+            moveInputs.toCityTroops,
             moveInputs.hTFrom,
             moveInputs.hTTo,
             moveInputs.hUFrom,

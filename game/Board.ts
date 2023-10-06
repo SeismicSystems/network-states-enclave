@@ -94,7 +94,6 @@ export class Board {
             resource,
             cityId,
             0,
-            0,
             Tile.CAPITAL_TILE
         );
 
@@ -246,19 +245,17 @@ export class Board {
      */
     static computeUpdatedTroops(
         tTile: Tile,
-        currentTroopInterval: number,
+        cityTroops: number,
         currentWaterInterval: number
     ): number {
-        const isUnowned: number = tTile.isUnowned() ? 0 : 1;
-        const deltaTroops: number = tTile.isWater()
-            ? tTile.latestWaterUpdateInterval - currentWaterInterval
-            : 0;
-
-        let updatedTroops = (tTile.resources + deltaTroops) * isUnowned;
-        if (updatedTroops < 0) {
-            updatedTroops = 0;
+        if (tTile.isWater()) {
+            const deltaTroops = tTile.latestUpdateInterval - currentWaterInterval;
+            return Math.max(tTile.resources + deltaTroops, 0);
+        } else if (tTile.isCity() || tTile.isCapital()) {
+            return cityTroops;
         }
-        return updatedTroops;
+
+        return tTile.resources;
     }
 
     /*
@@ -271,7 +268,6 @@ export class Board {
         uFrom: Tile,
         updatedTroops: number,
         nMobilize: number,
-        currentTroopInterval: number,
         currentWaterInterval: number
     ): Tile {
         if (nMobilize < 1) {
@@ -284,7 +280,6 @@ export class Board {
                 tTo.loc,
                 updatedTroops + nMobilize,
                 tTo.cityId,
-                currentTroopInterval,
                 currentWaterInterval,
                 tTo.tileType
             );
@@ -294,7 +289,6 @@ export class Board {
                 tTo.loc,
                 nMobilize,
                 tFrom.cityId,
-                currentTroopInterval,
                 currentWaterInterval,
                 tTo.tileType
             );
@@ -304,7 +298,6 @@ export class Board {
                 tTo.loc,
                 updatedTroops - nMobilize,
                 tTo.cityId,
-                currentTroopInterval,
                 currentWaterInterval,
                 tTo.tileType
             );
@@ -332,21 +325,28 @@ export class Board {
         bjjPrivKeyHash: BigInt,
         from: Location,
         to: Location,
-        currentTroopInterval: number,
-        currentWaterInterval: number
+        nStates: any
     ): Promise<[Tile, Tile, Tile, Tile, Groth16Proof, any]> {
         const tFrom: Tile = this.getTile(from);
         const tTo: Tile = this.getTile(to);
 
+        const currentWaterInterval = (await nStates.currentWaterInterval()).toNumber();
+        const fromCityTroops = (
+            await nStates.getCityTileResources(tFrom.cityId)
+        ).toNumber();
+        const toCityTroops = (
+            await nStates.getCityTileResources(tTo.cityId)
+        ).toNumber();
+
         // Most recent troop counts
         const fromUpdatedTroops = Board.computeUpdatedTroops(
             tFrom,
-            currentTroopInterval,
+            fromCityTroops,
             currentWaterInterval
         );
         const toUpdatedTroops = Board.computeUpdatedTroops(
             tTo,
-            currentTroopInterval,
+            toCityTroops,
             currentWaterInterval
         );
 
@@ -357,7 +357,6 @@ export class Board {
             tFrom.loc,
             fromUpdatedTroops - nMobilize,
             tFrom.cityId,
-            currentTroopInterval,
             currentWaterInterval,
             tFrom.tileType
         );
@@ -367,31 +366,33 @@ export class Board {
             uFrom,
             toUpdatedTroops,
             nMobilize,
-            currentTroopInterval,
             currentWaterInterval
         );
 
+        const enemyLoss = Math.min(toUpdatedTroops, nMobilize);
         const ontoSelfOrUnowned =
             tTo.ownerPubKey() === tFrom.ownerPubKey() || tTo.isUnowned()
                 ? "1"
                 : "0";
-        const takingCity =
-            tTo.isCity() && uTo.ownerPubKey() != tTo.ownerPubKey() ? "1" : "0";
-        const takingCapital =
-            tTo.isCapital() && uTo.ownerPubKey() != tTo.ownerPubKey()
-                ? "1"
-                : "0";
+        const capturedTile = uTo.ownerPubKey() != tTo.ownerPubKey();
+        const takingCity = tTo.isCity() && capturedTile ? "1" : "0";
+        const takingCapital = tTo.isCapital() && capturedTile ? "1" : "0";
 
         const { proof, publicSignals } = await groth16.fullProve(
             {
-                currentTroopInterval: currentTroopInterval.toString(),
                 currentWaterInterval: currentWaterInterval.toString(),
                 fromPkHash: tFrom.owner.pubKeyHash(),
                 fromCityId: tFrom.cityId.toString(),
                 toCityId: tTo.cityId.toString(),
                 ontoSelfOrUnowned,
+                numTroopsMoved: nMobilize.toString(),
+                enemyLoss: enemyLoss.toString(),
+                fromIsCityTile: tFrom.isCity() || tFrom.isCapital() ? "1" : "0",
+                toIsCityTile: tTo.isCity() || tTo.isCapital() ? "1" : "0",
                 takingCity,
                 takingCapital,
+                fromCityTroops: fromCityTroops.toString(),
+                toCityTroops: toCityTroops.toString(),
                 hTFrom: tFrom.hash(),
                 hTTo: tTo.hash(),
                 hUFrom: uFrom.hash(),

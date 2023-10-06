@@ -2,6 +2,7 @@ pragma circom 2.1.1;
 
 include "move.func.circom";
 
-component main { public [ currentTroopInterval, currentWaterInterval, 
-    fromPkHash, fromCityId, toCityId, ontoSelfOrUnowned, takingCity, 
-    takingCapital, hTFrom, hTTo, hUFrom, hUTo ] } = Move();
+component main { public [ currentWaterInterval, fromPkHash, fromCityId, toCityId, 
+    ontoSelfOrUnowned, numTroopsMoved, enemyLoss, fromIsCityTile, 
+    toIsCityTile, takingCity, takingCapital, fromCityTroops, toCityTroops, 
+    hTFrom, hTTo, hUFrom, hUTo ] } = Move();
