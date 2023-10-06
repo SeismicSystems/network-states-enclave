@@ -169,7 +169,7 @@ async function getSignatureResponse(sig: string, uFrom: any, uTo: any) {
     const unpackedSig: Signature = ethers.utils.splitSignature(sig);
 
     const moveInputs = {
-        currentInterval: formattedProof.input[0],
+        currentWaterInterval: formattedProof.input[0],
         fromPkHash: formattedProof.input[1],
         fromCityId: formattedProof.input[2],
         toCityId: formattedProof.input[3],

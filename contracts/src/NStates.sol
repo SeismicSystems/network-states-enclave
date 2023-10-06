@@ -14,7 +14,7 @@ interface IVerifier {
 }
 
 struct MoveInputs {
-    uint256 currentInterval;
+    uint256 currentWaterInterval;
     uint256 fromPkHash;
     uint256 fromCityId;
     uint256 toCityId;
@@ -33,13 +33,13 @@ struct MoveInputs {
     uint256 hUTo;
 }
 
-struct ProofInputs {
+struct Groth16Proof {
     uint256[2] a;
     uint256[2][2] b;
     uint256[2] c;
 }
 
-struct SignatureInputs {
+struct Signature {
     uint8 v;
     bytes32 r;
     bytes32 s;
@@ -128,8 +128,8 @@ contract NStates {
      */
     function move(
         MoveInputs memory moveInputs,
-        ProofInputs memory moveProof,
-        SignatureInputs memory sig
+        Groth16Proof memory moveProof,
+        Signature memory sig
     ) public {
         require(
             tileCommitments[moveInputs.hTFrom] &&
@@ -137,8 +137,8 @@ contract NStates {
             "Old tile states must be valid"
         );
         require(
-            currentInterval() >= moveInputs.currentInterval,
-            "Move is too far into the future, change currentInterval value"
+            currentWaterInterval() >= moveInputs.currentWaterInterval,
+            "Move is too far into the future, change currentWaterInterval value"
         );
         require(
             moveInputs.fromPkHash == citiesToPlayer[moveInputs.fromCityId],
@@ -373,7 +373,7 @@ contract NStates {
      * Troop/water updates are counted in intervals, where the current interval is
      * the current block height divided by interval length.
      */
-    function currentInterval() public view returns (uint256) {
+    function currentWaterInterval() public view returns (uint256) {
         return block.number / numBlocksInInterval;
     }
 
@@ -394,7 +394,7 @@ contract NStates {
     function getSigner(
         uint256 hUFrom,
         uint256 hUTo,
-        SignatureInputs memory sig
+        Signature memory sig
     ) public pure returns (address) {
         bytes32 hash = keccak256(abi.encode(hUFrom, hUTo));
         bytes32 prefixedHash = keccak256(
@@ -407,7 +407,7 @@ contract NStates {
         MoveInputs memory moveInputs
     ) internal pure returns (uint256[17] memory) {
         return [
-            moveInputs.currentInterval,
+            moveInputs.currentWaterInterval,
             moveInputs.fromPkHash,
             moveInputs.fromCityId,
             moveInputs.toCityId,

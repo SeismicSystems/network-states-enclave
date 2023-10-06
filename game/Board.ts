@@ -246,15 +246,11 @@ export class Board {
     static computeUpdatedTroops(
         tTile: Tile,
         cityTroops: number,
-        currentInterval: number
+        currentWaterInterval: number
     ): number {
         if (tTile.isWater()) {
-            const deltaTroops = tTile.latestUpdateInterval - currentInterval;
-            let updatedTroops = tTile.resources + deltaTroops;
-            if (updatedTroops < 0) {
-                updatedTroops = 0;
-            }
-            return updatedTroops;
+            const deltaTroops = tTile.latestUpdateInterval - currentWaterInterval;
+            return Math.max(tTile.resources + deltaTroops, 0);
         } else if (tTile.isCity() || tTile.isCapital()) {
             return cityTroops;
         }
@@ -272,7 +268,7 @@ export class Board {
         uFrom: Tile,
         updatedTroops: number,
         nMobilize: number,
-        currentInterval: number
+        currentWaterInterval: number
     ): Tile {
         if (nMobilize < 1) {
             throw Error("Cannot move without mobilizing at least 1 troop.");
@@ -284,7 +280,7 @@ export class Board {
                 tTo.loc,
                 updatedTroops + nMobilize,
                 tTo.cityId,
-                currentInterval,
+                currentWaterInterval,
                 tTo.tileType
             );
         } else if (tTo.isUnowned()) {
@@ -293,7 +289,7 @@ export class Board {
                 tTo.loc,
                 nMobilize,
                 tFrom.cityId,
-                currentInterval,
+                currentWaterInterval,
                 tTo.tileType
             );
         } else {
@@ -302,7 +298,7 @@ export class Board {
                 tTo.loc,
                 updatedTroops - nMobilize,
                 tTo.cityId,
-                currentInterval,
+                currentWaterInterval,
                 tTo.tileType
             );
             if (uTo.resources < 0) {
@@ -334,7 +330,7 @@ export class Board {
         const tFrom: Tile = this.getTile(from);
         const tTo: Tile = this.getTile(to);
 
-        const currentInterval = (await nStates.currentInterval()).toNumber();
+        const currentWaterInterval = (await nStates.currentWaterInterval()).toNumber();
         const fromCityTroops = (
             await nStates.getCityTileResources(tFrom.cityId)
         ).toNumber();
@@ -346,12 +342,12 @@ export class Board {
         const fromUpdatedTroops = Board.computeUpdatedTroops(
             tFrom,
             fromCityTroops,
-            currentInterval
+            currentWaterInterval
         );
         const toUpdatedTroops = Board.computeUpdatedTroops(
             tTo,
             toCityTroops,
-            currentInterval
+            currentWaterInterval
         );
 
         const nMobilize = fromUpdatedTroops - 1;
@@ -361,7 +357,7 @@ export class Board {
             tFrom.loc,
             fromUpdatedTroops - nMobilize,
             tFrom.cityId,
-            currentInterval,
+            currentWaterInterval,
             tFrom.tileType
         );
         const uTo: Tile = Board.computeOntoTile(
@@ -370,7 +366,7 @@ export class Board {
             uFrom,
             toUpdatedTroops,
             nMobilize,
-            currentInterval
+            currentWaterInterval
         );
 
         const enemyLoss = Math.min(toUpdatedTroops, nMobilize);
@@ -384,7 +380,7 @@ export class Board {
 
         const { proof, publicSignals } = await groth16.fullProve(
             {
-                currentInterval: currentInterval.toString(),
+                currentWaterInterval: currentWaterInterval.toString(),
                 fromPkHash: tFrom.owner.pubKeyHash(),
                 fromCityId: tFrom.cityId.toString(),
                 toCityId: tTo.cityId.toString(),
