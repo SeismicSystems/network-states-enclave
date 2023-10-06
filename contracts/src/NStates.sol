@@ -9,7 +9,7 @@ interface IVerifier {
         uint256[2] memory a,
         uint256[2][2] memory b,
         uint256[2] memory c,
-        uint256[16] memory input
+        uint256[18] memory input
     ) external view returns (bool);
 }
 
@@ -22,10 +22,12 @@ struct MoveInputs {
     uint256 numTroopsMoved;
     uint256 enemyLoss;
     uint256 capturedTile;
+    uint256 fromIsCityTile;
+    uint256 toIsCityTile;
     uint256 takingCity;
     uint256 takingCapital;
-    uint256 fromTroopIncrement;
-    uint256 toTroopIncrement;
+    uint256 fromCityTroops;
+    uint256 toCityTroops;
     uint256 hTFrom;
     uint256 hTTo;
     uint256 hUFrom;
@@ -64,6 +66,7 @@ contract NStates {
 
     mapping(uint256 => uint256) public cityArea;
     mapping(uint256 => uint256) public cityResources;
+    mapping(uint256 => uint256) public cityTileResources;
 
     mapping(uint256 => bool) public tileCommitments;
 
@@ -112,11 +115,12 @@ contract NStates {
 
         cityArea[cityId] = 1;
         cityResources[cityId] = numStartingResources;
+        cityTileResources[cityId] = numStartingResources;
     }
 
     /*
      * Accepts new states for tiles involved in move. Moves must operate on
-     * states whoe commitments are on-chain, AND carry a ZKP anchored to a
+     * states whose commitments are on-chain, AND carry a ZKP anchored to a
      * commited state, AND carry a signature from the enclave.
      */
     function move(
@@ -138,12 +142,12 @@ contract NStates {
             "Must move from a city that you own"
         );
         require(
-            checkOntoSelfOrUnowned(
-                moveInputs.fromPkHash,
-                moveInputs.toCityId,
-                moveInputs.ontoSelfOrUnowned
-            ),
+            checkOntoSelfOrUnowned(moveInputs),
             "Value of ontoSelfOrUnowned is incorrect"
+        );
+        require(
+            checkCityTroops(moveInputs),
+            "Value of fromCityTroops or toCityTroops is incorrect"
         );
         require(
             getSigner(moveInputs.hUFrom, moveInputs.hUTo, sig) == owner,
@@ -170,6 +174,49 @@ contract NStates {
         emit NewMove(moveInputs.hUFrom, moveInputs.hUTo);
     }
 
+    /*
+     * Helper function for move(). Checks if public signal ontoSelfOrUnowned is
+     * set correctly. ontoSelfOrUnowned is used in the ZKP, but must be
+     * checked onchain.
+     */
+    function checkOntoSelfOrUnowned(
+        MoveInputs memory mv
+    ) internal view returns (bool) {
+        uint256 toCityOwner = citiesToPlayer[mv.toCityId];
+        if (toCityOwner == mv.fromPkHash || toCityOwner == 0) {
+            return mv.ontoSelfOrUnowned == 1;
+        }
+        return mv.ontoSelfOrUnowned == 0;
+    }
+
+    function checkCityTroops(
+        MoveInputs memory mv
+    ) internal view returns (bool) {
+        bool fromCorrect = true;
+        bool toCorrect = true;
+        if (
+            mv.fromIsCityTile == 1 &&
+            mv.fromCityTroops != cityTileResources[mv.fromCityId]
+        ) {
+            fromCorrect = false;
+        }
+        if (
+            mv.toIsCityTile == 1 &&
+            mv.toCityTroops != cityTileResources[mv.toCityId]
+        ) {
+            toCorrect = false;
+        }
+        return fromCorrect && toCorrect;
+    }
+
+    /*
+     * Helper function for move(). Updates city resource values onchain based on
+     * resource management logic.
+     *
+     * [TODO]: Currently cityTileResources[cityId] = cityResources[cityId]
+     * always. Proper city troop updates increments cityTileResources on every
+     * move.
+     */
     function updateCityResources(MoveInputs memory mv) internal {
         // cityResources[fromCityId]
         if (
@@ -177,18 +224,42 @@ contract NStates {
             mv.takingCapital == 1 ||
             (mv.ontoSelfOrUnowned == 1 && mv.toCityId != 0)
         ) {
-            cityResources[mv.fromCityId] -= mv.numTroopsMoved;
+            // Taking city/capital, or moving onto self-owned tile
+            decrementCityResources(
+                mv.fromCityId,
+                mv.numTroopsMoved,
+                mv.fromIsCityTile
+            );
         } else if (mv.ontoSelfOrUnowned == 0) {
-            cityResources[mv.fromCityId] -= mv.enemyLoss;
+            // Moving onto enemy non-city tile
+            decrementCityResources(
+                mv.fromCityId,
+                mv.enemyLoss,
+                mv.fromIsCityTile
+            );
+        } else if (mv.fromIsCityTile == 1) {
+            // Moving onto unowned tile
+            cityTileResources[mv.fromCityId] -= mv.numTroopsMoved;
         }
 
         // cityResources[toCityId]
         if (mv.ontoSelfOrUnowned == 1 && mv.toCityId != 0) {
-            cityResources[mv.toCityId] += mv.numTroopsMoved;
+            // Moving onto self-owned tile
+            incrementCityResources(
+                mv.toCityId,
+                mv.numTroopsMoved,
+                mv.toIsCityTile
+            );
         } else if (mv.takingCity == 1 || mv.takingCapital == 1) {
-            cityResources[mv.toCityId] += mv.numTroopsMoved - mv.enemyLoss;
+            // Taking enemy city/capital
+            incrementCityResources(
+                mv.toCityId,
+                mv.numTroopsMoved - mv.enemyLoss,
+                mv.toIsCityTile
+            );
         } else if (mv.ontoSelfOrUnowned == 0) {
-            cityResources[mv.toCityId] -= mv.enemyLoss;
+            // Moving onto enemy non-city tile
+            decrementCityResources(mv.toCityId, mv.enemyLoss, mv.toIsCityTile);
         }
 
         // cityArea[fromCityId] and cityArea[toCityId]
@@ -205,20 +276,33 @@ contract NStates {
     }
 
     /*
-     * Helper function for move(). Checks if public signal ontoSelfOrUnowned is
-     * set correctly. ontoSelfOrUnowned is used in the ZKP, but must be
-     * checked onchain.
+     * Adds troops to a city's resource count. If moving onto the actual city
+     * tile, then increment the tile resource count as well.
      */
-    function checkOntoSelfOrUnowned(
-        uint256 fromPkHash,
-        uint256 toCityId,
-        uint256 ontoSelfOrUnowned
-    ) internal view returns (bool) {
-        uint256 toCityOwner = citiesToPlayer[toCityId];
-        if (toCityOwner == fromPkHash || toCityOwner == 0) {
-            return ontoSelfOrUnowned == 1;
+    function incrementCityResources(
+        uint256 cityId,
+        uint256 dTroops,
+        uint256 isCityTile
+    ) internal {
+        cityResources[cityId] += dTroops;
+        if (isCityTile == 1) {
+            cityTileResources[cityId] += dTroops;
         }
-        return ontoSelfOrUnowned == 0;
+    }
+
+    /*
+     * Serves same purpose as incrementCityResources, except for subtracting
+     * troops.
+     */
+    function decrementCityResources(
+        uint256 cityId,
+        uint256 dTroops,
+        uint256 isCityTile
+    ) internal {
+        cityResources[cityId] -= dTroops;
+        if (isCityTile == 1) {
+            cityTileResources[cityId] -= dTroops;
+        }
     }
 
     /*
@@ -276,7 +360,7 @@ contract NStates {
 
     function toArray(
         MoveInputs memory moveInputs
-    ) internal pure returns (uint256[16] memory) {
+    ) internal pure returns (uint256[18] memory) {
         return [
             moveInputs.currentInterval,
             moveInputs.fromPkHash,
@@ -286,10 +370,12 @@ contract NStates {
             moveInputs.numTroopsMoved,
             moveInputs.enemyLoss,
             moveInputs.capturedTile,
+            moveInputs.fromIsCityTile,
+            moveInputs.toIsCityTile,
             moveInputs.takingCity,
             moveInputs.takingCapital,
-            moveInputs.fromTroopIncrement,
-            moveInputs.toTroopIncrement,
+            moveInputs.fromCityTroops,
+            moveInputs.toCityTroops,
             moveInputs.hTFrom,
             moveInputs.hTTo,
             moveInputs.hUFrom,
