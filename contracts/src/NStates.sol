@@ -68,7 +68,7 @@ contract NStates {
     mapping(uint256 => uint256) public cityResources;
 
     mapping(uint256 => uint256) public cityTileResources;
-    mapping(uint256 => uint256) public cityLatestUpdateBlock;
+    mapping(uint256 => uint256) public playerLatestUpdateBlock;
 
     mapping(uint256 => bool) public tileCommitments;
 
@@ -119,7 +119,7 @@ contract NStates {
         cityResources[cityId] = numStartingResources;
 
         cityTileResources[cityId] = numStartingResources;
-        cityLatestUpdateBlock[cityId] = block.number;
+        playerLatestUpdateBlock[pkHash] = block.number;
     }
 
     /*
@@ -278,20 +278,10 @@ contract NStates {
             cityArea[mv.fromCityId]++;
         }
 
-        incrementCityResources(
-            mv.fromCityId,
-            troopUpdateIncrement(mv.fromCityId),
-            1
-        );
-        cityLatestUpdateBlock[mv.fromCityId] = block.number;
-
+        // Troop updates for all players' cities
+        troopUpdate(citiesToPlayer[mv.fromCityId]);
         if (mv.toCityId != 0) {
-            incrementCityResources(
-                mv.toCityId,
-                troopUpdateIncrement(mv.toCityId),
-                1
-            );
-            cityLatestUpdateBlock[mv.toCityId] = block.number;
+            troopUpdate(citiesToPlayer[mv.toCityId]);
         }
     }
 
@@ -326,26 +316,29 @@ contract NStates {
     }
 
     /*
-     * Computes the troop update that a city tile deserves.
+     * Cities troop update. On each move, all of both players' cities are given
+     * troop updates accordingly.
      *
      * [TODO]: use the correct formula instead of a temporary one.
      */
-    function troopUpdateIncrement(
-        uint256 cityId
-    ) public view returns (uint256) {
-        uint256[] memory cities = playerToCities[citiesToPlayer[cityId]];
+    function troopUpdate(uint256 pkHash) internal {
+        uint256[] memory cities = playerToCities[pkHash];
         uint256 numCities = cities.length;
         uint256 totalArea = 0;
         uint256 totalResources = 0;
-        uint256 latestUpdateBlock = cityLatestUpdateBlock[cityId];
 
         for (uint256 i = 0; i < numCities; i++) {
             totalArea += cityArea[cities[i]];
             totalResources += cityResources[cities[i]];
         }
-        return
-            ((block.number - latestUpdateBlock) * totalArea * totalResources) /
-            numCities;
+        // [TODO]: fix this formula
+        uint256 inc = ((block.number - playerLatestUpdateBlock[pkHash]) *
+            totalArea *
+            totalResources) / numCities;
+        for (uint256 i = 0; i < numCities; i++) {
+            incrementCityResources(cities[i], inc, 1);
+        }
+        playerLatestUpdateBlock[pkHash] = block.number;
     }
 
     /*
