@@ -5,4 +5,5 @@ source ../../.env
 forge create src/NStates.sol:NStates \
     --rpc-url $RPC_URL \
     --private-key $DEV_PRIV_KEY \
-    --constructor-args $DEV_CONTRACT_OWNER $UPDATE_INTERVAL $START_RESOURCES
+    --constructor-args $DEV_CONTRACT_OWNER $UPDATE_INTERVAL $START_RESOURCES \
+        $CLAIMED_MOVE_LIFE_SPAN

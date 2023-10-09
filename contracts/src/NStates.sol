@@ -55,6 +55,7 @@ contract NStates {
     address public owner;
     uint256 public numBlocksInInterval;
     uint256 public numStartingResources;
+    uint256 public claimedMoveLifeSpan;
 
     mapping(uint256 => uint256) public citiesToPlayer;
     mapping(uint256 => uint256[]) public playerToCities;
@@ -73,13 +74,15 @@ contract NStates {
     mapping(uint256 => bool) public tileCommitments;
 
     constructor(
-        address contractOwner,
-        uint256 nBlocksInInterval,
-        uint256 nStartingResources
+        address _owner,
+        uint256 _numBlocksInInterval,
+        uint256 _numStartingResources,
+        uint256 _claimedMoveLifeSpan
     ) {
-        owner = contractOwner;
-        numBlocksInInterval = nBlocksInInterval;
-        numStartingResources = nStartingResources;
+        owner = _owner;
+        numBlocksInInterval = _numBlocksInInterval;
+        numStartingResources = _numStartingResources;
+        claimedMoveLifeSpan = _claimedMoveLifeSpan;
     }
 
     /*
@@ -137,6 +140,10 @@ contract NStates {
                 tileCommitments[moveInputs.hTTo],
             "Old tile states must be valid"
         );
+        // currentBlockHeight > c.blockSubmitted + CLAIMED_MOVE_LIFE_SPAN
+        // require(
+        //     block.number <= sig.b + 
+        // )
         require(
             currentWaterInterval() >= moveInputs.currentWaterInterval,
             "Move is too far into the future, change currentWaterInterval value"

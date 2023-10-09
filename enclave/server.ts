@@ -22,6 +22,15 @@ const START_RESOURCES: number = parseInt(
 );
 
 /*
+ * Number of blocks that a claimed move is allowed to be pending without being
+ * deleted.
+ */
+const CLAIMED_MOVE_LIFE_SPAN = parseInt(
+    <string>process.env.CLAIMED_MOVE_LIFE_SPAN,
+    10
+);
+
+/*
  * Using Socket.IO to manage communication to clients.
  */
 const app = express();
@@ -49,6 +58,7 @@ const nStates = new ethers.Contract(
 type ClaimedMove = {
     uFrom: Tile;
     uTo: Tile;
+    blockSubmitted: number;
 };
 
 /*
@@ -75,6 +85,12 @@ let pubKeyToId = new Map<string, string>();
  * emitted.
  */
 let claimedMoves = new Map<string, ClaimedMove>();
+
+/*
+ * Current block height. Storing the value in a variable saves from
+ * unnecessarily indexing twice.
+ */
+let currentBlockHeight: number;
 
 /*
  * Dev function for spawning a player on the map or logging back in.
@@ -128,20 +144,19 @@ async function getSignature(socket: Socket, uFrom: any, uTo: any) {
     const uToAsTile = Tile.fromJSON(uTo);
     const hUTo = uToAsTile.hash();
 
-    const blockNumber = await nStates.provider.getBlockNumber();
-
     claimedMoves.set(hUFrom.concat(hUTo), {
         uFrom: uFromAsTile,
         uTo: uToAsTile,
+        blockSubmitted: currentBlockHeight,
     });
 
     const digest = utils.solidityKeccak256(
         ["uint256", "uint256", "uint256"],
-        [blockNumber, hUFrom, hUTo]
+        [currentBlockHeight, hUFrom, hUTo]
     );
     const sig = await signer.signMessage(utils.arrayify(digest));
 
-    socket.emit("getSignatureResponse", sig, blockNumber, uFrom, uTo);
+    socket.emit("getSignatureResponse", sig, currentBlockHeight, uFrom, uTo);
 }
 
 /*
@@ -265,6 +280,18 @@ function alertPlayers(
 }
 
 /*
+ * Callback function called on new block events. Deletes claimed moves that
+ * are unresolved for too long.
+ */
+function upkeepClaimedMoves() {
+    for (let [h, c] of claimedMoves.entries()) {
+        if (currentBlockHeight > c.blockSubmitted + CLAIMED_MOVE_LIFE_SPAN) {
+            claimedMoves.delete(h);
+        }
+    }
+}
+
+/*
  * Attach event handlers to a new connection.
  */
 io.on("connection", (socket: Socket) => {
@@ -290,6 +317,15 @@ io.on("connection", (socket: Socket) => {
  */
 nStates.on(nStates.filters.NewMove(), (hUFrom, hUTo) => {
     onMoveFinalize(io, hUFrom.toString(), hUTo.toString());
+});
+
+/*
+ * Event handler for new blocks. Claimed moves that have been stored for too
+ * long should be deleted.
+ */
+nStates.provider.on("block", async (n) => {
+    currentBlockHeight = n;
+    upkeepClaimedMoves();
 });
 
 /*
