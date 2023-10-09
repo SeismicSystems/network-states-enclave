@@ -93,6 +93,11 @@ let claimedMoves = new Map<string, ClaimedMove>();
 let currentBlockHeight: number;
 
 /*
+ * Latest block height players proposed a move.
+ */
+let playerLatestBlock = new Map<string, number>();
+
+/*
  * Dev function for spawning a player on the map or logging back in.
  *
  * [TODO]: the enclave should not be calling the contract's spawn
@@ -139,24 +144,33 @@ async function login(
  * must respond to a leaf event.
  */
 async function getSignature(socket: Socket, uFrom: any, uTo: any) {
-    const uFromAsTile = Tile.fromJSON(uFrom);
-    const hUFrom = uFromAsTile.hash();
-    const uToAsTile = Tile.fromJSON(uTo);
-    const hUTo = uToAsTile.hash();
+    const pubkey = idToPubKey.get(socket.id);
+    if (pubkey) {
+        // Players cannot make more than one move per block
+        const latestBlock = playerLatestBlock.get(pubkey);
+        if (latestBlock && latestBlock < currentBlockHeight) {
+            const uFromAsTile = Tile.fromJSON(uFrom);
+            const hUFrom = uFromAsTile.hash();
+            const uToAsTile = Tile.fromJSON(uTo);
+            const hUTo = uToAsTile.hash();
 
-    claimedMoves.set(hUFrom.concat(hUTo), {
-        uFrom: uFromAsTile,
-        uTo: uToAsTile,
-        blockSubmitted: currentBlockHeight,
-    });
+            claimedMoves.set(hUFrom.concat(hUTo), {
+                uFrom: uFromAsTile,
+                uTo: uToAsTile,
+                blockSubmitted: currentBlockHeight,
+            });
 
-    const digest = utils.solidityKeccak256(
-        ["uint256", "uint256", "uint256"],
-        [currentBlockHeight, hUFrom, hUTo]
-    );
-    const sig = await signer.signMessage(utils.arrayify(digest));
+            const digest = utils.solidityKeccak256(
+                ["uint256", "uint256", "uint256"],
+                [currentBlockHeight, hUFrom, hUTo]
+            );
+            const sig = await signer.signMessage(utils.arrayify(digest));
 
-    socket.emit("getSignatureResponse", sig, currentBlockHeight, uFrom, uTo);
+            socket.emit("signatureResponse", sig, currentBlockHeight);
+        } else {
+            socket.emit("errorResponse", "Cannot move more than once per tick");
+        }
+    }
 }
 
 /*

@@ -121,7 +121,7 @@ async function move(inp: string) {
             PLAYER.bjjPrivHash,
             cursor,
             { r: nr, c: nc },
-            nStates,
+            nStates
         );
 
         formattedProof = await Utils.exportCallDataGroth16(prf, pubSignals);
@@ -165,7 +165,7 @@ function decryptResponse(t: any) {
  * Get signature for move proposal. This signature and the queued move will be
  * sent to the chain for approval.
  */
-async function getSignatureResponse(sig: string, blockNumber: number, uFrom: any, uTo: any) {
+async function signatureResponse(sig: string, blockNumber: number) {
     const unpackedSig: Signature = ethers.utils.splitSignature(sig);
 
     const moveInputs = {
@@ -217,6 +217,10 @@ async function updateDisplay(locs: string[]) {
     }
 }
 
+async function errorResponse(msg: string) {
+    console.log("Enclave error: ", msg);
+}
+
 /*
  * Set up player session with enclave. Spawning if necessary.
  */
@@ -253,5 +257,6 @@ process.stdin.on("keypress", (str) => {
  */
 socket.on("loginResponse", loginResponse);
 socket.on("decryptResponse", decryptResponse);
-socket.on("getSignatureResponse", getSignatureResponse);
+socket.on("signatureResponse", signatureResponse);
+socket.on("errorResponse", errorResponse);
 socket.on("updateDisplay", updateDisplay);
