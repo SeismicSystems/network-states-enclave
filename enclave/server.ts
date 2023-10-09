@@ -128,18 +128,20 @@ async function getSignature(socket: Socket, uFrom: any, uTo: any) {
     const uToAsTile = Tile.fromJSON(uTo);
     const hUTo = uToAsTile.hash();
 
+    const blockNumber = await nStates.provider.getBlockNumber();
+
     claimedMoves.set(hUFrom.concat(hUTo), {
         uFrom: uFromAsTile,
         uTo: uToAsTile,
     });
 
     const digest = utils.solidityKeccak256(
-        ["uint256", "uint256"],
-        [hUFrom, hUTo]
+        ["uint256", "uint256", "uint256"],
+        [blockNumber, hUFrom, hUTo]
     );
     const sig = await signer.signMessage(utils.arrayify(digest));
 
-    socket.emit("getSignatureResponse", sig, uFrom, uTo);
+    socket.emit("getSignatureResponse", sig, blockNumber, uFrom, uTo);
 }
 
 /*

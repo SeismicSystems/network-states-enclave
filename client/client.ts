@@ -165,7 +165,7 @@ function decryptResponse(t: any) {
  * Get signature for move proposal. This signature and the queued move will be
  * sent to the chain for approval.
  */
-async function getSignatureResponse(sig: string, uFrom: any, uTo: any) {
+async function getSignatureResponse(sig: string, blockNumber: number, uFrom: any, uTo: any) {
     const unpackedSig: Signature = ethers.utils.splitSignature(sig);
 
     const moveInputs = {
@@ -196,6 +196,7 @@ async function getSignatureResponse(sig: string, uFrom: any, uTo: any) {
         v: unpackedSig.v,
         r: unpackedSig.r,
         s: unpackedSig.s,
+        b: blockNumber,
     };
 
     await nStates.move(moveInputs, moveProof, moveSig);

@@ -43,6 +43,7 @@ struct Signature {
     uint8 v;
     bytes32 r;
     bytes32 s;
+    uint256 b;
 }
 
 contract NStates {
@@ -396,7 +397,7 @@ contract NStates {
         uint256 hUTo,
         Signature memory sig
     ) public pure returns (address) {
-        bytes32 hash = keccak256(abi.encode(hUFrom, hUTo));
+        bytes32 hash = keccak256(abi.encode(sig.b, hUFrom, hUTo));
         bytes32 prefixedHash = keccak256(
             abi.encodePacked("\x19Ethereum Signed Message:\n32", hash)
         );
