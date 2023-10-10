@@ -77,7 +77,7 @@ let formattedProof: Groth16ProofCalldata;
  * Using Socket.IO to manage communication with enclave.
  */
 const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
-    `http://localhost:${process.env.SERVER_PORT}`
+    `http://localhost:${process.env.ENCLAVE_SERVER_PORT}`
 );
 
 /*

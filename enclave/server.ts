@@ -179,7 +179,8 @@ async function getSignature(socket: Socket, uFrom: any, uTo: any) {
 
             playerLatestBlock.set(pubkey, currentBlockHeight);
         } else {
-            socket.emit("errorResponse", "Cannot move more than once per tick");
+            // Cut the connection
+            disconnectPlayer(socket);
         }
     }
 }
