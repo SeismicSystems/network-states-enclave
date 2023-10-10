@@ -349,7 +349,7 @@ nStates.provider.on("block", async (n) => {
 /*
  * Start server & initialize game.
  */
-server.listen(process.env.SERVER_PORT, async () => {
+server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
     b = new Board();
     await b.seed(BOARD_SIZE, true, nStates);
 
