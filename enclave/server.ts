@@ -172,7 +172,8 @@ async function getSignature(socket: Socket, uFrom: any, uTo: any) {
 
             playerLatestBlock.set(pubkey, currentBlockHeight);
         } else {
-            socket.emit("errorResponse", "Cannot move more than once per tick");
+            // Cut the connection
+            disconnectPlayer(socket);
         }
     }
 }
@@ -349,11 +350,11 @@ nStates.provider.on("block", async (n) => {
 /*
  * Start server & initialize game.
  */
-server.listen(process.env.SERVER_PORT, async () => {
+server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
     b = new Board();
     await b.seed(BOARD_SIZE, true, nStates);
 
     console.log(
-        `Server running on http://localhost:${process.env.SERVER_PORT}`
+        `Server running on http://localhost:${process.env.ENCLAVE_SERVER_PORT}`
     );
 });
