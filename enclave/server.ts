@@ -124,6 +124,8 @@ async function login(
         idToPubKey.set(socket.id, pubkey);
         pubKeyToId.set(pubkey, socket.id);
 
+        playerLatestBlock.set(pubkey, 0);
+
         let visibleTiles = new Set<string>();
         b.playerCities.get(pubkey)?.forEach((cityId: number) => {
             b.cityTiles.get(cityId)?.forEach((locString: string) => {
@@ -148,7 +150,7 @@ async function getSignature(socket: Socket, uFrom: any, uTo: any) {
     if (pubkey) {
         // Players cannot make more than one move per block
         const latestBlock = playerLatestBlock.get(pubkey);
-        if (latestBlock && latestBlock < currentBlockHeight) {
+        if (latestBlock != undefined && latestBlock < currentBlockHeight) {
             const uFromAsTile = Tile.fromJSON(uFrom);
             const hUFrom = uFromAsTile.hash();
             const uToAsTile = Tile.fromJSON(uTo);
@@ -167,6 +169,8 @@ async function getSignature(socket: Socket, uFrom: any, uTo: any) {
             const sig = await signer.signMessage(utils.arrayify(digest));
 
             socket.emit("signatureResponse", sig, currentBlockHeight);
+
+            playerLatestBlock.set(pubkey, currentBlockHeight);
         } else {
             socket.emit("errorResponse", "Cannot move more than once per tick");
         }

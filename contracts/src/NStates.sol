@@ -140,10 +140,10 @@ contract NStates {
                 tileCommitments[moveInputs.hTTo],
             "Old tile states must be valid"
         );
-        // currentBlockHeight > c.blockSubmitted + CLAIMED_MOVE_LIFE_SPAN
-        // require(
-        //     block.number <= sig.b + 
-        // )
+        require(
+            block.number <= sig.b + claimedMoveLifeSpan,
+            "This move is expired, please submit a new move"
+        );
         require(
             currentWaterInterval() >= moveInputs.currentWaterInterval,
             "Move is too far into the future, change currentWaterInterval value"
