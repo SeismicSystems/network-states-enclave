@@ -22,6 +22,15 @@ const START_RESOURCES: number = parseInt(
 );
 
 /*
+ * Number of blocks that a claimed move is allowed to be pending without being
+ * deleted.
+ */
+const CLAIMED_MOVE_LIFE_SPAN = parseInt(
+    <string>process.env.CLAIMED_MOVE_LIFE_SPAN,
+    10
+);
+
+/*
  * Using Socket.IO to manage communication to clients.
  */
 const app = express();
@@ -49,6 +58,7 @@ const nStates = new ethers.Contract(
 type ClaimedMove = {
     uFrom: Tile;
     uTo: Tile;
+    blockSubmitted: number;
 };
 
 /*
@@ -77,6 +87,17 @@ let pubKeyToId = new Map<string, string>();
 let claimedMoves = new Map<string, ClaimedMove>();
 
 /*
+ * Current block height. Storing the value in a variable saves from
+ * unnecessarily indexing twice.
+ */
+let currentBlockHeight: number;
+
+/*
+ * Latest block height players proposed a move.
+ */
+let playerLatestBlock = new Map<string, number>();
+
+/*
  * Dev function for spawning a player on the map or logging back in.
  *
  * [TODO]: the enclave should not be calling the contract's spawn
@@ -103,6 +124,8 @@ async function login(
         idToPubKey.set(socket.id, pubkey);
         pubKeyToId.set(pubkey, socket.id);
 
+        playerLatestBlock.set(pubkey, 0);
+
         let visibleTiles = new Set<string>();
         b.playerCities.get(pubkey)?.forEach((cityId: number) => {
             b.cityTiles.get(cityId)?.forEach((locString: string) => {
@@ -123,23 +146,36 @@ async function login(
  * must respond to a leaf event.
  */
 async function getSignature(socket: Socket, uFrom: any, uTo: any) {
-    const uFromAsTile = Tile.fromJSON(uFrom);
-    const hUFrom = uFromAsTile.hash();
-    const uToAsTile = Tile.fromJSON(uTo);
-    const hUTo = uToAsTile.hash();
+    const pubkey = idToPubKey.get(socket.id);
+    if (pubkey) {
+        // Players cannot make more than one move per block
+        const latestBlock = playerLatestBlock.get(pubkey);
+        if (latestBlock != undefined && latestBlock < currentBlockHeight) {
+            const uFromAsTile = Tile.fromJSON(uFrom);
+            const hUFrom = uFromAsTile.hash();
+            const uToAsTile = Tile.fromJSON(uTo);
+            const hUTo = uToAsTile.hash();
 
-    claimedMoves.set(hUFrom.concat(hUTo), {
-        uFrom: uFromAsTile,
-        uTo: uToAsTile,
-    });
+            claimedMoves.set(hUFrom.concat(hUTo), {
+                uFrom: uFromAsTile,
+                uTo: uToAsTile,
+                blockSubmitted: currentBlockHeight,
+            });
 
-    const digest = utils.solidityKeccak256(
-        ["uint256", "uint256"],
-        [hUFrom, hUTo]
-    );
-    const sig = await signer.signMessage(utils.arrayify(digest));
+            const digest = utils.solidityKeccak256(
+                ["uint256", "uint256", "uint256"],
+                [currentBlockHeight, hUFrom, hUTo]
+            );
+            const sig = await signer.signMessage(utils.arrayify(digest));
 
-    socket.emit("getSignatureResponse", sig, uFrom, uTo);
+            socket.emit("signatureResponse", sig, currentBlockHeight);
+
+            playerLatestBlock.set(pubkey, currentBlockHeight);
+        } else {
+            // Cut the connection
+            disconnectPlayer(socket);
+        }
+    }
 }
 
 /*
@@ -263,6 +299,18 @@ function alertPlayers(
 }
 
 /*
+ * Callback function called on new block events. Deletes claimed moves that
+ * are unresolved for too long.
+ */
+function upkeepClaimedMoves() {
+    for (let [h, c] of claimedMoves.entries()) {
+        if (currentBlockHeight > c.blockSubmitted + CLAIMED_MOVE_LIFE_SPAN) {
+            claimedMoves.delete(h);
+        }
+    }
+}
+
+/*
  * Attach event handlers to a new connection.
  */
 io.on("connection", (socket: Socket) => {
@@ -291,13 +339,22 @@ nStates.on(nStates.filters.NewMove(), (hUFrom, hUTo) => {
 });
 
 /*
+ * Event handler for new blocks. Claimed moves that have been stored for too
+ * long should be deleted.
+ */
+nStates.provider.on("block", async (n) => {
+    currentBlockHeight = n;
+    upkeepClaimedMoves();
+});
+
+/*
  * Start server & initialize game.
  */
-server.listen(process.env.SERVER_PORT, async () => {
+server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
     b = new Board();
     await b.seed(BOARD_SIZE, true, nStates);
 
     console.log(
-        `Server running on http://localhost:${process.env.SERVER_PORT}`
+        `Server running on http://localhost:${process.env.ENCLAVE_SERVER_PORT}`
     );
 });

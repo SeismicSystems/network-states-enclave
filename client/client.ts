@@ -63,9 +63,10 @@ let cursor = PLAYER_START;
 let b: Board;
 
 /*
- * Whether client should wait for move to be finalized.
+ * Last block when player requested an enclave signature. Player's cannot submit
+ * more than one move in a block.
  */
-let canMove: boolean;
+let clientLatestMoveBlock: number;
 
 /*
  * Store pending move.
@@ -76,7 +77,7 @@ let formattedProof: Groth16ProofCalldata;
  * Using Socket.IO to manage communication with enclave.
  */
 const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
-    `http://localhost:${process.env.SERVER_PORT}`
+    `http://localhost:${process.env.ENCLAVE_SERVER_PORT}`
 );
 
 /*
@@ -99,7 +100,7 @@ function updatePlayerView(l: Location) {
  * to chain. Currently hardcoded to move all but one army unit to the next
  * tile.
  */
-async function move(inp: string) {
+async function move(inp: string, currentBlockHeight: number) {
     try {
         if (inp !== "w" && inp !== "a" && inp !== "s" && inp !== "d") {
             throw new Error("Invalid move input.");
@@ -117,19 +118,19 @@ async function move(inp: string) {
             throw new Error("Can't move without a Baby Jubjub private key.");
         }
 
+        clientLatestMoveBlock = currentBlockHeight;
+
         const [tFrom, tTo, uFrom, uTo, prf, pubSignals] = await b.constructMove(
             PLAYER.bjjPrivHash,
             cursor,
             { r: nr, c: nc },
-            nStates,
+            nStates
         );
 
         formattedProof = await Utils.exportCallDataGroth16(prf, pubSignals);
 
         // Update player position
         cursor = { r: nr, c: nc };
-
-        canMove = false;
 
         // Alert enclave of intended move
         socket.emit("getSignature", uFrom.toJSON(), uTo.toJSON());
@@ -146,7 +147,6 @@ async function loginResponse(locs: string[]) {
     updateDisplay(locs);
 
     await Utils.sleep(UPDATE_MLS);
-    canMove = true;
 }
 
 /*
@@ -165,7 +165,7 @@ function decryptResponse(t: any) {
  * Get signature for move proposal. This signature and the queued move will be
  * sent to the chain for approval.
  */
-async function getSignatureResponse(sig: string, uFrom: any, uTo: any) {
+async function signatureResponse(sig: string, blockNumber: number) {
     const unpackedSig: Signature = ethers.utils.splitSignature(sig);
 
     const moveInputs = {
@@ -196,11 +196,10 @@ async function getSignatureResponse(sig: string, uFrom: any, uTo: any) {
         v: unpackedSig.v,
         r: unpackedSig.r,
         s: unpackedSig.s,
+        b: blockNumber,
     };
 
     await nStates.move(moveInputs, moveProof, moveSig);
-
-    canMove = true;
 }
 
 /*
@@ -216,6 +215,10 @@ async function updateDisplay(locs: string[]) {
     }
 }
 
+async function errorResponse(msg: string) {
+    console.log("Enclave error: ", msg);
+}
+
 /*
  * Set up player session with enclave. Spawning if necessary.
  */
@@ -224,6 +227,9 @@ socket.on("connect", async () => {
 
     b = new Board();
     await b.seed(BOARD_SIZE, false, nStates);
+
+    // Player can submit moves starting next block
+    clientLatestMoveBlock = 0;
 
     // Sign socket ID for login
     const sig = PLAYER.genSig(
@@ -241,9 +247,10 @@ socket.on("connect", async () => {
 /*
  * Game loop.
  */
-process.stdin.on("keypress", (str) => {
-    if (canMove) {
-        move(str);
+process.stdin.on("keypress", async (str) => {
+    const currentBlockHeight = await nStates.provider.getBlockNumber();
+    if (clientLatestMoveBlock < currentBlockHeight) {
+        await move(str, currentBlockHeight);
     }
 });
 
@@ -252,5 +259,6 @@ process.stdin.on("keypress", (str) => {
  */
 socket.on("loginResponse", loginResponse);
 socket.on("decryptResponse", decryptResponse);
-socket.on("getSignatureResponse", getSignatureResponse);
+socket.on("signatureResponse", signatureResponse);
+socket.on("errorResponse", errorResponse);
 socket.on("updateDisplay", updateDisplay);

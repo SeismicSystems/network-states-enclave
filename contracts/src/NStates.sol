@@ -43,6 +43,7 @@ struct Signature {
     uint8 v;
     bytes32 r;
     bytes32 s;
+    uint256 b;
 }
 
 contract NStates {
@@ -54,6 +55,7 @@ contract NStates {
     address public owner;
     uint256 public numBlocksInInterval;
     uint256 public numStartingResources;
+    uint256 public claimedMoveLifeSpan;
 
     mapping(uint256 => uint256) public citiesToPlayer;
     mapping(uint256 => uint256[]) public playerToCities;
@@ -72,13 +74,15 @@ contract NStates {
     mapping(uint256 => bool) public tileCommitments;
 
     constructor(
-        address contractOwner,
-        uint256 nBlocksInInterval,
-        uint256 nStartingResources
+        address _owner,
+        uint256 _numBlocksInInterval,
+        uint256 _numStartingResources,
+        uint256 _claimedMoveLifeSpan
     ) {
-        owner = contractOwner;
-        numBlocksInInterval = nBlocksInInterval;
-        numStartingResources = nStartingResources;
+        owner = _owner;
+        numBlocksInInterval = _numBlocksInInterval;
+        numStartingResources = _numStartingResources;
+        claimedMoveLifeSpan = _claimedMoveLifeSpan;
     }
 
     /*
@@ -135,6 +139,10 @@ contract NStates {
             tileCommitments[moveInputs.hTFrom] &&
                 tileCommitments[moveInputs.hTTo],
             "Old tile states must be valid"
+        );
+        require(
+            block.number <= sig.b + claimedMoveLifeSpan,
+            "This move is expired, please submit a new move"
         );
         require(
             currentWaterInterval() >= moveInputs.currentWaterInterval,
@@ -396,7 +404,7 @@ contract NStates {
         uint256 hUTo,
         Signature memory sig
     ) public pure returns (address) {
-        bytes32 hash = keccak256(abi.encode(hUFrom, hUTo));
+        bytes32 hash = keccak256(abi.encode(sig.b, hUFrom, hUTo));
         bytes32 prefixedHash = keccak256(
             abi.encodePacked("\x19Ethereum Signed Message:\n32", hash)
         );
