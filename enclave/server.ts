@@ -1,5 +1,7 @@
 import express from "express";
 import http from "http";
+import axios from "axios";
+import crypto from "crypto";
 import { Server, Socket } from "socket.io";
 import { ethers, utils } from "ethers";
 import dotenv from "dotenv";
@@ -96,6 +98,11 @@ let currentBlockHeight: number;
  * Latest block height players proposed a move.
  */
 let playerLatestBlock = new Map<string, number>();
+
+/*
+ * Signing private key for messages sent to data availability machine.
+ */
+let signingPrivkey: string;
 
 /*
  * Dev function for spawning a player on the map or logging back in.
@@ -350,10 +357,28 @@ nStates.provider.on("block", async (n) => {
  * Start server & initialize game.
  */
 server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
+    const keypair = crypto.generateKeyPairSync("rsa", {
+        modulusLength: 1024,
+        publicKeyEncoding: {
+            type: "spki",
+            format: "pem",
+        },
+        privateKeyEncoding: {
+            type: "pkcs8",
+            format: "pem",
+        },
+    });
+    signingPrivkey = keypair.privateKey;
+
+    await axios.post(
+        `http://localhost:${process.env.DA_SERVER_PORT}/setPubkey`,
+        { pubkey: keypair.publicKey }
+    );
+
     b = new Board();
     await b.seed(BOARD_SIZE, true, nStates);
 
     console.log(
-        `Server running on http://localhost:${process.env.SERVER_PORT}`
+        `Server running on http://localhost:${process.env.ENCLAVE_SERVER_PORT}`
     );
 });
