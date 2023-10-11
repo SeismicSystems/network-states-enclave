@@ -155,20 +155,20 @@ async function login(
 /*
  * Sets the socket ID of the DA node, if not already set.
  */
-function setDASocket(socket: Socket) {
+function setDASocket(socket: Socket, io: Server) {
     if (daSocketId == undefined) {
         daSocketId = socket.id;
 
-        dequeueTiles(socket);
+        dequeueTiles(io);
     } else {
         disconnect(socket);
     }
 }
 
-function dequeueTiles(socket: Socket) {
-    if (encryptedTiles.length > 0) {
+function dequeueTiles(io: Server) {
+    if (daSocketId != undefined && encryptedTiles.length > 0) {
         let ciphertext = encryptedTiles.dequeue();
-        socket.emit("updateDA", ciphertext);
+        io.to(daSocketId).emit("updateDA", ciphertext);
     }
 }
 
@@ -176,9 +176,12 @@ function dequeueTiles(socket: Socket) {
  * Propose move to enclave. In order for the move to be solidified, the enclave
  * must respond to a leaf event.
  */
-async function getSignature(socket: Socket, uFrom: any, uTo: any) {
+async function getSignature(socket: Socket, io: Server, uFrom: any, uTo: any) {
     const pubkey = idToPubKey.get(socket.id);
-    if (pubkey) {
+    if (!pubkey) {
+        // Cut the connection
+        disconnect(socket);
+    } else {
         // Players cannot make more than one move per block
         const latestBlock = playerLatestBlock.get(pubkey);
         if (latestBlock != undefined && latestBlock < currentBlockHeight) {
@@ -200,8 +203,12 @@ async function getSignature(socket: Socket, uFrom: any, uTo: any) {
             const sig = await signer.signMessage(utils.arrayify(digest));
 
             socket.emit("signatureResponse", sig, currentBlockHeight);
-
             playerLatestBlock.set(pubkey, currentBlockHeight);
+
+            // Push to DA
+            encryptedTiles.enqueue(uFromAsTile.toCircuitInput().toString());
+            encryptedTiles.enqueue(uToAsTile.toCircuitInput().toString());
+            dequeueTiles(io);
         } else {
             // Cut the connection
             disconnect(socket);
@@ -354,16 +361,16 @@ io.on("connection", (socket: Socket) => {
         login(socket, l, Player.fromPubString(s, p), sig);
     });
     socket.on("handshakeDA", () => {
-        setDASocket(socket);
+        setDASocket(socket, io);
     });
     socket.on("getSignature", (uFrom: any, uTo: any) => {
-        getSignature(socket, uFrom, uTo);
+        getSignature(socket, io, uFrom, uTo);
     });
     socket.on("decrypt", (l: Location, pubkey: string, sig: string) => {
         decrypt(socket, l, Player.fromPubString("", pubkey), sig);
     });
     socket.on("updateDAResponse", () => {
-        dequeueTiles(socket);
+        dequeueTiles(io);
     });
     socket.on("disconnecting", () => {
         disconnect(socket);

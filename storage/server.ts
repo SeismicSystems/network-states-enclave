@@ -11,7 +11,7 @@ const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
 );
 
 function handshakeDAResponse() {
-    console.log('handshake completed!');
+    console.log("handshake completed!");
 }
 
 function updateDA(ciphertext: string) {
