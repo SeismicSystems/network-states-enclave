@@ -1,29 +1,19 @@
-import express from "express";
+import { io, Socket } from "socket.io-client";
 import dotenv from "dotenv";
 dotenv.config({ path: "../.env" });
+import { ServerToClientEvents, ClientToServerEvents } from "../enclave/socket";
 
 /*
- * Enclave's public-key for signature scheme. Used to verify that sender is
- * enclave and not malicious.
+ * Using Socket.IO to manage communication with enclave.
  */
-let signingPubkey: string | undefined;
+const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
+    `http://localhost:${process.env.ENCLAVE_SERVER_PORT}`
+);
 
-const app = express();
+socket.on("connect", async () => {
+    console.log("Connection with enclave node established");
 
-app.use(express.json());
-
-app.post("/setPubkey", (req, res) => {
-    if (signingPubkey == undefined) {
-        signingPubkey = req.body.pubkey;
-        console.log("pubkey: ", signingPubkey);
-        res.send("Signing public key set");
-    } else {
-        res.send("Cannot reset signing public key");
-    }
+    // [TODO]: upon connecting...
 });
 
-app.listen(process.env.DA_SERVER_PORT, async () => {
-    console.log(
-        `Server running on http://localhost:${process.env.DA_SERVER_PORT}`
-    );
-});
+// [TODO]: socket.on(..., ...);
