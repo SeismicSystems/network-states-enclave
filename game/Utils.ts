@@ -1,8 +1,9 @@
 // @ts-ignore
 import { groth16 } from "snarkjs";
 import { Signature } from "maci-crypto";
+import crypto from "crypto";
 import { BigNumber } from "ethers";
-import { Location } from "./Tile";
+import { Location, Tile } from "./Tile";
 
 export type Groth16Proof = {
     pi_a: [string, string, string];
@@ -118,5 +119,47 @@ export class Utils {
             c: argv.slice(6, 8) as [string, string],
             input: argv.slice(8),
         };
+    }
+
+    /*
+     * Returns a randomly generated AES-256 private key.
+     */
+    static genAESEncKey(): Buffer {
+        return crypto.randomBytes(32);
+    }
+
+    /*
+     * Encrypt tile data with AES-256-GCM cipher. Returns the ciphertext, along
+     * with the IV used and the authTag.
+     */
+    static encryptTile(encKey: Buffer, tile: Tile) {
+        const iv = crypto.randomBytes(16);
+        const cipher = crypto.createCipheriv("aes-256-gcm", encKey, iv);
+        return {
+            ciphertext: Buffer.concat([
+                cipher.update(tile.toCircuitInput().toString()),
+                cipher.final(),
+            ]).toString("hex"),
+            iv: iv.toString("hex"),
+            tag: cipher.getAuthTag().toString("hex"),
+        };
+    }
+
+    /*
+     * Decrypts ciphertext outputted by encryptTile back into a Tile object.
+     */
+    static decryptTile(
+        decKey: Buffer,
+        ciphertext: string,
+        iv: string,
+        tag: string
+    ) {
+        const ivBuffer = Buffer.from(iv, "hex");
+        let decipher = crypto.createDecipheriv("aes-256-gcm", decKey, ivBuffer);
+        decipher.setAuthTag(Buffer.from(tag, "hex"));
+        return Buffer.concat([
+            decipher.update(Buffer.from(ciphertext, "hex")),
+            decipher.final(),
+        ]).toString();
     }
 }

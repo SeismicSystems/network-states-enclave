@@ -14,9 +14,14 @@ function handshakeDAResponse() {
     console.log("handshake completed!");
 }
 
-function updateDA(sender: string, ciphertext: string) {
+function updateDA(sender: string, ciphertext: string, iv: string, tag: string) {
     // [TODO]: add ciphertext to db
-    console.log(sender, " ", ciphertext);
+    console.log("NewEntry {");
+    console.log("   sender: ", sender + ",");
+    console.log("   ciphertext: ", ciphertext + ",");
+    console.log("   iv: ", iv + ",");
+    console.log("   tag: ", tag);
+    console.log("}");
     socket.emit("updateDAResponse");
 }
 

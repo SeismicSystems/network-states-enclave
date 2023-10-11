@@ -65,6 +65,8 @@ type ClaimedMove = {
 type EncryptedTile = {
     sender: string;
     ciphertext: string;
+    iv: string;
+    tag: string;
 };
 
 /*
@@ -102,6 +104,11 @@ let currentBlockHeight: number;
  * Latest block height players proposed a move.
  */
 let playerLatestBlock = new Map<string, number>();
+
+/*
+ * Encryption key for global state sent to DA.
+ */
+let daEnckey: Buffer;
 
 /*
  * Socket ID of DA node.
@@ -164,16 +171,30 @@ function setDASocket(socket: Socket, io: Server) {
     if (daSocketId == undefined) {
         daSocketId = socket.id;
 
-        dequeueTiles(io);
+        dequeueTile(io);
     } else {
         disconnect(socket);
     }
 }
 
-function dequeueTiles(io: Server) {
+/*
+ * Encrypt and enqueue tile.
+ */
+function enqueueTile(sender: string, tile: Tile) {
+    const { ciphertext, iv, tag } = Utils.encryptTile(daEnckey, tile);
+    encryptedTiles.enqueue({ sender, ciphertext, iv, tag });
+}
+
+function dequeueTile(io: Server) {
     if (daSocketId != undefined && encryptedTiles.length > 0) {
         let encTile = encryptedTiles.dequeue();
-        io.to(daSocketId).emit("updateDA", encTile.sender, encTile.ciphertext);
+        io.to(daSocketId).emit(
+            "updateDA",
+            encTile.sender,
+            encTile.ciphertext,
+            encTile.iv,
+            encTile.tag
+        );
     }
 }
 
@@ -211,15 +232,11 @@ async function getSignature(socket: Socket, io: Server, uFrom: any, uTo: any) {
             playerLatestBlock.set(pubkey, currentBlockHeight);
 
             // Push to DA
-            encryptedTiles.enqueue({
-                sender: uFromAsTile.ownerPubKey(),
-                ciphertext: uFromAsTile.toCircuitInput().toString(),
-            });
-            encryptedTiles.enqueue({
-                sender: uToAsTile.ownerPubKey(),
-                ciphertext: uToAsTile.toCircuitInput().toString(),
-            });
-            dequeueTiles(io);
+            enqueueTile(uFromAsTile.ownerPubKey(), uFromAsTile);
+            enqueueTile(uToAsTile.ownerPubKey(), uToAsTile);
+
+            // Clear queue if DA node is online
+            dequeueTile(io);
         } else {
             // Cut the connection
             disconnect(socket);
@@ -381,7 +398,7 @@ io.on("connection", (socket: Socket) => {
         decrypt(socket, l, Player.fromPubString("", pubkey), sig);
     });
     socket.on("updateDAResponse", () => {
-        dequeueTiles(io);
+        dequeueTile(io);
     });
     socket.on("disconnecting", () => {
         disconnect(socket);
@@ -408,15 +425,15 @@ nStates.provider.on("block", async (n) => {
  * Start server & initialize game.
  */
 server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
+    // Generate encryption key
+    daEnckey = Utils.genAESEncKey();
+
     b = new Board();
     await b.seed(BOARD_SIZE, true, nStates);
 
     for (let r = 0; r < BOARD_SIZE; r++) {
         for (let c = 0; c < BOARD_SIZE; c++) {
-            encryptedTiles.enqueue({
-                sender: "init",
-                ciphertext: b.getTile({ r, c }).toCircuitInput().toString(),
-            });
+            enqueueTile("init", b.t[r][c]);
         }
     }
 

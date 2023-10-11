@@ -7,7 +7,12 @@ interface ServerToClientEvents {
     signatureResponse: (sig: string, b: number) => void;
     errorResponse: (msg: string) => void;
     updateDisplay: (locs: string[]) => void;
-    updateDA: (sender: string, ciphertext: string) => void;
+    updateDA: (
+        sender: string,
+        ciphertext: string,
+        iv: string,
+        tag: string
+    ) => void;
 }
 
 interface ClientToServerEvents {
