@@ -100,6 +100,11 @@ let currentBlockHeight: number;
 let playerLatestBlock = new Map<string, number>();
 
 /*
+ * Socket ID of DA node.
+ */
+let daSocketId: string | undefined;
+
+/*
  * Dev function for spawning a player on the map or logging back in.
  *
  * [TODO]: the enclave should not be calling the contract's spawn
@@ -144,6 +149,19 @@ async function login(
 }
 
 /*
+ * Sets the socket ID of the DA node, if not already set.
+ */
+function setDASocket(socket: Socket) {
+    if (daSocketId == undefined) {
+        daSocketId = socket.id;
+
+        socket.emit("handshakeDAResponse");
+    } else {
+        disconnect(socket);
+    }
+}
+
+/*
  * Propose move to enclave. In order for the move to be solidified, the enclave
  * must respond to a leaf event.
  */
@@ -175,7 +193,7 @@ async function getSignature(socket: Socket, uFrom: any, uTo: any) {
             playerLatestBlock.set(pubkey, currentBlockHeight);
         } else {
             // Cut the connection
-            disconnectPlayer(socket);
+            disconnect(socket);
         }
     }
 }
@@ -204,11 +222,14 @@ function decrypt(
  * their public key. This is so that no other player gains that ID and can play
  * on their behalf.
  */
-function disconnectPlayer(socket: Socket) {
+function disconnect(socket: Socket) {
     const pubKey = idToPubKey.get(socket.id);
     if (pubKey) {
         pubKeyToId.delete(pubKey);
         idToPubKey.delete(socket.id);
+    }
+    if (daSocketId == socket.id) {
+        daSocketId = undefined;
     }
 }
 
@@ -321,6 +342,9 @@ io.on("connection", (socket: Socket) => {
     socket.on("login", (l: Location, p: string, s: string, sig: string) => {
         login(socket, l, Player.fromPubString(s, p), sig);
     });
+    socket.on("handshakeDA", () => {
+        setDASocket(socket);
+    });
     socket.on("getSignature", (uFrom: any, uTo: any) => {
         getSignature(socket, uFrom, uTo);
     });
@@ -328,7 +352,7 @@ io.on("connection", (socket: Socket) => {
         decrypt(socket, l, Player.fromPubString("", pubkey), sig);
     });
     socket.on("disconnecting", () => {
-        disconnectPlayer(socket);
+        disconnect(socket);
     });
 });
 
