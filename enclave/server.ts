@@ -62,6 +62,11 @@ type ClaimedMove = {
     blockSubmitted: number;
 };
 
+type EncryptedTile = {
+    sender: string;
+    ciphertext: string;
+};
+
 /*
  * Enclave's internal belief on game state stored in Board object.
  */
@@ -106,7 +111,7 @@ let daSocketId: string | undefined;
 /*
  * Queue of claimed new tile states that have yet to be pushed to DA.
  */
-let encryptedTiles = new Queue<string>();
+let encryptedTiles = new Queue<EncryptedTile>();
 
 /*
  * Dev function for spawning a player on the map or logging back in.
@@ -167,8 +172,8 @@ function setDASocket(socket: Socket, io: Server) {
 
 function dequeueTiles(io: Server) {
     if (daSocketId != undefined && encryptedTiles.length > 0) {
-        let ciphertext = encryptedTiles.dequeue();
-        io.to(daSocketId).emit("updateDA", ciphertext);
+        let encTile = encryptedTiles.dequeue();
+        io.to(daSocketId).emit("updateDA", encTile.sender, encTile.ciphertext);
     }
 }
 
@@ -206,8 +211,14 @@ async function getSignature(socket: Socket, io: Server, uFrom: any, uTo: any) {
             playerLatestBlock.set(pubkey, currentBlockHeight);
 
             // Push to DA
-            encryptedTiles.enqueue(uFromAsTile.toCircuitInput().toString());
-            encryptedTiles.enqueue(uToAsTile.toCircuitInput().toString());
+            encryptedTiles.enqueue({
+                sender: uFromAsTile.ownerPubKey(),
+                ciphertext: uFromAsTile.toCircuitInput().toString(),
+            });
+            encryptedTiles.enqueue({
+                sender: uToAsTile.ownerPubKey(),
+                ciphertext: uToAsTile.toCircuitInput().toString(),
+            });
             dequeueTiles(io);
         } else {
             // Cut the connection
@@ -402,9 +413,10 @@ server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
 
     for (let r = 0; r < BOARD_SIZE; r++) {
         for (let c = 0; c < BOARD_SIZE; c++) {
-            encryptedTiles.enqueue(
-                b.getTile({ r, c }).toCircuitInput().toString()
-            );
+            encryptedTiles.enqueue({
+                sender: "init",
+                ciphertext: b.getTile({ r, c }).toCircuitInput().toString(),
+            });
         }
     }
 

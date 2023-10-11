@@ -14,9 +14,9 @@ function handshakeDAResponse() {
     console.log("handshake completed!");
 }
 
-function updateDA(ciphertext: string) {
+function updateDA(sender: string, ciphertext: string) {
     // [TODO]: add ciphertext to db
-    console.log(ciphertext);
+    console.log(sender, " ", ciphertext);
     socket.emit("updateDAResponse");
 }
 
