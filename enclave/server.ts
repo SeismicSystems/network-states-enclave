@@ -1,7 +1,5 @@
 import express from "express";
 import http from "http";
-import axios from "axios";
-import crypto from "crypto";
 import { Server, Socket } from "socket.io";
 import { ethers, utils } from "ethers";
 import dotenv from "dotenv";
@@ -12,6 +10,7 @@ import {
     InterServerEvents,
     SocketData,
 } from "./socket";
+import { Queue } from "queue-typescript";
 import { Tile, Player, Board, Location, Utils } from "../game";
 
 /*
@@ -105,6 +104,11 @@ let playerLatestBlock = new Map<string, number>();
 let daSocketId: string | undefined;
 
 /*
+ * Queue of claimed new tile states that have yet to be pushed to DA.
+ */
+let encryptedTiles = new Queue<string>();
+
+/*
  * Dev function for spawning a player on the map or logging back in.
  *
  * [TODO]: the enclave should not be calling the contract's spawn
@@ -155,9 +159,16 @@ function setDASocket(socket: Socket) {
     if (daSocketId == undefined) {
         daSocketId = socket.id;
 
-        socket.emit("handshakeDAResponse");
+        dequeueTiles(socket);
     } else {
         disconnect(socket);
+    }
+}
+
+function dequeueTiles(socket: Socket) {
+    if (encryptedTiles.length > 0) {
+        let ciphertext = encryptedTiles.dequeue();
+        socket.emit("updateDA", ciphertext);
     }
 }
 
@@ -351,6 +362,9 @@ io.on("connection", (socket: Socket) => {
     socket.on("decrypt", (l: Location, pubkey: string, sig: string) => {
         decrypt(socket, l, Player.fromPubString("", pubkey), sig);
     });
+    socket.on("updateDAResponse", () => {
+        dequeueTiles(socket);
+    });
     socket.on("disconnecting", () => {
         disconnect(socket);
     });
@@ -378,6 +392,14 @@ nStates.provider.on("block", async (n) => {
 server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
     b = new Board();
     await b.seed(BOARD_SIZE, true, nStates);
+
+    for (let r = 0; r < BOARD_SIZE; r++) {
+        for (let c = 0; c < BOARD_SIZE; c++) {
+            encryptedTiles.enqueue(
+                b.getTile({ r, c }).toCircuitInput().toString()
+            );
+        }
+    }
 
     console.log(
         `Server running on http://localhost:${process.env.ENCLAVE_SERVER_PORT}`

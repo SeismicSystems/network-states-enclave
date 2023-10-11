@@ -909,6 +909,11 @@ js-sha3@0.8.0:
   resolved "https://registry.yarnpkg.com/js-sha3/-/js-sha3-0.8.0.tgz#b9b7a5da73afad7dedd0f8c463954cbde6818840"
   integrity sha512-gF1cRrHhIzNfToc802P800N8PpXS+evLLXfsVpowqmAFR9uwbi89WvXg2QspOmXL8QL86J4T1EpFu+yUkwJY3Q==
 
+linked-list-typescript@^1.0.11:
+  version "1.0.15"
+  resolved "https://registry.yarnpkg.com/linked-list-typescript/-/linked-list-typescript-1.0.15.tgz#faeed93cf9203f102e2158c29edcddda320abe82"
+  integrity sha512-RIyUu9lnJIyIaMe63O7/aFv/T2v3KsMFuXMBbUQCHX+cgtGro86ETDj5ed0a8gQL2+DFjzYYsgVG4I36/cUwgw==
+
 media-typer@0.3.0:
   version "0.3.0"
   resolved "https://registry.yarnpkg.com/media-typer/-/media-typer-0.3.0.tgz#8710d7af0aa626f8fffa1ce00168545263255748"
@@ -1042,6 +1047,13 @@ qs@6.11.0:
   integrity sha512-MvjoMCJwEarSbUYk5O+nmoSzSutSsTwF85zcHPQ9OrlFoZOYIjaqBAJIqIXjptyD5vThxGq52Xu/MaJzRkIk4Q==
   dependencies:
     side-channel "^1.0.4"
+
+queue-typescript@^1.0.1:
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/queue-typescript/-/queue-typescript-1.0.1.tgz#2d7842fc3b3e0e3f33d077887a8f2a5bb0baf460"
+  integrity sha512-tkK08uPfmpPl0cX1WRSU3EoNb/T5zSoZPGkkpfGX4E8QayWvEmLS2cI3pFngNPkNTCU5pCDQ1IwlzN0L5gdFPg==
+  dependencies:
+    linked-list-typescript "^1.0.11"
 
 range-parser@~1.2.1:
   version "1.2.1"

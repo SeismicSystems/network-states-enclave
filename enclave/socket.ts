@@ -7,6 +7,7 @@ interface ServerToClientEvents {
     signatureResponse: (sig: string, b: number) => void;
     errorResponse: (msg: string) => void;
     updateDisplay: (locs: string[]) => void;
+    updateDA: (ciphertext: string) => void;
 }
 
 interface ClientToServerEvents {
@@ -14,6 +15,7 @@ interface ClientToServerEvents {
     handshakeDA: () => void;
     decrypt: (l: Location, pubkey: string, sig: string) => void;
     getSignature: (uFrom: any, uTo: any) => void;
+    updateDAResponse: () => void;
 }
 
 interface InterServerEvents {

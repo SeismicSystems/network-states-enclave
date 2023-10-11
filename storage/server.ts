@@ -14,6 +14,12 @@ function handshakeDAResponse() {
     console.log('handshake completed!');
 }
 
+function updateDA(ciphertext: string) {
+    // [TODO]: add ciphertext to db
+    console.log(ciphertext);
+    socket.emit("updateDAResponse");
+}
+
 socket.on("connect", async () => {
     console.log("Connection with enclave node established");
 
@@ -21,3 +27,4 @@ socket.on("connect", async () => {
 });
 
 socket.on("handshakeDAResponse", handshakeDAResponse);
+socket.on("updateDA", updateDA);
