@@ -2,6 +2,7 @@ import express from "express";
 import http from "http";
 import { Server, Socket } from "socket.io";
 import { ethers, utils } from "ethers";
+import * as fs from "fs";
 import dotenv from "dotenv";
 dotenv.config({ path: "../.env" });
 import {
@@ -427,6 +428,8 @@ nStates.provider.on("block", async (n) => {
 server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
     // Generate encryption key
     daEnckey = Utils.genAESEncKey();
+
+    fs.writeFileSync(process.env.ENC_KEY_PATH!, daEnckey.toString("hex"));
 
     b = new Board();
     await b.seed(BOARD_SIZE, true, nStates);

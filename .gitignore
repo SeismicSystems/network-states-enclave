@@ -1,3 +1,4 @@
 .env
+.secrets
 yarn-error.log
 game/yarn-error.log
