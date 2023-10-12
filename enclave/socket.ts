@@ -7,12 +7,13 @@ interface ServerToClientEvents {
     signatureResponse: (sig: string, b: number) => void;
     errorResponse: (msg: string) => void;
     updateDisplay: (locs: string[]) => void;
-    updateDA: (
+    pushToDA: (
         sender: string,
         ciphertext: string,
         iv: string,
         tag: string
     ) => void;
+    pullFromDA: () => void;
 }
 
 interface ClientToServerEvents {
@@ -20,7 +21,8 @@ interface ClientToServerEvents {
     handshakeDA: () => void;
     decrypt: (l: Location, pubkey: string, sig: string) => void;
     getSignature: (uFrom: any, uTo: any) => void;
-    updateDAResponse: () => void;
+    pushToDAResponse: () => void;
+    pullFromDAResponse: (lastRow: boolean, row: any) => void;
 }
 
 interface InterServerEvents {

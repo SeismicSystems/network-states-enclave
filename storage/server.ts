@@ -21,7 +21,7 @@ function handshakeDAResponse() {
     console.log("handshake completed!");
 }
 
-function updateDA(sender: string, ciphertext: string, iv: string, tag: string) {
+function pushToDA(sender: string, ciphertext: string, iv: string, tag: string) {
     // [TODO]: add ciphertext to db
     console.log("NewEntry {");
     console.log("   sender: ", sender + ",");
@@ -29,7 +29,12 @@ function updateDA(sender: string, ciphertext: string, iv: string, tag: string) {
     console.log("   iv: ", iv + ",");
     console.log("   tag: ", tag);
     console.log("}");
-    socket.emit("updateDAResponse");
+    socket.emit("pushToDAResponse");
+}
+
+function pullFromDA() {
+    // [TODO]: get, delete and send to enclave: first entry of table
+    socket.emit("pullFromDAResponse", true, undefined);
 }
 
 socket.on("connect", async () => {
@@ -47,4 +52,5 @@ socket.on("connect", async () => {
 });
 
 socket.on("handshakeDAResponse", handshakeDAResponse);
-socket.on("updateDA", updateDA);
+socket.on("pushToDA", pushToDA);
+socket.on("pullFromDA", pullFromDA);

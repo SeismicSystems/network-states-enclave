@@ -190,7 +190,7 @@ function dequeueTile(io: Server) {
     if (daSocketId != undefined && encryptedTiles.length > 0) {
         let encTile = encryptedTiles.dequeue();
         io.to(daSocketId).emit(
-            "updateDA",
+            "pushToDA",
             encTile.sender,
             encTile.ciphertext,
             encTile.iv,
@@ -398,8 +398,12 @@ io.on("connection", (socket: Socket) => {
     socket.on("decrypt", (l: Location, pubkey: string, sig: string) => {
         decrypt(socket, l, Player.fromPubString("", pubkey), sig);
     });
-    socket.on("updateDAResponse", () => {
+    socket.on("pushToDAResponse", () => {
         dequeueTile(io);
+    });
+    socket.on("pullFromDAResponse", (lastRow: boolean, row: any) => {
+        // [TODO]: recovery logic
+        console.log(lastRow, row);
     });
     socket.on("disconnecting", () => {
         disconnect(socket);
