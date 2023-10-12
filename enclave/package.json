@@ -12,6 +12,7 @@
     "watch": "^1.0.2"
   },
   "scripts": {
-    "dev": "ts-node server.ts"
+    "dev": "ts-node server.ts 0",
+    "dev:recover": "ts-node server.ts 1"
   }
 }

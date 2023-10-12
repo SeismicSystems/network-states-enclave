@@ -2,7 +2,7 @@ import { Location, Player } from "../game";
 
 interface ServerToClientEvents {
     loginResponse: (locs: string[]) => void;
-    handshakeDAResponse: () => void;
+    handshakeDAResponse: (inRecoveryMode: boolean) => void;
     decryptResponse: (t: any) => void;
     signatureResponse: (sig: string, b: number) => void;
     errorResponse: (msg: string) => void;

@@ -17,8 +17,18 @@ const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
  */
 const pool = new Pool();
 
-function handshakeDAResponse() {
-    console.log("handshake completed!");
+/*
+ * Callback function called after connecting with enclave. If inRecoveryMode is
+ * true, then DA should send all encrypted tiles to the enclave. Otherwise,
+ * clear old data and wait for enclave to submit new tiles.
+ */
+async function handshakeDAResponse(inRecoveryMode: boolean) {
+    if (inRecoveryMode) {
+        // Recover encrypted tiles and send to enclave node
+    } else {
+        // Don't need old encrypted tiles anymore
+        await clearTable();
+    }
 }
 
 /*
@@ -60,8 +70,7 @@ async function clearTable() {
 socket.on("connect", async () => {
     console.log("Connection with enclave node established");
 
-    await clearTable();
-
+    // Set DA's socket ID and query inRecoveryResponse variable
     socket.emit("handshakeDA");
 });
 

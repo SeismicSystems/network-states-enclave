@@ -15,6 +15,11 @@ import { Queue } from "queue-typescript";
 import { Tile, Player, Board, Location, Utils } from "../game";
 
 /*
+ * Whether the enclave's global state should be blank or pull from DA.
+ */
+const inRecoveryMode = process.argv[2] == "1";
+
+/*
  * Set game parameters and create dummy players.
  */
 const BOARD_SIZE: number = parseInt(<string>process.env.BOARD_SIZE, 10);
@@ -109,7 +114,7 @@ let playerLatestBlock = new Map<string, number>();
 /*
  * Encryption key for global state sent to DA.
  */
-let daEnckey: Buffer;
+let tileEncryptionKey: Buffer;
 
 /*
  * Socket ID of DA node.
@@ -166,13 +171,14 @@ async function login(
 }
 
 /*
- * Sets the socket ID of the DA node, if not already set.
+ * Sets the socket ID of the DA node, if not already set. Sends back
+ * inRecoveryMode variable.
  */
-function setDASocket(socket: Socket, io: Server) {
+function handshakeDA(socket: Socket, io: Server) {
     if (daSocketId == undefined) {
         daSocketId = socket.id;
 
-        dequeueTile(io);
+        socket.emit("handshakeDAResponse", inRecoveryMode);
     } else {
         disconnect(socket);
     }
@@ -182,10 +188,13 @@ function setDASocket(socket: Socket, io: Server) {
  * Encrypt and enqueue tile.
  */
 function enqueueTile(sender: string, tile: Tile) {
-    const { ciphertext, iv, tag } = Utils.encryptTile(daEnckey, tile);
+    const { ciphertext, iv, tag } = Utils.encryptTile(tileEncryptionKey, tile);
     encryptedTiles.enqueue({ sender, ciphertext, iv, tag });
 }
 
+/*
+ * Submit encrypted tile to DA node to push into database.
+ */
 function dequeueTile(io: Server) {
     if (daSocketId != undefined && encryptedTiles.length > 0) {
         let encTile = encryptedTiles.dequeue();
@@ -390,7 +399,7 @@ io.on("connection", (socket: Socket) => {
         login(socket, l, Player.fromPubString(s, p), sig);
     });
     socket.on("handshakeDA", () => {
-        setDASocket(socket, io);
+        handshakeDA(socket, io);
     });
     socket.on("getSignature", (uFrom: any, uTo: any) => {
         getSignature(socket, io, uFrom, uTo);
@@ -423,24 +432,40 @@ nStates.on(nStates.filters.NewMove(), (hUFrom, hUTo) => {
  */
 nStates.provider.on("block", async (n) => {
     currentBlockHeight = n;
-    upkeepClaimedMoves();
+    upkeepClaimedMoves(); // [TODO]: also upkeep for DA
 });
 
 /*
  * Start server & initialize game.
  */
 server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
-    // Generate encryption key
-    daEnckey = Utils.genAESEncKey();
-
-    fs.writeFileSync(process.env.ENC_KEY_PATH!, daEnckey.toString("hex"));
-
     b = new Board();
-    await b.seed(BOARD_SIZE, true, nStates);
 
-    for (let r = 0; r < BOARD_SIZE; r++) {
-        for (let c = 0; c < BOARD_SIZE; c++) {
-            enqueueTile("init", b.t[r][c]);
+    if (inRecoveryMode) {
+        // Get previous encryption key
+        tileEncryptionKey = Buffer.from(
+            fs.readFileSync(process.env.ENCRYPTION_KEY_PATH!, {
+                encoding: "utf8",
+            }),
+            "hex"
+        );
+
+        // Cannot recover until DA node connects
+        console.log("In recovery mode, waiting for DA node to connect");
+    } else {
+        // Generate and save encryption key
+        tileEncryptionKey = Utils.genAESEncKey();
+        fs.writeFileSync(
+            process.env.ENCRYPTION_KEY_PATH!,
+            tileEncryptionKey.toString("hex")
+        );
+
+        await b.seed(BOARD_SIZE, true, nStates);
+
+        for (let r = 0; r < BOARD_SIZE; r++) {
+            for (let c = 0; c < BOARD_SIZE; c++) {
+                enqueueTile("init", b.t[r][c]);
+            }
         }
     }
 
