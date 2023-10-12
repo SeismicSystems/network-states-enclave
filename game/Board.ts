@@ -45,8 +45,8 @@ export class Board {
                     }
                     if (nStates) {
                         await nStates.set(tl.hash());
+                        await Utils.sleep(200);
                     }
-                    await Utils.sleep(200);
                     row.push(tl);
                 } else {
                     row.push(Tile.mystery({ r: i, c: j }));
@@ -110,8 +110,10 @@ export class Board {
         );
 
         // Update the global state on-chain.
-        await nStates.spawn(pl.pubKeyHash(), cityId, this.t[r][c].hash());
-        await Utils.sleep(200);
+        if (nStates) {
+            await nStates.spawn(pl.pubKeyHash(), cityId, this.t[r][c].hash());
+            await Utils.sleep(200);
+        }
     }
 
     /*

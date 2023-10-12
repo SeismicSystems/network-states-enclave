@@ -206,7 +206,18 @@ function recoverTileResponse(
     );
     const tile = Tile.unStringifyTile(symbol, pubkey, tileString);
     if (tile) {
-        b.t[tile.loc.r][tile.loc.c] = tile;
+        if (!b.isSpawned(tile.owner)) {
+            b.spawn(
+                tile.loc,
+                tile.owner,
+                START_RESOURCES,
+                tile.cityId,
+                undefined
+            );
+            cityId++;
+        } else {
+            b.setTile(tile);
+        }
     }
     console.log(tile);
 
@@ -501,8 +512,8 @@ server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
             "hex"
         );
 
-        // Populate board with blank tiles
-        b.seed(BOARD_SIZE, false, undefined);
+        // Seed board, but do not update global state
+        await b.seed(BOARD_SIZE, true, undefined);
 
         // Cannot recover until DA node connects
         console.log("In recovery mode, waiting for DA node to connect");
