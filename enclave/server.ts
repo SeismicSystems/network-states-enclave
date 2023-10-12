@@ -127,6 +127,11 @@ let daSocketId: string | undefined;
 let encryptedTiles = new Queue<EncryptedTile>();
 
 /*
+ * Index for retrieving encrypted tiles from DA node.
+ */
+let recoveryModeIndex = 0;
+
+/*
  * Dev function for spawning a player on the map or logging back in.
  *
  * [TODO]: the enclave should not be calling the contract's spawn
@@ -178,10 +183,24 @@ function handshakeDA(socket: Socket, io: Server) {
     if (daSocketId == undefined) {
         daSocketId = socket.id;
 
-        socket.emit("handshakeDAResponse", inRecoveryMode);
+        io.to(daSocketId).emit("handshakeDAResponse", inRecoveryMode);
     } else {
         disconnect(socket);
     }
+}
+
+function recoverTileResponse(
+    socket: Socket,
+    sender: string,
+    ciphertext: string,
+    iv: string,
+    tag: string
+) {
+    // TODO: save to board
+    console.log(sender, ciphertext);
+
+    recoveryModeIndex++;
+    socket.emit("recoverTile", recoveryModeIndex);
 }
 
 /*
@@ -407,12 +426,19 @@ io.on("connection", (socket: Socket) => {
     socket.on("decrypt", (l: Location, pubkey: string, sig: string) => {
         decrypt(socket, l, Player.fromPubString("", pubkey), sig);
     });
+    socket.on(
+        "recoverTileResponse",
+        (sender: string, ciphertext: string, iv: string, tag: string) => {
+            recoverTileResponse(socket, sender, ciphertext, iv, tag);
+        }
+    );
+    socket.on("recoveryFinished", () => {
+        // TODO: finish this
+        recoveryModeIndex = 0;
+        console.log("recovery finished");
+    });
     socket.on("pushToDAResponse", () => {
         dequeueTile(io);
-    });
-    socket.on("pullFromDAResponse", (lastRow: boolean, row: any) => {
-        // [TODO]: recovery logic
-        console.log(lastRow, row);
     });
     socket.on("disconnecting", () => {
         disconnect(socket);
