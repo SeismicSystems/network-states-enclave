@@ -154,6 +154,63 @@ export class Tile {
     }
 
     /*
+     * Returns string representation of tile state.
+     */
+    stringify(): string {
+        return this.toCircuitInput().toString();
+    }
+
+    /*
+     * Converts a stringified Tile back into its native type, or return
+     * undefined if the string is improperly formatted.
+     */
+    static unStringifyTile(symbol: string, owner: string, s: string) {
+        const split = s.split(",");
+        const r = Number(split[0]);
+        const c = Number(split[1]);
+        const rsrc = Number(split[2]);
+        const key = BigInt(split[3]);
+        const cityId = Number(split[4]);
+        const interval = Number(split[5]);
+        const type = Number(split[6]);
+
+        if (
+            split.length != 7 ||
+            isNaN(r) ||
+            isNaN(c) ||
+            isNaN(rsrc) ||
+            isNaN(cityId) ||
+            isNaN(interval) ||
+            isNaN(type)
+        ) {
+            return undefined;
+        }
+        const player = Player.fromPubString(symbol, owner);
+        return new Tile(player, { r, c }, rsrc, key, cityId, interval, type);
+    }
+
+    /*
+     * Converts a Location type into its (unique) string representation.
+     */
+    static stringifyLocation(l: Location): string {
+        return `${l.r},${l.c}`;
+    }
+
+    /*
+     * Convert a stringified Location back into its native type, or return
+     * undefined if the string is improperly formatted.
+     */
+    static unstringifyLocation(s: string): Location | undefined {
+        const split = s.split(",");
+        const r = Number(split[0]);
+        const c = Number(split[1]);
+        if (split.length != 2 || isNaN(r) || isNaN(c)) {
+            return undefined;
+        }
+        return { r, c };
+    }
+
+    /*
      * Convert JSON object to Tile.
      */
     static fromJSON(obj: any): Tile {

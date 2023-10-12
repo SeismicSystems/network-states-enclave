@@ -43,7 +43,9 @@ export class Board {
                     } else {
                         tl = Tile.genUnowned({ r: i, c: j });
                     }
-                    await nStates.set(tl.hash());
+                    if (nStates) {
+                        await nStates.set(tl.hash());
+                    }
                     await Utils.sleep(200);
                     row.push(tl);
                 } else {
@@ -104,7 +106,7 @@ export class Board {
         this.playerCities.set(pubkey, new Set<number>().add(cityId));
         this.cityTiles.set(
             cityId,
-            new Set<string>().add(Utils.stringifyLocation({ r, c }))
+            new Set<string>().add(Tile.stringifyLocation({ r, c }))
         );
 
         // Update the global state on-chain.
@@ -191,7 +193,7 @@ export class Board {
                 this.playerCities.get(newOwner)?.add(tl.cityId);
             } else {
                 // Normal/water tile with a new owner
-                const locString = Utils.stringifyLocation(tl.loc);
+                const locString = Tile.stringifyLocation(tl.loc);
                 this.cityTiles.get(oldTile.cityId)?.delete(locString);
                 this.cityTiles.get(tl.cityId)?.add(locString);
             }
@@ -249,7 +251,8 @@ export class Board {
         currentWaterInterval: number
     ): number {
         if (tTile.isWater()) {
-            const deltaTroops = tTile.latestUpdateInterval - currentWaterInterval;
+            const deltaTroops =
+                tTile.latestUpdateInterval - currentWaterInterval;
             return Math.max(tTile.resources + deltaTroops, 0);
         } else if (tTile.isCity() || tTile.isCapital()) {
             return cityTroops;
@@ -330,7 +333,9 @@ export class Board {
         const tFrom: Tile = this.getTile(from);
         const tTo: Tile = this.getTile(to);
 
-        const currentWaterInterval = (await nStates.currentWaterInterval()).toNumber();
+        const currentWaterInterval = (
+            await nStates.currentWaterInterval()
+        ).toNumber();
         const fromCityTroops = (
             await nStates.getCityTileResources(tFrom.cityId)
         ).toNumber();

@@ -58,7 +58,8 @@ async function recoverTile(index: number) {
 
         socket.emit(
             "recoverTileResponse",
-            res.rows[0].sender,
+            res.rows[0].symbol,
+            res.rows[0].pubkey,
             res.rows[0].ciphertext,
             res.rows[0].iv,
             res.rows[0].tag
@@ -71,16 +72,17 @@ async function recoverTile(index: number) {
  * Adds encrypted tile as row into database.
  */
 async function pushToDA(
-    sender: string,
+    symbol: string,
+    pubkey: string,
     ciphertext: string,
     iv: string,
     tag: string
 ) {
     const client = await pool.connect();
     await client.query(
-        `INSERT INTO encrypted_tiles (sender, ciphertext, iv, tag)
-        VALUES ($1, $2, $3, $4)`,
-        [sender, ciphertext, iv, tag]
+        `INSERT INTO encrypted_tiles (symbol, pubkey, ciphertext, iv, tag)
+        VALUES ($1, $2, $3, $4, $5)`,
+        [symbol, pubkey, ciphertext, iv, tag]
     );
     console.log("insert");
 

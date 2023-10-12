@@ -9,7 +9,8 @@ interface ServerToClientEvents {
     updateDisplay: (locs: string[]) => void;
     recoverTile: (index: number) => void;
     pushToDA: (
-        sender: string,
+        symbol: string,
+        pubkey: string,
         ciphertext: string,
         iv: string,
         tag: string
@@ -22,7 +23,8 @@ interface ClientToServerEvents {
     decrypt: (l: Location, pubkey: string, sig: string) => void;
     getSignature: (uFrom: any, uTo: any) => void;
     recoverTileResponse: (
-        sender: string,
+        symbol: string,
+        pubkey: string,
         ciphertext: string,
         iv: string,
         tag: string

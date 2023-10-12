@@ -69,7 +69,8 @@ type ClaimedMove = {
 };
 
 type EncryptedTile = {
-    sender: string;
+    symbol: string;
+    pubkey: string;
     ciphertext: string;
     iv: string;
     tag: string;
@@ -163,10 +164,10 @@ async function login(
         let visibleTiles = new Set<string>();
         b.playerCities.get(pubkey)?.forEach((cityId: number) => {
             b.cityTiles.get(cityId)?.forEach((locString: string) => {
-                const tl = Utils.unstringifyLocation(locString);
+                const tl = Tile.unstringifyLocation(locString);
                 if (tl) {
                     for (let loc of b.getNearbyLocations(tl)) {
-                        visibleTiles.add(Utils.stringifyLocation(loc));
+                        visibleTiles.add(Tile.stringifyLocation(loc));
                     }
                 }
             });
@@ -182,7 +183,6 @@ async function login(
 function handshakeDA(socket: Socket, io: Server) {
     if (daSocketId == undefined) {
         daSocketId = socket.id;
-
         io.to(daSocketId).emit("handshakeDAResponse", inRecoveryMode);
     } else {
         disconnect(socket);
@@ -191,14 +191,26 @@ function handshakeDA(socket: Socket, io: Server) {
 
 function recoverTileResponse(
     socket: Socket,
-    sender: string,
+    symbol: string,
+    pubkey: string,
     ciphertext: string,
     iv: string,
     tag: string
 ) {
     // TODO: save to board
-    console.log(sender, ciphertext);
+    const tileString = Utils.decryptTile(
+        tileEncryptionKey,
+        ciphertext,
+        iv,
+        tag
+    );
+    const tile = Tile.unStringifyTile(symbol, pubkey, tileString);
+    if (tile) {
+        b.t[tile.loc.r][tile.loc.c] = tile;
+    }
+    console.log(tile);
 
+    // Request next tile
     recoveryModeIndex++;
     socket.emit("recoverTile", recoveryModeIndex);
 }
@@ -206,9 +218,15 @@ function recoverTileResponse(
 /*
  * Encrypt and enqueue tile.
  */
-function enqueueTile(sender: string, tile: Tile) {
+function enqueueTile(tile: Tile) {
     const { ciphertext, iv, tag } = Utils.encryptTile(tileEncryptionKey, tile);
-    encryptedTiles.enqueue({ sender, ciphertext, iv, tag });
+    encryptedTiles.enqueue({
+        symbol: tile.owner.symbol,
+        pubkey: tile.ownerPubKey(),
+        ciphertext,
+        iv,
+        tag,
+    });
 }
 
 /*
@@ -219,7 +237,8 @@ function dequeueTile(io: Server) {
         let encTile = encryptedTiles.dequeue();
         io.to(daSocketId).emit(
             "pushToDA",
-            encTile.sender,
+            encTile.symbol,
+            encTile.pubkey,
             encTile.ciphertext,
             encTile.iv,
             encTile.tag
@@ -261,8 +280,8 @@ async function getSignature(socket: Socket, io: Server, uFrom: any, uTo: any) {
             playerLatestBlock.set(pubkey, currentBlockHeight);
 
             // Push to DA
-            enqueueTile(uFromAsTile.ownerPubKey(), uFromAsTile);
-            enqueueTile(uToAsTile.ownerPubKey(), uToAsTile);
+            enqueueTile(uFromAsTile);
+            enqueueTile(uToAsTile);
 
             // Clear queue if DA node is online
             dequeueTile(io);
@@ -330,7 +349,7 @@ function onMoveFinalize(io: Server, hUFrom: string, hUTo: string) {
         if (ownershipChanged && tTo.isCapital()) {
             b.playerCities.get(prevOwner)?.forEach((cityId: number) => {
                 b.cityTiles.get(cityId)?.forEach((locString: string) => {
-                    const loc = Utils.unstringifyLocation(locString);
+                    const loc = Tile.unstringifyLocation(locString);
                     if (loc) {
                         updatedLocs.push(loc);
                     }
@@ -338,7 +357,7 @@ function onMoveFinalize(io: Server, hUFrom: string, hUTo: string) {
             });
         } else if (ownershipChanged && tTo.isCity()) {
             b.cityTiles.get(tTo.cityId)?.forEach((locString: string) => {
-                const loc = Utils.unstringifyLocation(locString);
+                const loc = Tile.unstringifyLocation(locString);
                 if (loc) {
                     updatedLocs.push(loc);
                 }
@@ -374,10 +393,10 @@ function alertPlayers(
     let alertPlayerMap = new Map<string, Set<string>>();
 
     for (let loc of updatedLocs) {
-        const locString = Utils.stringifyLocation(loc);
+        const locString = Tile.stringifyLocation(loc);
         for (let l of b.getNearbyLocations(loc)) {
             const tileOwner = b.getTile(l).ownerPubKey();
-            const lString = Utils.stringifyLocation(l);
+            const lString = Tile.stringifyLocation(l);
 
             if (!alertPlayerMap.has(tileOwner)) {
                 alertPlayerMap.set(tileOwner, new Set<string>());
@@ -428,8 +447,14 @@ io.on("connection", (socket: Socket) => {
     });
     socket.on(
         "recoverTileResponse",
-        (sender: string, ciphertext: string, iv: string, tag: string) => {
-            recoverTileResponse(socket, sender, ciphertext, iv, tag);
+        (
+            symbol: string,
+            pubkey: string,
+            ciphertext: string,
+            iv: string,
+            tag: string
+        ) => {
+            recoverTileResponse(socket, symbol, pubkey, ciphertext, iv, tag);
         }
     );
     socket.on("recoveryFinished", () => {
@@ -476,6 +501,9 @@ server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
             "hex"
         );
 
+        // Populate board with blank tiles
+        b.seed(BOARD_SIZE, false, undefined);
+
         // Cannot recover until DA node connects
         console.log("In recovery mode, waiting for DA node to connect");
     } else {
@@ -490,7 +518,7 @@ server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
 
         for (let r = 0; r < BOARD_SIZE; r++) {
             for (let c = 0; c < BOARD_SIZE; c++) {
-                enqueueTile("init", b.t[r][c]);
+                enqueueTile(b.t[r][c]);
             }
         }
     }

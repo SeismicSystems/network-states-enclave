@@ -74,27 +74,6 @@ export class Utils {
     }
 
     /*
-     * Converts a Location type into its (unique) string representation.
-     */
-    static stringifyLocation(l: Location): string {
-        return `${l.r},${l.c}`;
-    }
-
-    /*
-     * Convert a stringified Location back into its native type, or return
-     * undefined if the string is improperly formatted.
-     */
-    static unstringifyLocation(s: string): Location | undefined {
-        const split = s.split(",");
-        const r = Number(split[0]);
-        const c = Number(split[1]);
-        if (split.length != 2 || isNaN(r) || isNaN(c)) {
-            return undefined;
-        }
-        return { r, c };
-    }
-
-    /*
      * Formats a proof into what is expected by the solidity verifier.
      * Inspired by https://github.com/vplasencia/zkSudoku/blob/main/contracts/test/utils/utils.js
      */
@@ -137,7 +116,7 @@ export class Utils {
         const cipher = crypto.createCipheriv("aes-256-gcm", encKey, iv);
         return {
             ciphertext: Buffer.concat([
-                cipher.update(tile.toCircuitInput().toString()),
+                cipher.update(tile.stringify()),
                 cipher.final(),
             ]).toString("hex"),
             iv: iv.toString("hex"),
