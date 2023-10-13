@@ -166,6 +166,9 @@ export class Tile {
      */
     static unStringifyTile(symbol: string, owner: string, s: string) {
         const split = s.split(",");
+        if (split[3] == undefined) {
+            return undefined;
+        }
         const r = Number(split[0]);
         const c = Number(split[1]);
         const rsrc = Number(split[2]);

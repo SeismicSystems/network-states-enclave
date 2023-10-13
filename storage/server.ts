@@ -62,7 +62,8 @@ async function recoverTile(index: number) {
             res.rows[0].pubkey,
             res.rows[0].ciphertext,
             res.rows[0].iv,
-            res.rows[0].tag
+            res.rows[0].tag,
+            res.rows[0].isFinalized
         );
     } else {
         socket.emit("recoveryFinished");
@@ -76,13 +77,15 @@ async function pushToDA(
     pubkey: string,
     ciphertext: string,
     iv: string,
-    tag: string
+    tag: string,
+    isFinalized: boolean
 ) {
     const client = await pool.connect();
     await client.query(
-        `INSERT INTO encrypted_tiles (symbol, pubkey, ciphertext, iv, tag)
-        VALUES ($1, $2, $3, $4, $5)`,
-        [symbol, pubkey, ciphertext, iv, tag]
+        `INSERT INTO 
+        encrypted_tiles (symbol, pubkey, ciphertext, iv, tag, finalized)
+        VALUES ($1, $2, $3, $4, $5, $6)`,
+        [symbol, pubkey, ciphertext, iv, tag, isFinalized]
     );
     console.log("insert ", numRows);
 

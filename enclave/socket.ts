@@ -13,7 +13,8 @@ interface ServerToClientEvents {
         pubkey: string,
         ciphertext: string,
         iv: string,
-        tag: string
+        tag: string,
+        isFinalized: boolean
     ) => void;
 }
 
@@ -27,7 +28,8 @@ interface ClientToServerEvents {
         pubkey: string,
         ciphertext: string,
         iv: string,
-        tag: string
+        tag: string,
+        isFinalized: boolean
     ) => void;
     recoveryFinished: () => void;
     pushToDAResponse: () => void;

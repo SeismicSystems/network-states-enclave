@@ -76,6 +76,7 @@ type EncryptedTile = {
     ciphertext: string;
     iv: string;
     tag: string;
+    isFinalized: boolean;
 };
 
 /*
@@ -155,7 +156,7 @@ async function login(
         if (!b.isSpawned(reqPlayer)) {
             await b.spawn(l, reqPlayer, START_RESOURCES, cityId, nStates);
             cityId++;
-            enqueueTile(b.getTile(l));
+            enqueueTile(b.getTile(l), true);
         }
 
         // Attempt to push encrypted tiles to DA
@@ -201,9 +202,9 @@ async function recoverTileResponse(
     pubkey: string,
     ciphertext: string,
     iv: string,
-    tag: string
+    tag: string,
+    isFinalized: boolean
 ) {
-    // TODO: save to board
     const tileString = Utils.decryptTile(
         tileEncryptionKey,
         ciphertext,
@@ -226,8 +227,6 @@ async function recoverTileResponse(
         }
     }
 
-    // [TODO]: first, check if tile hash is on chain. Only if so, then 
-
     // Request next tile
     recoveryModeIndex++;
     socket.emit("recoverTile", recoveryModeIndex);
@@ -236,7 +235,7 @@ async function recoverTileResponse(
 /*
  * Encrypt and enqueue tile.
  */
-function enqueueTile(tile: Tile): EncryptedTile {
+function enqueueTile(tile: Tile, isFinalized: boolean): EncryptedTile {
     const { ciphertext, iv, tag } = Utils.encryptTile(tileEncryptionKey, tile);
     const enc = {
         symbol: tile.owner.symbol,
@@ -244,6 +243,7 @@ function enqueueTile(tile: Tile): EncryptedTile {
         ciphertext,
         iv,
         tag,
+        isFinalized,
     };
     encryptedTiles.enqueue(enc);
     return enc;
@@ -261,7 +261,8 @@ function dequeueTile() {
             encTile.pubkey,
             encTile.ciphertext,
             encTile.iv,
-            encTile.tag
+            encTile.tag,
+            encTile.isFinalized
         );
     }
 }
@@ -285,8 +286,8 @@ async function getSignature(socket: Socket, uFrom: any, uTo: any) {
             const hUTo = uToAsTile.hash();
 
             // Push to DA
-            const uFromEnc = enqueueTile(uFromAsTile);
-            const uToEnc = enqueueTile(uToAsTile);
+            const uFromEnc = enqueueTile(uFromAsTile, false);
+            const uToEnc = enqueueTile(uToAsTile, false);
 
             claimedMoves.set(hUFrom.concat(hUTo), {
                 uFrom: uFromAsTile,
@@ -473,15 +474,24 @@ io.on("connection", (socket: Socket) => {
             pubkey: string,
             ciphertext: string,
             iv: string,
-            tag: string
+            tag: string,
+            isFinalized: boolean
         ) => {
-            recoverTileResponse(socket, symbol, pubkey, ciphertext, iv, tag);
+            recoverTileResponse(
+                socket,
+                symbol,
+                pubkey,
+                ciphertext,
+                iv,
+                tag,
+                isFinalized
+            );
         }
     );
     socket.on("recoveryFinished", () => {
         // TODO: finish this
-        recoveryModeIndex = 0;
         console.log("recovery finished");
+        b.printView();
     });
     socket.on("pushToDAResponse", () => {
         dequeueTile();
@@ -539,7 +549,7 @@ server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
 
         for (let r = 0; r < BOARD_SIZE; r++) {
             for (let c = 0; c < BOARD_SIZE; c++) {
-                enqueueTile(b.t[r][c]);
+                enqueueTile(b.t[r][c], true);
             }
         }
     }
