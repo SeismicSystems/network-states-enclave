@@ -201,17 +201,23 @@ function handshakeDA(socket: Socket) {
     }
 }
 
-async function recoverTileResponse(
-    socket: Socket,
-    symbol: string,
-    pubkey: string,
-    ciphertext: string,
-    iv: string,
-    tag: string,
-    isFinalized: boolean
-) {
+/*
+ * Read from DA node for recovery process.
+ */
+async function recoverTileResponse(socket: Socket, encTile: any) {
     if (daSocketId == undefined || socket.id != daSocketId) {
         disconnect(socket);
+        return;
+    }
+
+    const symbol = encTile.symbol;
+    const pubkey = encTile.pubKey;
+    const ciphertext = encTile.ciphertext;
+    const iv = encTile.iv;
+    const tag = encTile.tag;
+    const isFinalized = encTile.isFinalized;
+
+    if (!symbol || !pubkey || !ciphertext || !iv || !tag || !isFinalized) {
         return;
     }
 
@@ -292,15 +298,7 @@ function enqueueTile(tile: Tile, isFinalized: boolean): EncryptedTile {
 function dequeueTile() {
     if (daSocketId != undefined && encryptedTiles.length > 0) {
         let encTile = encryptedTiles.dequeue();
-        io.to(daSocketId).emit(
-            "pushToDA",
-            encTile.symbol,
-            encTile.pubkey,
-            encTile.ciphertext,
-            encTile.iv,
-            encTile.tag,
-            encTile.isFinalized
-        );
+        io.to(daSocketId).emit("pushToDA", encTile);
     }
 }
 
@@ -391,6 +389,7 @@ function disconnect(socket: Socket) {
     if (daSocketId == socket.id) {
         daSocketId = undefined;
     }
+    console.log("Disconnected:", socket.id);
 }
 
 /*
@@ -504,7 +503,7 @@ function upkeepClaimedMoves() {
  * Attach event handlers to a new connection.
  */
 io.on("connection", (socket: Socket) => {
-    console.log("Client connected: ", socket.id);
+    console.log("Connected: ", socket.id);
 
     socket.on("login", (l: Location, p: string, s: string, sig: string) => {
         login(socket, l, Player.fromPubString(s, p), sig);
@@ -518,27 +517,9 @@ io.on("connection", (socket: Socket) => {
     socket.on("decrypt", (l: Location, pubkey: string, sig: string) => {
         decrypt(socket, l, Player.fromPubString("", pubkey), sig);
     });
-    socket.on(
-        "recoverTileResponse",
-        (
-            symbol: string,
-            pubkey: string,
-            ciphertext: string,
-            iv: string,
-            tag: string,
-            isFinalized: boolean
-        ) => {
-            recoverTileResponse(
-                socket,
-                symbol,
-                pubkey,
-                ciphertext,
-                iv,
-                tag,
-                isFinalized
-            );
-        }
-    );
+    socket.on("recoverTileResponse", (encTile: any) => {
+        recoverTileResponse(socket, encTile);
+    });
     socket.on("recoveryFinished", () => {
         finishRecovery(socket);
     });

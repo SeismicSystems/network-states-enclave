@@ -8,14 +8,7 @@ interface ServerToClientEvents {
     errorResponse: (msg: string) => void;
     updateDisplay: (locs: string[]) => void;
     recoverTile: (index: number) => void;
-    pushToDA: (
-        symbol: string,
-        pubkey: string,
-        ciphertext: string,
-        iv: string,
-        tag: string,
-        isFinalized: boolean
-    ) => void;
+    pushToDA: (enc: any) => void;
 }
 
 interface ClientToServerEvents {
@@ -23,14 +16,7 @@ interface ClientToServerEvents {
     handshakeDA: () => void;
     decrypt: (l: Location, pubkey: string, sig: string) => void;
     getSignature: (uFrom: any, uTo: any) => void;
-    recoverTileResponse: (
-        symbol: string,
-        pubkey: string,
-        ciphertext: string,
-        iv: string,
-        tag: string,
-        isFinalized: boolean
-    ) => void;
+    recoverTileResponse: (enc: any) => void;
     recoveryFinished: () => void;
     pushToDAResponse: () => void;
 }
