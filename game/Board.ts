@@ -187,10 +187,30 @@ export class Board {
                 this.playerCapital.delete(oldOwner);
 
                 for (let cityId of this.playerCities.get(oldOwner)!) {
+                    // Change tiles' ownership
+                    for (let locString of this.cityTiles.get(cityId)!) {
+                        const loc = Tile.unstringifyLocation(locString);
+                        if (loc) {
+                            let tile = this.t[loc.r][loc.c];
+                            tile.owner = tl.owner;
+                            this.t[loc.r][loc.c] = tile;
+                        }
+                    }
+
                     this.playerCities.get(newOwner)?.add(cityId);
                 }
                 this.playerCities.delete(oldOwner);
             } else if (oldTile.isCity()) {
+                // Change tiles' ownership
+                for (let locString of this.cityTiles.get(oldTile.cityId)!) {
+                    const loc = Tile.unstringifyLocation(locString);
+                    if (loc) {
+                        let tile = this.t[loc.r][loc.c];
+                        tile.owner = oldTile.owner;
+                        this.t[loc.r][loc.c] = tile;
+                    }
+                }
+
                 this.playerCities.get(oldOwner)?.delete(tl.cityId);
                 this.playerCities.get(newOwner)?.add(tl.cityId);
             } else {

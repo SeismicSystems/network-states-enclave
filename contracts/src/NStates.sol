@@ -182,6 +182,25 @@ contract NStates {
 
         updateCityResources(moveInputs);
 
+        if (moveInputs.takingCity == 1) {
+            transferCityOwnership(
+                moveInputs.fromPkHash,
+                moveInputs.toCityId,
+                moveInputs.ontoSelfOrUnowned
+            );
+        } else if (moveInputs.takingCapital == 1) {
+            uint256 enemy = citiesToPlayer[moveInputs.toCityId];
+            while (playerToCities[enemy].length > 0) {
+                transferCityOwnership(
+                    moveInputs.fromPkHash,
+                    moveInputs.toCityId,
+                    0
+                );
+            }
+            delete playerToCities[enemy];
+            delete playerToCapital[enemy];
+        }
+
         emit NewMove(moveInputs.hUFrom, moveInputs.hUTo);
     }
 
@@ -342,6 +361,7 @@ contract NStates {
         uint256 inc = ((block.number - playerLatestUpdateBlock[pkHash]) *
             totalArea *
             totalResources) / numCities;
+        inc = 0;
         for (uint256 i = 0; i < numCities; i++) {
             incrementCityResources(cities[i], inc, 1);
         }
