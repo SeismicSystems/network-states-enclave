@@ -17,7 +17,7 @@ import { Tile, Player, Board, Location, Utils } from "../game";
 /*
  * Whether the enclave's global state should be blank or pull from DA.
  */
-const inRecoveryMode = process.argv[2] == "1";
+let inRecoveryMode = process.argv[2] == "1";
 
 /*
  * Set game parameters and create dummy players.
@@ -147,6 +147,11 @@ async function login(
     reqPlayer: Player,
     sigStr: string
 ) {
+    if (inRecoveryMode) {
+        disconnect(socket);
+        return;
+    }
+
     const h = Player.hForLogin(Utils.asciiIntoBigNumber(socket.id));
     const sig = Utils.unserializeSig(sigStr);
     if (sig && reqPlayer.verifySig(h, sig)) {
@@ -205,6 +210,11 @@ async function recoverTileResponse(
     tag: string,
     isFinalized: boolean
 ) {
+    if (daSocketId == undefined || socket.id != daSocketId) {
+        disconnect(socket);
+        return;
+    }
+
     const tileString = Utils.decryptTile(
         tileEncryptionKey,
         ciphertext,
@@ -231,6 +241,32 @@ async function recoverTileResponse(
     // Request next tile
     recoveryModeIndex++;
     socket.emit("recoverTile", recoveryModeIndex);
+}
+
+/*
+ * Continue to push encrypted tiles to DA node.
+ */
+function pushToDAResponse(socket: Socket) {
+    if (daSocketId == undefined || socket.id != daSocketId) {
+        disconnect(socket);
+        return;
+    }
+    dequeueTile();
+}
+
+/*
+ * Wrap-up function when DA reports a finished recovery.
+ */
+function finishRecovery(socket: Socket) {
+    if (daSocketId == undefined || socket.id != daSocketId) {
+        disconnect(socket);
+        return;
+    }
+    console.log("Recovery finished");
+    b.printView();
+
+    // Enable play
+    inRecoveryMode = false;
 }
 
 /*
@@ -274,45 +310,46 @@ function dequeueTile() {
  */
 async function getSignature(socket: Socket, uFrom: any, uTo: any) {
     const pubkey = idToPubKey.get(socket.id);
-    if (!pubkey) {
+    if (!pubkey || inRecoveryMode) {
         // Cut the connection
         disconnect(socket);
+        return;
+    }
+
+    // Players cannot make more than one move per block
+    const latestBlock = playerLatestBlock.get(pubkey);
+    if (latestBlock != undefined && latestBlock < currentBlockHeight) {
+        const uFromAsTile = Tile.fromJSON(uFrom);
+        const hUFrom = uFromAsTile.hash();
+        const uToAsTile = Tile.fromJSON(uTo);
+        const hUTo = uToAsTile.hash();
+
+        // Push to DA
+        const uFromEnc = enqueueTile(uFromAsTile, false);
+        const uToEnc = enqueueTile(uToAsTile, false);
+
+        claimedMoves.set(hUFrom.concat(hUTo), {
+            uFrom: uFromAsTile,
+            uTo: uToAsTile,
+            blockSubmitted: currentBlockHeight,
+            uFromEnc,
+            uToEnc,
+        });
+
+        const digest = utils.solidityKeccak256(
+            ["uint256", "uint256", "uint256"],
+            [currentBlockHeight, hUFrom, hUTo]
+        );
+        const sig = await signer.signMessage(utils.arrayify(digest));
+
+        socket.emit("signatureResponse", sig, currentBlockHeight);
+        playerLatestBlock.set(pubkey, currentBlockHeight);
+
+        // Clear queue if DA node is online
+        dequeueTile();
     } else {
-        // Players cannot make more than one move per block
-        const latestBlock = playerLatestBlock.get(pubkey);
-        if (latestBlock != undefined && latestBlock < currentBlockHeight) {
-            const uFromAsTile = Tile.fromJSON(uFrom);
-            const hUFrom = uFromAsTile.hash();
-            const uToAsTile = Tile.fromJSON(uTo);
-            const hUTo = uToAsTile.hash();
-
-            // Push to DA
-            const uFromEnc = enqueueTile(uFromAsTile, false);
-            const uToEnc = enqueueTile(uToAsTile, false);
-
-            claimedMoves.set(hUFrom.concat(hUTo), {
-                uFrom: uFromAsTile,
-                uTo: uToAsTile,
-                blockSubmitted: currentBlockHeight,
-                uFromEnc,
-                uToEnc,
-            });
-
-            const digest = utils.solidityKeccak256(
-                ["uint256", "uint256", "uint256"],
-                [currentBlockHeight, hUFrom, hUTo]
-            );
-            const sig = await signer.signMessage(utils.arrayify(digest));
-
-            socket.emit("signatureResponse", sig, currentBlockHeight);
-            playerLatestBlock.set(pubkey, currentBlockHeight);
-
-            // Clear queue if DA node is online
-            dequeueTile();
-        } else {
-            // Cut the connection
-            disconnect(socket);
-        }
+        // Cut the connection
+        disconnect(socket);
     }
 }
 
@@ -326,6 +363,11 @@ function decrypt(
     reqPlayer: Player,
     sigStr: string
 ) {
+    if (inRecoveryMode) {
+        disconnect(socket);
+        return;
+    }
+
     const h = Player.hForDecrypt(l);
     const sig = Utils.unserializeSig(sigStr);
     if (sig && reqPlayer.verifySig(h, sig) && b.noFog(l, reqPlayer)) {
@@ -356,6 +398,9 @@ function disconnect(socket: Socket) {
  * into enclave's internal beliefs, and alerts players in range to decrypt.
  */
 function onMoveFinalize(hUFrom: string, hUTo: string) {
+    if (inRecoveryMode) {
+        return;
+    }
     const moveHash = hUFrom.concat(hUTo);
     const move = claimedMoves.get(moveHash);
     if (move) {
@@ -495,12 +540,10 @@ io.on("connection", (socket: Socket) => {
         }
     );
     socket.on("recoveryFinished", () => {
-        // TODO: finish this
-        console.log("recovery finished");
-        b.printView();
+        finishRecovery(socket);
     });
     socket.on("pushToDAResponse", () => {
-        dequeueTile();
+        pushToDAResponse(socket);
     });
     socket.on("disconnecting", () => {
         disconnect(socket);
