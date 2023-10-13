@@ -63,7 +63,7 @@ async function recoverTile(index: number) {
             res.rows[0].ciphertext,
             res.rows[0].iv,
             res.rows[0].tag,
-            res.rows[0].isFinalized
+            res.rows[0].finalized
         );
     } else {
         socket.emit("recoveryFinished");

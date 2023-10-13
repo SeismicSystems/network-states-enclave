@@ -156,11 +156,11 @@ async function login(
         if (!b.isSpawned(reqPlayer)) {
             await b.spawn(l, reqPlayer, START_RESOURCES, cityId, nStates);
             cityId++;
-            enqueueTile(b.getTile(l), true);
-        }
 
-        // Attempt to push encrypted tiles to DA
-        dequeueTile();
+            // Attempt to push encrypted tiles to DA
+            enqueueTile(b.getTile(l), true);
+            dequeueTile();
+        }
 
         // Pair the public key and the socket ID
         idToPubKey.set(socket.id, pubkey);
@@ -212,7 +212,8 @@ async function recoverTileResponse(
         tag
     );
     const tile = Tile.unStringifyTile(symbol, pubkey, tileString);
-    if (tile) {
+    // Push tile into state if it's marked 'finalized' or the hash is onchain
+    if (tile && (isFinalized || (await nStates.tileCommitments(tile.hash())))) {
         if (!b.isSpawned(tile.owner)) {
             b.spawn(
                 tile.loc,
@@ -392,6 +393,11 @@ function onMoveFinalize(hUFrom: string, hUTo: string) {
         // Update state
         b.setTile(move.uFrom);
         b.setTile(move.uTo);
+
+        // Add finalized states and try to send to DA
+        enqueueTile(move.uFrom, true);
+        enqueueTile(move.uTo, true);
+        dequeueTile();
 
         alertPlayers(newOwner, prevOwner, updatedLocs);
     } else {
