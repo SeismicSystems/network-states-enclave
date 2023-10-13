@@ -66,6 +66,8 @@ type ClaimedMove = {
     uFrom: Tile;
     uTo: Tile;
     blockSubmitted: number;
+    uFromEnc: EncryptedTile;
+    uToEnc: EncryptedTile;
 };
 
 type EncryptedTile = {
@@ -128,6 +130,12 @@ let daSocketId: string | undefined;
 let encryptedTiles = new Queue<EncryptedTile>();
 
 /*
+ * Set of claimed tiles that enclave deleted, and DA should as well.
+ * daDeletedTiles is a queue so that dequeuing is clean.
+ */
+let daDeletedTiles = new Queue<EncryptedTile>();
+
+/*
  * Index for retrieving encrypted tiles from DA node.
  */
 let recoveryModeIndex = 0;
@@ -180,7 +188,7 @@ async function login(
  * Sets the socket ID of the DA node, if not already set. Sends back
  * inRecoveryMode variable.
  */
-function handshakeDA(socket: Socket, io: Server) {
+function handshakeDA(socket: Socket) {
     if (daSocketId == undefined) {
         daSocketId = socket.id;
         io.to(daSocketId).emit("handshakeDAResponse", inRecoveryMode);
@@ -229,21 +237,23 @@ function recoverTileResponse(
 /*
  * Encrypt and enqueue tile.
  */
-function enqueueTile(tile: Tile) {
+function enqueueTile(tile: Tile): EncryptedTile {
     const { ciphertext, iv, tag } = Utils.encryptTile(tileEncryptionKey, tile);
-    encryptedTiles.enqueue({
+    const enc = {
         symbol: tile.owner.symbol,
         pubkey: tile.ownerPubKey(),
         ciphertext,
         iv,
         tag,
-    });
+    };
+    encryptedTiles.enqueue(enc);
+    return enc;
 }
 
 /*
  * Submit encrypted tile to DA node to push into database.
  */
-function dequeueTile(io: Server) {
+function dequeueTile() {
     if (daSocketId != undefined && encryptedTiles.length > 0) {
         let encTile = encryptedTiles.dequeue();
         io.to(daSocketId).emit(
@@ -257,11 +267,25 @@ function dequeueTile(io: Server) {
     }
 }
 
+function daRemoveClaimedMove() {
+    if (daSocketId != undefined && daDeletedTiles.length > 0) {
+        let enc = daDeletedTiles.dequeue();
+        io.to(daSocketId).emit(
+            "removeFromDA",
+            enc.symbol,
+            enc.pubkey,
+            enc.ciphertext,
+            enc.iv,
+            enc.tag
+        );
+    }
+}
+
 /*
  * Propose move to enclave. In order for the move to be solidified, the enclave
  * must respond to a leaf event.
  */
-async function getSignature(socket: Socket, io: Server, uFrom: any, uTo: any) {
+async function getSignature(socket: Socket, uFrom: any, uTo: any) {
     const pubkey = idToPubKey.get(socket.id);
     if (!pubkey) {
         // Cut the connection
@@ -275,10 +299,16 @@ async function getSignature(socket: Socket, io: Server, uFrom: any, uTo: any) {
             const uToAsTile = Tile.fromJSON(uTo);
             const hUTo = uToAsTile.hash();
 
+            // Push to DA
+            const uFromEnc = enqueueTile(uFromAsTile);
+            const uToEnc = enqueueTile(uToAsTile);
+
             claimedMoves.set(hUFrom.concat(hUTo), {
                 uFrom: uFromAsTile,
                 uTo: uToAsTile,
                 blockSubmitted: currentBlockHeight,
+                uFromEnc,
+                uToEnc,
             });
 
             const digest = utils.solidityKeccak256(
@@ -290,12 +320,8 @@ async function getSignature(socket: Socket, io: Server, uFrom: any, uTo: any) {
             socket.emit("signatureResponse", sig, currentBlockHeight);
             playerLatestBlock.set(pubkey, currentBlockHeight);
 
-            // Push to DA
-            enqueueTile(uFromAsTile);
-            enqueueTile(uToAsTile);
-
             // Clear queue if DA node is online
-            dequeueTile(io);
+            dequeueTile();
         } else {
             // Cut the connection
             disconnect(socket);
@@ -342,7 +368,7 @@ function disconnect(socket: Socket) {
  * Callback function for when a NewMove event is emitted. Reads claimed move
  * into enclave's internal beliefs, and alerts players in range to decrypt.
  */
-function onMoveFinalize(io: Server, hUFrom: string, hUTo: string) {
+function onMoveFinalize(hUFrom: string, hUTo: string) {
     const moveHash = hUFrom.concat(hUTo);
     const move = claimedMoves.get(moveHash);
     if (move) {
@@ -381,7 +407,7 @@ function onMoveFinalize(io: Server, hUFrom: string, hUTo: string) {
         b.setTile(move.uFrom);
         b.setTile(move.uTo);
 
-        alertPlayers(io, newOwner, prevOwner, updatedLocs);
+        alertPlayers(newOwner, prevOwner, updatedLocs);
     } else {
         console.log(
             `Move: (${hUFrom}, ${hUTo}) was finalized without a signature.`
@@ -396,7 +422,6 @@ function onMoveFinalize(io: Server, hUFrom: string, hUTo: string) {
  * updatedLocs.
  */
 function alertPlayers(
-    io: Server,
     newOwner: string,
     prevOwner: string,
     updatedLocs: Location[]
@@ -434,6 +459,11 @@ function upkeepClaimedMoves() {
     for (let [h, c] of claimedMoves.entries()) {
         if (currentBlockHeight > c.blockSubmitted + CLAIMED_MOVE_LIFE_SPAN) {
             claimedMoves.delete(h);
+
+            daDeletedTiles.enqueue(c.uFromEnc);
+            daDeletedTiles.enqueue(c.uToEnc);
+
+            daRemoveClaimedMove();
         }
     }
 }
@@ -448,10 +478,10 @@ io.on("connection", (socket: Socket) => {
         login(socket, l, Player.fromPubString(s, p), sig);
     });
     socket.on("handshakeDA", () => {
-        handshakeDA(socket, io);
+        handshakeDA(socket);
     });
     socket.on("getSignature", (uFrom: any, uTo: any) => {
-        getSignature(socket, io, uFrom, uTo);
+        getSignature(socket, uFrom, uTo);
     });
     socket.on("decrypt", (l: Location, pubkey: string, sig: string) => {
         decrypt(socket, l, Player.fromPubString("", pubkey), sig);
@@ -474,7 +504,10 @@ io.on("connection", (socket: Socket) => {
         console.log("recovery finished");
     });
     socket.on("pushToDAResponse", () => {
-        dequeueTile(io);
+        dequeueTile();
+    });
+    socket.on("removeFromDAResponse", () => {
+        daRemoveClaimedMove();
     });
     socket.on("disconnecting", () => {
         disconnect(socket);
@@ -485,7 +518,7 @@ io.on("connection", (socket: Socket) => {
  * Event handler for NewMove event. io is passed in so that we can ping players.
  */
 nStates.on(nStates.filters.NewMove(), (hUFrom, hUTo) => {
-    onMoveFinalize(io, hUFrom.toString(), hUTo.toString());
+    onMoveFinalize(hUFrom.toString(), hUTo.toString());
 });
 
 /*
@@ -494,7 +527,7 @@ nStates.on(nStates.filters.NewMove(), (hUFrom, hUTo) => {
  */
 nStates.provider.on("block", async (n) => {
     currentBlockHeight = n;
-    upkeepClaimedMoves(); // [TODO]: also upkeep for DA
+    upkeepClaimedMoves();
 });
 
 /*

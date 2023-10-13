@@ -93,6 +93,28 @@ async function pushToDA(
     socket.emit("pushToDAResponse");
 }
 
+async function removeFromDA(
+    symbol: string,
+    pubkey: string,
+    ciphertext: string,
+    iv: string,
+    tag: string
+) {
+    const client = await pool.connect();
+    await client.query(
+        `DELETE FROM encrypted_tiles
+        WHERE symbol = ${symbol} AND pubkey = ${pubkey} 
+        AND ciphertext = ${ciphertext} AND iv = ${iv} AND tag = ${tag}`
+    );
+    console.log("delete");
+
+    client.release();
+
+    numRows--;
+
+    socket.emit("removeFromDAResponse");
+}
+
 /*
  * Clears the table of past encrypted tiles.
  */
@@ -120,3 +142,4 @@ socket.on("connect", async () => {
 socket.on("handshakeDAResponse", handshakeDAResponse);
 socket.on("recoverTile", recoverTile);
 socket.on("pushToDA", pushToDA);
+socket.on("removeFromDA", removeFromDA);

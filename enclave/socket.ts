@@ -15,6 +15,13 @@ interface ServerToClientEvents {
         iv: string,
         tag: string
     ) => void;
+    removeFromDA: (
+        symbol: string,
+        pubkey: string,
+        ciphertext: string,
+        iv: string,
+        tag: string
+    ) => void;
 }
 
 interface ClientToServerEvents {
@@ -31,6 +38,7 @@ interface ClientToServerEvents {
     ) => void;
     recoveryFinished: () => void;
     pushToDAResponse: () => void;
+    removeFromDAResponse: () => void;
 }
 
 interface InterServerEvents {
