@@ -84,35 +84,13 @@ async function pushToDA(
         VALUES ($1, $2, $3, $4, $5)`,
         [symbol, pubkey, ciphertext, iv, tag]
     );
-    console.log("insert");
+    console.log("insert ", numRows);
 
     client.release();
 
     numRows++;
 
     socket.emit("pushToDAResponse");
-}
-
-async function removeFromDA(
-    symbol: string,
-    pubkey: string,
-    ciphertext: string,
-    iv: string,
-    tag: string
-) {
-    const client = await pool.connect();
-    await client.query(
-        `DELETE FROM encrypted_tiles
-        WHERE symbol = ${symbol} AND pubkey = ${pubkey} 
-        AND ciphertext = ${ciphertext} AND iv = ${iv} AND tag = ${tag}`
-    );
-    console.log("delete");
-
-    client.release();
-
-    numRows--;
-
-    socket.emit("removeFromDAResponse");
 }
 
 /*
@@ -142,4 +120,3 @@ socket.on("connect", async () => {
 socket.on("handshakeDAResponse", handshakeDAResponse);
 socket.on("recoverTile", recoverTile);
 socket.on("pushToDA", pushToDA);
-socket.on("removeFromDA", removeFromDA);

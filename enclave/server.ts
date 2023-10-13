@@ -130,12 +130,6 @@ let daSocketId: string | undefined;
 let encryptedTiles = new Queue<EncryptedTile>();
 
 /*
- * Set of claimed tiles that enclave deleted, and DA should as well.
- * daDeletedTiles is a queue so that dequeuing is clean.
- */
-let daDeletedTiles = new Queue<EncryptedTile>();
-
-/*
  * Index for retrieving encrypted tiles from DA node.
  */
 let recoveryModeIndex = 0;
@@ -161,7 +155,11 @@ async function login(
         if (!b.isSpawned(reqPlayer)) {
             await b.spawn(l, reqPlayer, START_RESOURCES, cityId, nStates);
             cityId++;
+            enqueueTile(b.getTile(l));
         }
+
+        // Attempt to push encrypted tiles to DA
+        dequeueTile();
 
         // Pair the public key and the socket ID
         idToPubKey.set(socket.id, pubkey);
@@ -197,7 +195,7 @@ function handshakeDA(socket: Socket) {
     }
 }
 
-function recoverTileResponse(
+async function recoverTileResponse(
     socket: Socket,
     symbol: string,
     pubkey: string,
@@ -227,7 +225,8 @@ function recoverTileResponse(
             b.setTile(tile);
         }
     }
-    console.log(tile);
+
+    // [TODO]: first, check if tile hash is on chain. Only if so, then 
 
     // Request next tile
     recoveryModeIndex++;
@@ -263,20 +262,6 @@ function dequeueTile() {
             encTile.ciphertext,
             encTile.iv,
             encTile.tag
-        );
-    }
-}
-
-function daRemoveClaimedMove() {
-    if (daSocketId != undefined && daDeletedTiles.length > 0) {
-        let enc = daDeletedTiles.dequeue();
-        io.to(daSocketId).emit(
-            "removeFromDA",
-            enc.symbol,
-            enc.pubkey,
-            enc.ciphertext,
-            enc.iv,
-            enc.tag
         );
     }
 }
@@ -459,11 +444,6 @@ function upkeepClaimedMoves() {
     for (let [h, c] of claimedMoves.entries()) {
         if (currentBlockHeight > c.blockSubmitted + CLAIMED_MOVE_LIFE_SPAN) {
             claimedMoves.delete(h);
-
-            daDeletedTiles.enqueue(c.uFromEnc);
-            daDeletedTiles.enqueue(c.uToEnc);
-
-            daRemoveClaimedMove();
         }
     }
 }
@@ -505,9 +485,6 @@ io.on("connection", (socket: Socket) => {
     });
     socket.on("pushToDAResponse", () => {
         dequeueTile();
-    });
-    socket.on("removeFromDAResponse", () => {
-        daRemoveClaimedMove();
     });
     socket.on("disconnecting", () => {
         disconnect(socket);
