@@ -76,7 +76,6 @@ type EncryptedTile = {
     ciphertext: string;
     iv: string;
     tag: string;
-    isFinalized: boolean;
 };
 
 /*
@@ -163,7 +162,7 @@ async function login(
             cityId++;
 
             // Attempt to push encrypted tiles to DA
-            enqueueTile(b.getTile(l), true);
+            enqueueTile(b.getTile(l));
             dequeueTileIfDAConnected();
         }
 
@@ -179,7 +178,7 @@ async function login(
                 const tl = JSON.parse(locString);
                 if (tl) {
                     for (let loc of b.getNearbyLocations(tl)) {
-                        visibleTiles.add(Tile.stringifyLocation(loc));
+                        visibleTiles.add(JSON.stringify(loc));
                     }
                 }
             });
@@ -211,26 +210,23 @@ async function sendRecoveredTileResponse(socket: Socket, encTile: any) {
         return;
     }
 
-    const symbol = encTile.symbol;
-    const pubkey = encTile.pubKey;
     const ciphertext = encTile.ciphertext;
     const iv = encTile.iv;
     const tag = encTile.tag;
-    const isFinalized = encTile.isFinalized;
 
-    if (!symbol || !pubkey || !ciphertext || !iv || !tag || !isFinalized) {
+    if (!ciphertext || !iv || !tag) {
         return;
     }
 
-    const tileString = Utils.decryptTile(
+    const tile = Utils.decryptTile(
         tileEncryptionKey,
         ciphertext,
         iv,
         tag
     );
-    const tile = Tile.unStringifyTile(symbol, pubkey, tileString);
+
     // Push tile into state if it's marked 'finalized' or the hash is onchain
-    if (tile && (isFinalized || (await nStates.tileCommitments(tile.hash())))) {
+    if (tile) {
         if (!b.isSpawned(tile.owner)) {
             b.spawn(
                 tile.loc,
@@ -243,11 +239,15 @@ async function sendRecoveredTileResponse(socket: Socket, encTile: any) {
         } else {
             b.setTile(tile);
         }
+
+        console.log(`Tile ${recoveryModeIndex}: success`);
+    } else {
+        console.error(`Tile ${recoveryModeIndex}: failure`);
     }
 
     // Request next tile
     recoveryModeIndex++;
-    socket.emit("recoverTile", recoveryModeIndex);
+    io.to(socketIdDA).emit("sendRecoveredTile", recoveryModeIndex);
 }
 
 /*
@@ -279,7 +279,7 @@ function finishRecovery(socket: Socket) {
 /*
  * Encrypt and enqueue tile.
  */
-function enqueueTile(tile: Tile, isFinalized: boolean): EncryptedTile {
+function enqueueTile(tile: Tile): EncryptedTile {
     const { ciphertext, iv, tag } = Utils.encryptTile(tileEncryptionKey, tile);
     const enc = {
         symbol: tile.owner.symbol,
@@ -287,7 +287,6 @@ function enqueueTile(tile: Tile, isFinalized: boolean): EncryptedTile {
         ciphertext,
         iv,
         tag,
-        isFinalized,
     };
     queuedTilesDA.enqueue(enc);
     return enc;
@@ -324,8 +323,8 @@ async function getSignature(socket: Socket, uFrom: any, uTo: any) {
         const hUTo = uToAsTile.hash();
 
         // Push to DA
-        const uFromEnc = enqueueTile(uFromAsTile, false);
-        const uToEnc = enqueueTile(uToAsTile, false);
+        const uFromEnc = enqueueTile(uFromAsTile);
+        const uToEnc = enqueueTile(uToAsTile);
 
         claimedMoves.set(hUFrom.concat(hUTo), {
             uFrom: uFromAsTile,
@@ -440,8 +439,8 @@ function onMoveFinalize(hUFrom: string, hUTo: string) {
         b.setTile(move.uTo);
 
         // Add finalized states and try to send to DA
-        enqueueTile(move.uFrom, true);
-        enqueueTile(move.uTo, true);
+        enqueueTile(move.uFrom);
+        enqueueTile(move.uTo);
         dequeueTileIfDAConnected();
 
         alertPlayers(newOwner, prevOwner, updatedLocs);
@@ -466,10 +465,10 @@ function alertPlayers(
     let alertPlayerMap = new Map<string, Set<string>>();
 
     for (let loc of updatedLocs) {
-        const locString = Tile.stringifyLocation(loc);
+        const locString = JSON.stringify(loc);
         for (let l of b.getNearbyLocations(loc)) {
             const tileOwner = b.getTile(l).ownerPubKey();
-            const lString = Tile.stringifyLocation(l);
+            const lString = JSON.stringify(l);
 
             if (!alertPlayerMap.has(tileOwner)) {
                 alertPlayerMap.set(tileOwner, new Set<string>());
@@ -582,7 +581,7 @@ server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
 
         for (let r = 0; r < BOARD_SIZE; r++) {
             for (let c = 0; c < BOARD_SIZE; c++) {
-                enqueueTile(b.t[r][c], true);
+                enqueueTile(b.t[r][c]);
             }
         }
     }

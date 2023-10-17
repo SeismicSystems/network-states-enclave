@@ -116,7 +116,7 @@ export class Utils {
         const cipher = crypto.createCipheriv("aes-256-gcm", encKey, iv);
         return {
             ciphertext: Buffer.concat([
-                cipher.update(tile.stringify()),
+                cipher.update(JSON.stringify(tile.toJSON())),
                 cipher.final(),
             ]).toString("hex"),
             iv: iv.toString("hex"),
@@ -132,13 +132,16 @@ export class Utils {
         ciphertext: string,
         iv: string,
         tag: string
-    ) {
+    ): Tile {
         const ivBuffer = Buffer.from(iv, "hex");
         let decipher = crypto.createDecipheriv("aes-256-gcm", decKey, ivBuffer);
         decipher.setAuthTag(Buffer.from(tag, "hex"));
-        return Buffer.concat([
+
+        const tileString = Buffer.concat([
             decipher.update(Buffer.from(ciphertext, "hex")),
             decipher.final(),
         ]).toString();
+
+        return Tile.fromJSON(JSON.parse(tileString));
     }
 }

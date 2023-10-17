@@ -106,7 +106,7 @@ export class Board {
         this.playerCities.set(pubkey, new Set<number>().add(cityId));
         this.cityTiles.set(
             cityId,
-            new Set<string>().add(Tile.stringifyLocation({ r, c }))
+            new Set<string>().add(JSON.stringify({ r, c }))
         );
 
         // Update the global state on-chain.
@@ -215,7 +215,7 @@ export class Board {
                 this.playerCities.get(newOwner)?.add(tl.cityId);
             } else {
                 // Normal/water tile with a new owner
-                const locString = Tile.stringifyLocation(tl.loc);
+                const locString = JSON.stringify(tl.loc);
                 this.cityTiles.get(oldTile.cityId)?.delete(locString);
                 this.cityTiles.get(tl.cityId)?.add(locString);
             }

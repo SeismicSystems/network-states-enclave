@@ -24,6 +24,15 @@ const pool = new Pool();
  */
 async function handshakeDAResponse(inRecoveryMode: boolean) {
     if (inRecoveryMode) {
+        // Print table count
+        const client = await pool.connect();
+        const numRows = (
+            await client.query(`SELECT COUNT(*) FROM encrypted_tiles`)
+        ).rows[0].count;
+        await client.release();
+        console.log("In recovery mode");
+        console.log(`Number of rows in encrypted_tiles: ${numRows}`);
+
         // Start recovery
         await sendRecoveredTile(0);
     } else {
@@ -60,7 +69,6 @@ async function sendRecoveredTile(index: number) {
             ciphertext: res.rows[0].ciphertext,
             iv: res.rows[0].iv,
             tag: res.rows[0].tag,
-            isFinalized: res.rows[0].finalized,
         });
     } else {
         socket.emit("recoveryFinished");
@@ -75,18 +83,17 @@ async function saveToDatabase(encTile: any) {
     const ciphertext = encTile.ciphertext;
     const iv = encTile.iv;
     const tag = encTile.tag;
-    const isFinalized = encTile.isFinalized;
 
-    if (!symbol || !pubkey || !ciphertext || !iv || !tag || !isFinalized) {
+    if (!symbol || !pubkey || !ciphertext || !iv || !tag) {
         return;
     }
 
     const client = await pool.connect();
     await client.query(
         `INSERT INTO 
-        encrypted_tiles (symbol, pubkey, ciphertext, iv, tag, finalized)
-        VALUES ($1, $2, $3, $4, $5, $6)`,
-        [symbol, pubkey, ciphertext, iv, tag, isFinalized]
+        encrypted_tiles (symbol, pubkey, ciphertext, iv, tag)
+        VALUES ($1, $2, $3, $4, $5)`,
+        [symbol, pubkey, ciphertext, iv, tag]
     );
     console.log("Inserted");
 
