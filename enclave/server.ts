@@ -218,15 +218,18 @@ async function sendRecoveredTileResponse(socket: Socket, encTile: any) {
         return;
     }
 
-    const tile = Utils.decryptTile(
-        tileEncryptionKey,
-        ciphertext,
-        iv,
-        tag
-    );
+    const tile = Utils.decryptTile(tileEncryptionKey, ciphertext, iv, tag);
 
-    // Push tile into state if it's marked 'finalized' or the hash is onchain
-    if (tile) {
+    // Push tile into state if it's hash has been emitted
+    const newTileEvents: ethers.Event[] = await nStates.queryFilter(
+        nStates.filters.NewTile()
+    );
+    let hashHistory = new Set<string>();
+    newTileEvents.forEach((e) => {
+        hashHistory.add(e.args?.hTile.toString());
+    });
+
+    if (tile && hashHistory.has(tile.hash())) {
         if (!b.isSpawned(tile.owner)) {
             b.spawn(
                 tile.loc,

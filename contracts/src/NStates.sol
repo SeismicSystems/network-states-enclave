@@ -50,6 +50,7 @@ contract NStates {
     IVerifier verifierContract =
         IVerifier(0x5FbDB2315678afecb367f032d93F642f64180aa3);
 
+    event NewTile(uint256 hTile);
     event NewMove(uint256 hUFrom, uint256 hUTo);
 
     address public owner;
@@ -100,6 +101,8 @@ contract NStates {
      */
     function set(uint256 h) public onlyOwner {
         tileCommitments[h] = true;
+
+        emit NewTile(h);
     }
 
     /*
@@ -123,6 +126,8 @@ contract NStates {
 
         cityTileResources[cityId] = numStartingResources;
         playerLatestUpdateBlock[pkHash] = block.number;
+
+        emit NewTile(h);
     }
 
     /*
@@ -202,6 +207,8 @@ contract NStates {
         }
 
         emit NewMove(moveInputs.hUFrom, moveInputs.hUTo);
+        emit NewTile(moveInputs.hUFrom);
+        emit NewTile(moveInputs.hUTo);
     }
 
     /*
