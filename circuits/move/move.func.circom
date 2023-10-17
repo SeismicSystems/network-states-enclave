@@ -8,15 +8,15 @@ include "../node_modules/maci-circuits/node_modules/circomlib/circuits/babyjub.c
 include "../utils/utils.circom";
 
 template CheckTileHash(N_TL_ATRS) {
-        signal input tileHash;
-        signal input tile[N_TL_ATRS];
+    signal input tileHash;
+    signal input tile[N_TL_ATRS];
 
-        signal output out;
+    signal output out;
 
-        signal circuitTileHash <== Poseidon(N_TL_ATRS)(tile);
+    signal circuitTileHash <== Poseidon(N_TL_ATRS)(tile);
 
-        out <== IsEqual()([circuitTileHash, tileHash]);
-    }
+    out <== IsEqual()([circuitTileHash, tileHash]);
+}
 
 /*
  * Asserts 1) the hashes of all tile states were computed correctly. It's the
