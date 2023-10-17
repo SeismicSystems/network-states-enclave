@@ -7,18 +7,13 @@ include "../node_modules/maci-circuits/node_modules/circomlib/circuits/mux2.circ
 include "../node_modules/maci-circuits/node_modules/circomlib/circuits/babyjub.circom";
 include "../utils/utils.circom";
 
-template CheckTileHash(N_TL_ATRS, ROW_IDX, COL_IDX, RSRC_IDX, KEY_IDX, CITY_IDX, 
-    UPD_IDX, TYPE_IDX) {
+template CheckTileHash(N_TL_ATRS) {
         signal input tileHash;
         signal input tile[N_TL_ATRS];
 
         signal output out;
 
-        signal firstHash <== Poseidon(3)([tile[ROW_IDX], tile[COL_IDX], 
-            tile[TYPE_IDX]]);
-        signal secondHash <== Poseidon(4)([tile[RSRC_IDX], tile[KEY_IDX], 
-            tile[CITY_IDX], tile[UPD_IDX]]);
-        signal circuitTileHash <== Poseidon(2)([firstHash, secondHash]);
+        signal circuitTileHash <== Poseidon(N_TL_ATRS)(tile);
 
         out <== IsEqual()([circuitTileHash, tileHash]);
     }
@@ -28,11 +23,8 @@ template CheckTileHash(N_TL_ATRS, ROW_IDX, COL_IDX, RSRC_IDX, KEY_IDX, CITY_IDX,
  * hiding commitment that's added on-chain. 2) the player owns the public key,
  * which is the case when their bbj private key (hash) matches (the hash of) the 
  * public key.
- *
- * [TODO]: write unit tests
  */
-template CheckAuth(N_TL_ATRS, ROW_IDX, COL_IDX, RSRC_IDX, KEY_IDX, CITY_IDX, 
-    UPD_IDX, TYPE_IDX) {
+template CheckAuth(N_TL_ATRS) {
     signal input hTFrom;
     signal input hTTo;
     signal input hUFrom;
@@ -55,20 +47,16 @@ template CheckAuth(N_TL_ATRS, ROW_IDX, COL_IDX, RSRC_IDX, KEY_IDX, CITY_IDX,
     signal pkHashIncorrect <== NOT()(pkHashCorrect);
 
     // Whether hashes were computed correctly
-    signal hTFromCorrect <== CheckTileHash(N_TL_ATRS, ROW_IDX, COL_IDX, 
-        RSRC_IDX, KEY_IDX, CITY_IDX, UPD_IDX, TYPE_IDX)(hTFrom, tFrom);
+    signal hTFromCorrect <== CheckTileHash(N_TL_ATRS)(hTFrom, tFrom);
     signal hTFromIncorrect <== NOT()(hTFromCorrect);
 
-    signal hTToCorrect <== CheckTileHash(N_TL_ATRS, ROW_IDX, COL_IDX, 
-        RSRC_IDX, KEY_IDX, CITY_IDX, UPD_IDX, TYPE_IDX)(hTTo, tTo);
+    signal hTToCorrect <== CheckTileHash(N_TL_ATRS)(hTTo, tTo);
     signal hTToIncorrect <== NOT()(hTToCorrect);
 
-    signal hUFromCorrect <== CheckTileHash(N_TL_ATRS, ROW_IDX, COL_IDX, 
-        RSRC_IDX, KEY_IDX, CITY_IDX, UPD_IDX, TYPE_IDX)(hUFrom, uFrom);
+    signal hUFromCorrect <== CheckTileHash(N_TL_ATRS)(hUFrom, uFrom);
     signal hUFromIncorrect <== NOT()(hUFromCorrect);
 
-    signal hUToCorrect <== CheckTileHash(N_TL_ATRS, ROW_IDX, COL_IDX, 
-        RSRC_IDX, KEY_IDX, CITY_IDX, UPD_IDX, TYPE_IDX)(hUTo, uTo);
+    signal hUToCorrect <== CheckTileHash(N_TL_ATRS)(hUTo, uTo);
     signal hUToIncorrect <== NOT()(hUToCorrect);
 
     out <== BatchIsZero(5)([pkHashIncorrect, hTFromIncorrect, hTToIncorrect, 
@@ -482,8 +470,7 @@ template Move() {
         uFrom, uTo, fromUpdatedTroops, toUpdatedTroops);
     pubSignalsCorrect === 1;
 
-    signal authCorrect <== CheckAuth(N_TL_ATRS, ROW_IDX, COL_IDX, RSRC_IDX, 
-        KEY_IDX, CITY_IDX, UPD_IDX, TYPE_IDX)(hTFrom, hTTo, hUFrom, hUTo,
+    signal authCorrect <== CheckAuth(N_TL_ATRS)(hTFrom, hTTo, hUFrom, hUTo,
         fromPkHash, tFrom, tTo, uFrom, uTo, privKeyHash);
     authCorrect === 1;
 

@@ -1,8 +1,11 @@
 // @ts-ignore
-import { poseidon } from "circomlib";
 import { PubKey } from "maci-domainobjs";
 import { genRandomSalt } from "maci-crypto";
 import { Player } from "./Player";
+/*
+ * poseidonPerm is a modified version of iden3's poseidonPerm.js.
+ */
+const poseidonPerm = require("./poseidonPerm");
 
 export type Location = {
     r: number;
@@ -68,22 +71,10 @@ export class Tile {
      * Compute hash of this Tile and convert it into a decimal string.
      */
     hash(): string {
-        const hash1 = poseidon([
-            BigInt(this.loc.r.toString()),
-            BigInt(this.loc.c.toString()),
-            BigInt(this.tileType.toString()),
-        ]);
-        const hash2 = poseidon([
-            BigInt(this.resources.toString()),
-            BigInt(this.key.toString()),
-            BigInt(this.cityId.toString()),
-            BigInt(this.latestUpdateInterval.toString()),
-        ]);
-
-        return poseidon([
-            BigInt(hash1.toString()),
-            BigInt(hash2.toString()),
-        ]).toString();
+        return poseidonPerm([
+            BigInt(0),
+            ...this.toCircuitInput().map((e) => BigInt(e)),
+        ])[0].toString();
     }
 
     /*
@@ -91,7 +82,7 @@ export class Tile {
      * string representation.
      */
     nullifier(): string {
-        return poseidon([this.key]).toString();
+        return poseidonPerm([BigInt(0), this.key])[0].toString();
     }
 
     /*
