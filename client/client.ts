@@ -208,7 +208,7 @@ async function signatureResponse(sig: string, blockNumber: number) {
  */
 async function updateDisplay(locs: string[]) {
     for (let l of locs) {
-        const unstringified = Tile.unstringifyLocation(l);
+        const unstringified = JSON.parse(l);
         if (unstringified) {
             updatePlayerView(unstringified);
         }

@@ -196,21 +196,7 @@ export class Tile {
      * Converts a Location type into its (unique) string representation.
      */
     static stringifyLocation(l: Location): string {
-        return `${l.r},${l.c}`;
-    }
-
-    /*
-     * Convert a stringified Location back into its native type, or return
-     * undefined if the string is improperly formatted.
-     */
-    static unstringifyLocation(s: string): Location | undefined {
-        const split = s.split(",");
-        const r = Number(split[0]);
-        const c = Number(split[1]);
-        if (split.length != 2 || isNaN(r) || isNaN(c)) {
-            return undefined;
-        }
-        return { r, c };
+        return JSON.stringify(l);
     }
 
     /*

@@ -189,7 +189,7 @@ export class Board {
                 for (let cityId of this.playerCities.get(oldOwner)!) {
                     // Change tiles' ownership
                     for (let locString of this.cityTiles.get(cityId)!) {
-                        const loc = Tile.unstringifyLocation(locString);
+                        const loc = JSON.parse(locString);
                         if (loc) {
                             let tile = this.t[loc.r][loc.c];
                             tile.owner = tl.owner;
@@ -203,7 +203,7 @@ export class Board {
             } else if (oldTile.isCity()) {
                 // Change tiles' ownership
                 for (let locString of this.cityTiles.get(oldTile.cityId)!) {
-                    const loc = Tile.unstringifyLocation(locString);
+                    const loc = JSON.parse(locString);
                     if (loc) {
                         let tile = this.t[loc.r][loc.c];
                         tile.owner = oldTile.owner;

@@ -18,11 +18,6 @@ const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
 const pool = new Pool();
 
 /*
- * Number of database entries.
- */
-let numRows: number;
-
-/*
  * Callback function called after connecting with enclave. If inRecoveryMode is
  * true, then DA should send all encrypted tiles to the enclave. Otherwise,
  * clear old data and wait for enclave to submit new tiles.
@@ -30,23 +25,26 @@ let numRows: number;
 async function handshakeDAResponse(inRecoveryMode: boolean) {
     if (inRecoveryMode) {
         // Start recovery
-        await recoverTile(0);
+        await sendRecoveredTile(0);
     } else {
         // Don't need old encrypted tiles anymore
         await clearTable();
 
         // Start dequeuing
-        socket.emit("pushToDAResponse");
+        socket.emit("saveToDatabaseResponse");
     }
 }
 
 /*
  * Emits encrypted tile back to enclave. Meant to be used in iteration
  */
-async function recoverTile(index: number) {
-    if (index < numRows) {
-        const client = await pool.connect();
+async function sendRecoveredTile(index: number) {
+    const client = await pool.connect();
 
+    const numRows = (await client.query(`SELECT COUNT(*) FROM encrypted_tiles`))
+        .rows[0].count;
+
+    if (index < numRows) {
         // Get recoverModeIndex'th row
         const res = await client.query(
             `SELECT * FROM encrypted_tiles
@@ -56,7 +54,7 @@ async function recoverTile(index: number) {
 
         client.release();
 
-        socket.emit("recoverTileResponse", {
+        socket.emit("sendRecoveredTileResponse", {
             symbol: res.rows[0].symbol,
             pubkey: res.rows[0].pubkey,
             ciphertext: res.rows[0].ciphertext,
@@ -71,7 +69,7 @@ async function recoverTile(index: number) {
 /*
  * Adds encrypted tile as row into database.
  */
-async function pushToDA(encTile: any) {
+async function saveToDatabase(encTile: any) {
     const symbol = encTile.symbol;
     const pubkey = encTile.pubkey;
     const ciphertext = encTile.ciphertext;
@@ -90,13 +88,11 @@ async function pushToDA(encTile: any) {
         VALUES ($1, $2, $3, $4, $5, $6)`,
         [symbol, pubkey, ciphertext, iv, tag, isFinalized]
     );
-    console.log("Inserted", numRows);
+    console.log("Inserted");
 
     client.release();
 
-    numRows++;
-
-    socket.emit("pushToDAResponse");
+    socket.emit("saveToDatabaseResponse");
 }
 
 /*
@@ -106,23 +102,15 @@ async function clearTable() {
     const client = await pool.connect();
     await client.query("TRUNCATE TABLE encrypted_tiles");
     client.release();
-
-    numRows = 0;
 }
 
 socket.on("connect", async () => {
     console.log("Connection with enclave node established");
-
-    // numRows
-    const client = await pool.connect();
-    numRows = (await client.query(`SELECT COUNT(*) FROM encrypted_tiles`))
-        .rows[0].count;
-    client.release();
 
     // Set DA's socket ID and query inRecoveryResponse variable
     socket.emit("handshakeDA");
 });
 
 socket.on("handshakeDAResponse", handshakeDAResponse);
-socket.on("recoverTile", recoverTile);
-socket.on("pushToDA", pushToDA);
+socket.on("sendRecoveredTile", sendRecoveredTile);
+socket.on("saveToDatabase", saveToDatabase);

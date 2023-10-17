@@ -357,10 +357,11 @@ contract NStates {
             totalArea += cityArea[cities[i]];
             totalResources += cityResources[cities[i]];
         }
-        // [TODO]: fix this formula
+        // [TMP]
         uint256 inc = ((block.number - playerLatestUpdateBlock[pkHash]) *
             totalArea *
             totalResources) / numCities;
+        // [TMP]
         inc = 0;
         for (uint256 i = 0; i < numCities; i++) {
             incrementCityResources(cities[i], inc, 1);
