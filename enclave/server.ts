@@ -2,6 +2,7 @@ import express from "express";
 import http from "http";
 import { Server, Socket } from "socket.io";
 import { ethers, utils } from "ethers";
+import * as fs from "fs";
 import dotenv from "dotenv";
 dotenv.config({ path: "../.env" });
 import {
@@ -10,7 +11,13 @@ import {
     InterServerEvents,
     SocketData,
 } from "./socket";
+import { Queue } from "queue-typescript";
 import { Tile, Player, Board, Location, Utils } from "../game";
+
+/*
+ * Whether the enclave's global state should be blank or pull from DA.
+ */
+let inRecoveryMode = process.argv[2] == "1";
 
 /*
  * Set game parameters and create dummy players.
@@ -59,6 +66,16 @@ type ClaimedMove = {
     uFrom: Tile;
     uTo: Tile;
     blockSubmitted: number;
+    uFromEnc: EncryptedTile;
+    uToEnc: EncryptedTile;
+};
+
+type EncryptedTile = {
+    symbol: string;
+    pubkey: string;
+    ciphertext: string;
+    iv: string;
+    tag: string;
 };
 
 /*
@@ -98,6 +115,26 @@ let currentBlockHeight: number;
 let playerLatestBlock = new Map<string, number>();
 
 /*
+ * Encryption key for global state sent to DA.
+ */
+let tileEncryptionKey: Buffer;
+
+/*
+ * Socket ID of DA node.
+ */
+let socketIdDA: string | undefined;
+
+/*
+ * Queue of claimed new tile states that have yet to be pushed to DA.
+ */
+let queuedTilesDA = new Queue<EncryptedTile>();
+
+/*
+ * Index for retrieving encrypted tiles from DA node.
+ */
+let recoveryModeIndex = 0;
+
+/*
  * Dev function for spawning a player on the map or logging back in.
  *
  * [TODO]: the enclave should not be calling the contract's spawn
@@ -109,6 +146,11 @@ async function login(
     reqPlayer: Player,
     sigStr: string
 ) {
+    if (inRecoveryMode) {
+        socket.disconnect();
+        return;
+    }
+
     const h = Player.hForLogin(Utils.asciiIntoBigNumber(socket.id));
     const sig = Utils.unserializeSig(sigStr);
     if (sig && reqPlayer.verifySig(h, sig)) {
@@ -118,6 +160,10 @@ async function login(
         if (!b.isSpawned(reqPlayer)) {
             await b.spawn(l, reqPlayer, START_RESOURCES, cityId, nStates);
             cityId++;
+
+            // Attempt to push encrypted tiles to DA
+            enqueueTile(b.getTile(l));
+            dequeueTileIfDAConnected();
         }
 
         // Pair the public key and the socket ID
@@ -129,10 +175,10 @@ async function login(
         let visibleTiles = new Set<string>();
         b.playerCities.get(pubkey)?.forEach((cityId: number) => {
             b.cityTiles.get(cityId)?.forEach((locString: string) => {
-                const tl = Utils.unstringifyLocation(locString);
+                const tl = JSON.parse(locString);
                 if (tl) {
                     for (let loc of b.getNearbyLocations(tl)) {
-                        visibleTiles.add(Utils.stringifyLocation(loc));
+                        visibleTiles.add(JSON.stringify(loc));
                     }
                 }
             });
@@ -142,39 +188,169 @@ async function login(
 }
 
 /*
+ * Sets the socket ID of the DA node, if not already set. Sends back
+ * inRecoveryMode variable.
+ */
+function handshakeDA(socket: Socket) {
+    if (socketIdDA == undefined) {
+        socketIdDA = socket.id;
+        io.to(socketIdDA).emit("handshakeDAResponse", inRecoveryMode);
+    } else {
+        // If DA socket ID is already set, then do nothing and break connection
+        socket.disconnect();
+    }
+}
+
+/*
+ * Read from DA node for recovery process.
+ */
+async function sendRecoveredTileResponse(socket: Socket, encTile: any) {
+    if (socketIdDA == undefined || socket.id != socketIdDA) {
+        socket.disconnect();
+        return;
+    }
+
+    const ciphertext = encTile.ciphertext;
+    const iv = encTile.iv;
+    const tag = encTile.tag;
+
+    if (!ciphertext || !iv || !tag) {
+        return;
+    }
+
+    const tile = Utils.decryptTile(tileEncryptionKey, ciphertext, iv, tag);
+
+    // Push tile into state if it's hash has been emitted
+    const newTileEvents: ethers.Event[] = await nStates.queryFilter(
+        nStates.filters.NewTile()
+    );
+    let hashHistory = new Set<string>();
+    newTileEvents.forEach((e) => {
+        hashHistory.add(e.args?.hTile.toString());
+    });
+
+    if (tile && hashHistory.has(tile.hash())) {
+        if (!b.isSpawned(tile.owner)) {
+            b.spawn(
+                tile.loc,
+                tile.owner,
+                START_RESOURCES,
+                tile.cityId,
+                undefined
+            );
+            cityId++;
+        } else {
+            b.setTile(tile);
+        }
+
+        console.log(`Tile ${recoveryModeIndex}: success`);
+    } else {
+        console.error(`Tile ${recoveryModeIndex}: failure`);
+    }
+
+    // Request next tile
+    recoveryModeIndex++;
+    io.to(socketIdDA).emit("sendRecoveredTile", recoveryModeIndex);
+}
+
+/*
+ * Continue to push encrypted tiles to DA node.
+ */
+function saveToDatabaseResponse(socket: Socket) {
+    if (socketIdDA == undefined || socket.id != socketIdDA) {
+        socket.disconnect();
+        return;
+    }
+    dequeueTileIfDAConnected();
+}
+
+/*
+ * Wrap-up function when DA reports a finished recovery.
+ */
+function finishRecovery(socket: Socket) {
+    if (socketIdDA == undefined || socket.id != socketIdDA) {
+        socket.disconnect();
+        return;
+    }
+    console.log("Recovery finished");
+    b.printView();
+
+    // Enable play
+    inRecoveryMode = false;
+}
+
+/*
+ * Encrypt and enqueue tile.
+ */
+function enqueueTile(tile: Tile): EncryptedTile {
+    const { ciphertext, iv, tag } = Utils.encryptTile(tileEncryptionKey, tile);
+    const enc = {
+        symbol: tile.owner.symbol,
+        pubkey: tile.ownerPubKey(),
+        ciphertext,
+        iv,
+        tag,
+    };
+    queuedTilesDA.enqueue(enc);
+    return enc;
+}
+
+/*
+ * Submit encrypted tile to DA node to push into database.
+ */
+function dequeueTileIfDAConnected() {
+    if (socketIdDA != undefined && queuedTilesDA.length > 0) {
+        let encTile = queuedTilesDA.dequeue();
+        io.to(socketIdDA).emit("saveToDatabase", encTile);
+    }
+}
+
+/*
  * Propose move to enclave. In order for the move to be solidified, the enclave
  * must respond to a leaf event.
  */
 async function getSignature(socket: Socket, uFrom: any, uTo: any) {
     const pubkey = idToPubKey.get(socket.id);
-    if (pubkey) {
-        // Players cannot make more than one move per block
-        const latestBlock = playerLatestBlock.get(pubkey);
-        if (latestBlock != undefined && latestBlock < currentBlockHeight) {
-            const uFromAsTile = Tile.fromJSON(uFrom);
-            const hUFrom = uFromAsTile.hash();
-            const uToAsTile = Tile.fromJSON(uTo);
-            const hUTo = uToAsTile.hash();
+    if (!pubkey || inRecoveryMode) {
+        // Cut the connection
+        socket.disconnect();
+        return;
+    }
 
-            claimedMoves.set(hUFrom.concat(hUTo), {
-                uFrom: uFromAsTile,
-                uTo: uToAsTile,
-                blockSubmitted: currentBlockHeight,
-            });
+    // Players cannot make more than one move per block
+    const latestBlock = playerLatestBlock.get(pubkey);
+    if (latestBlock != undefined && latestBlock < currentBlockHeight) {
+        const uFromAsTile = Tile.fromJSON(uFrom);
+        const hUFrom = uFromAsTile.hash();
+        const uToAsTile = Tile.fromJSON(uTo);
+        const hUTo = uToAsTile.hash();
 
-            const digest = utils.solidityKeccak256(
-                ["uint256", "uint256", "uint256"],
-                [currentBlockHeight, hUFrom, hUTo]
-            );
-            const sig = await signer.signMessage(utils.arrayify(digest));
+        // Push to DA
+        const uFromEnc = enqueueTile(uFromAsTile);
+        const uToEnc = enqueueTile(uToAsTile);
 
-            socket.emit("signatureResponse", sig, currentBlockHeight);
+        claimedMoves.set(hUFrom.concat(hUTo), {
+            uFrom: uFromAsTile,
+            uTo: uToAsTile,
+            blockSubmitted: currentBlockHeight,
+            uFromEnc,
+            uToEnc,
+        });
 
-            playerLatestBlock.set(pubkey, currentBlockHeight);
-        } else {
-            // Cut the connection
-            disconnectPlayer(socket);
-        }
+        const digest = utils.solidityKeccak256(
+            ["uint256", "uint256", "uint256"],
+            [currentBlockHeight, hUFrom, hUTo]
+        );
+        const sig = await signer.signMessage(utils.arrayify(digest));
+
+        socket.emit("signatureResponse", sig, currentBlockHeight);
+        playerLatestBlock.set(pubkey, currentBlockHeight);
+
+        // Clear queue if DA node is online
+        dequeueTileIfDAConnected();
+    } else {
+        // Cut the connection
+        socket.disconnect();
     }
 }
 
@@ -188,6 +364,11 @@ function decrypt(
     reqPlayer: Player,
     sigStr: string
 ) {
+    if (inRecoveryMode) {
+        socket.disconnect();
+        return;
+    }
+
     const h = Player.hForDecrypt(l);
     const sig = Utils.unserializeSig(sigStr);
     if (sig && reqPlayer.verifySig(h, sig) && b.noFog(l, reqPlayer)) {
@@ -202,19 +383,26 @@ function decrypt(
  * their public key. This is so that no other player gains that ID and can play
  * on their behalf.
  */
-function disconnectPlayer(socket: Socket) {
+function disconnect(socket: Socket) {
     const pubKey = idToPubKey.get(socket.id);
     if (pubKey) {
         pubKeyToId.delete(pubKey);
         idToPubKey.delete(socket.id);
     }
+    if (socketIdDA == socket.id) {
+        socketIdDA = undefined;
+    }
+    console.log("Disconnected:", socket.id);
 }
 
 /*
  * Callback function for when a NewMove event is emitted. Reads claimed move
  * into enclave's internal beliefs, and alerts players in range to decrypt.
  */
-function onMoveFinalize(io: Server, hUFrom: string, hUTo: string) {
+function onMoveFinalize(hUFrom: string, hUTo: string) {
+    if (inRecoveryMode) {
+        return;
+    }
     const moveHash = hUFrom.concat(hUTo);
     const move = claimedMoves.get(moveHash);
     if (move) {
@@ -232,7 +420,7 @@ function onMoveFinalize(io: Server, hUFrom: string, hUTo: string) {
         if (ownershipChanged && tTo.isCapital()) {
             b.playerCities.get(prevOwner)?.forEach((cityId: number) => {
                 b.cityTiles.get(cityId)?.forEach((locString: string) => {
-                    const loc = Utils.unstringifyLocation(locString);
+                    const loc = JSON.parse(locString);
                     if (loc) {
                         updatedLocs.push(loc);
                     }
@@ -240,7 +428,7 @@ function onMoveFinalize(io: Server, hUFrom: string, hUTo: string) {
             });
         } else if (ownershipChanged && tTo.isCity()) {
             b.cityTiles.get(tTo.cityId)?.forEach((locString: string) => {
-                const loc = Utils.unstringifyLocation(locString);
+                const loc = JSON.parse(locString);
                 if (loc) {
                     updatedLocs.push(loc);
                 }
@@ -253,9 +441,14 @@ function onMoveFinalize(io: Server, hUFrom: string, hUTo: string) {
         b.setTile(move.uFrom);
         b.setTile(move.uTo);
 
-        alertPlayers(io, newOwner, prevOwner, updatedLocs);
+        // Add finalized states and try to send to DA
+        enqueueTile(move.uFrom);
+        enqueueTile(move.uTo);
+        dequeueTileIfDAConnected();
+
+        alertPlayers(newOwner, prevOwner, updatedLocs);
     } else {
-        console.log(
+        console.error(
             `Move: (${hUFrom}, ${hUTo}) was finalized without a signature.`
         );
     }
@@ -268,7 +461,6 @@ function onMoveFinalize(io: Server, hUFrom: string, hUTo: string) {
  * updatedLocs.
  */
 function alertPlayers(
-    io: Server,
     newOwner: string,
     prevOwner: string,
     updatedLocs: Location[]
@@ -276,10 +468,10 @@ function alertPlayers(
     let alertPlayerMap = new Map<string, Set<string>>();
 
     for (let loc of updatedLocs) {
-        const locString = Utils.stringifyLocation(loc);
+        const locString = JSON.stringify(loc);
         for (let l of b.getNearbyLocations(loc)) {
             const tileOwner = b.getTile(l).ownerPubKey();
-            const lString = Utils.stringifyLocation(l);
+            const lString = JSON.stringify(l);
 
             if (!alertPlayerMap.has(tileOwner)) {
                 alertPlayerMap.set(tileOwner, new Set<string>());
@@ -314,10 +506,13 @@ function upkeepClaimedMoves() {
  * Attach event handlers to a new connection.
  */
 io.on("connection", (socket: Socket) => {
-    console.log("Client connected: ", socket.id);
+    console.log("Connected: ", socket.id);
 
     socket.on("login", (l: Location, p: string, s: string, sig: string) => {
         login(socket, l, Player.fromPubString(s, p), sig);
+    });
+    socket.on("handshakeDA", () => {
+        handshakeDA(socket);
     });
     socket.on("getSignature", (uFrom: any, uTo: any) => {
         getSignature(socket, uFrom, uTo);
@@ -325,9 +520,17 @@ io.on("connection", (socket: Socket) => {
     socket.on("decrypt", (l: Location, pubkey: string, sig: string) => {
         decrypt(socket, l, Player.fromPubString("", pubkey), sig);
     });
-
+    socket.on("sendRecoveredTileResponse", (encTile: any) => {
+        sendRecoveredTileResponse(socket, encTile);
+    });
+    socket.on("recoveryFinished", () => {
+        finishRecovery(socket);
+    });
+    socket.on("saveToDatabaseResponse", () => {
+        saveToDatabaseResponse(socket);
+    });
     socket.on("disconnecting", () => {
-        disconnectPlayer(socket);
+        disconnect(socket);
     });
 });
 
@@ -335,7 +538,7 @@ io.on("connection", (socket: Socket) => {
  * Event handler for NewMove event. io is passed in so that we can ping players.
  */
 nStates.on(nStates.filters.NewMove(), (hUFrom, hUTo) => {
-    onMoveFinalize(io, hUFrom.toString(), hUTo.toString());
+    onMoveFinalize(hUFrom.toString(), hUTo.toString());
 });
 
 /*
@@ -352,7 +555,39 @@ nStates.provider.on("block", async (n) => {
  */
 server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
     b = new Board();
-    await b.seed(BOARD_SIZE, true, nStates);
+
+    if (inRecoveryMode) {
+        // Get previous encryption key
+        tileEncryptionKey = Buffer.from(
+            fs.readFileSync(process.env.ENCRYPTION_KEY_PATH!, {
+                encoding: "utf8",
+            }),
+            "hex"
+        );
+
+        // Seed board, but do not update global state
+        await b.seed(BOARD_SIZE, true, undefined);
+
+        // Cannot recover until DA node connects
+        console.log("In recovery mode, waiting for DA node to connect");
+    } else {
+        // [TODO] wait for sufficient time post start up to get from PRNG
+
+        // Generate and save encryption key
+        tileEncryptionKey = Utils.genAESEncKey();
+        fs.writeFileSync(
+            process.env.ENCRYPTION_KEY_PATH!,
+            tileEncryptionKey.toString("hex")
+        );
+
+        await b.seed(BOARD_SIZE, true, nStates);
+
+        for (let r = 0; r < BOARD_SIZE; r++) {
+            for (let c = 0; c < BOARD_SIZE; c++) {
+                enqueueTile(b.t[r][c]);
+            }
+        }
+    }
 
     console.log(
         `Server running on http://localhost:${process.env.ENCLAVE_SERVER_PORT}`
