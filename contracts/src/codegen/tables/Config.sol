@@ -26,14 +26,14 @@ ResourceId constant _tableId = ResourceId.wrap(
 ResourceId constant ConfigTableId = _tableId;
 
 FieldLayout constant _fieldLayout = FieldLayout.wrap(
-  0x0088050014142020200000000000000000000000000000000000000000000000
+  0x006c050014142004200000000000000000000000000000000000000000000000
 );
 
 struct ConfigData {
   address enclave;
   address verifierContract;
   uint256 numBlocksInInterval;
-  uint256 numStartingResources;
+  uint32 numStartingTroops;
   uint256 claimedMoveLifeSpan;
 }
 
@@ -65,7 +65,7 @@ library Config {
     _valueSchema[0] = SchemaType.ADDRESS;
     _valueSchema[1] = SchemaType.ADDRESS;
     _valueSchema[2] = SchemaType.UINT256;
-    _valueSchema[3] = SchemaType.UINT256;
+    _valueSchema[3] = SchemaType.UINT32;
     _valueSchema[4] = SchemaType.UINT256;
 
     return SchemaLib.encode(_valueSchema);
@@ -88,7 +88,7 @@ library Config {
     fieldNames[0] = "enclave";
     fieldNames[1] = "verifierContract";
     fieldNames[2] = "numBlocksInInterval";
-    fieldNames[3] = "numStartingResources";
+    fieldNames[3] = "numStartingTroops";
     fieldNames[4] = "claimedMoveLifeSpan";
   }
 
@@ -285,60 +285,60 @@ library Config {
   }
 
   /**
-   * @notice Get numStartingResources.
+   * @notice Get numStartingTroops.
    */
-  function getNumStartingResources() internal view returns (uint256 numStartingResources) {
+  function getNumStartingTroops() internal view returns (uint32 numStartingTroops) {
     bytes32[] memory _keyTuple = new bytes32[](0);
 
     bytes32 _blob = StoreSwitch.getStaticField(_tableId, _keyTuple, 3, _fieldLayout);
-    return (uint256(bytes32(_blob)));
+    return (uint32(bytes4(_blob)));
   }
 
   /**
-   * @notice Get numStartingResources.
+   * @notice Get numStartingTroops.
    */
-  function _getNumStartingResources() internal view returns (uint256 numStartingResources) {
+  function _getNumStartingTroops() internal view returns (uint32 numStartingTroops) {
     bytes32[] memory _keyTuple = new bytes32[](0);
 
     bytes32 _blob = StoreCore.getStaticField(_tableId, _keyTuple, 3, _fieldLayout);
-    return (uint256(bytes32(_blob)));
+    return (uint32(bytes4(_blob)));
   }
 
   /**
-   * @notice Get numStartingResources (using the specified store).
+   * @notice Get numStartingTroops (using the specified store).
    */
-  function getNumStartingResources(IStore _store) internal view returns (uint256 numStartingResources) {
+  function getNumStartingTroops(IStore _store) internal view returns (uint32 numStartingTroops) {
     bytes32[] memory _keyTuple = new bytes32[](0);
 
     bytes32 _blob = _store.getStaticField(_tableId, _keyTuple, 3, _fieldLayout);
-    return (uint256(bytes32(_blob)));
+    return (uint32(bytes4(_blob)));
   }
 
   /**
-   * @notice Set numStartingResources.
+   * @notice Set numStartingTroops.
    */
-  function setNumStartingResources(uint256 numStartingResources) internal {
+  function setNumStartingTroops(uint32 numStartingTroops) internal {
     bytes32[] memory _keyTuple = new bytes32[](0);
 
-    StoreSwitch.setStaticField(_tableId, _keyTuple, 3, abi.encodePacked((numStartingResources)), _fieldLayout);
+    StoreSwitch.setStaticField(_tableId, _keyTuple, 3, abi.encodePacked((numStartingTroops)), _fieldLayout);
   }
 
   /**
-   * @notice Set numStartingResources.
+   * @notice Set numStartingTroops.
    */
-  function _setNumStartingResources(uint256 numStartingResources) internal {
+  function _setNumStartingTroops(uint32 numStartingTroops) internal {
     bytes32[] memory _keyTuple = new bytes32[](0);
 
-    StoreCore.setStaticField(_tableId, _keyTuple, 3, abi.encodePacked((numStartingResources)), _fieldLayout);
+    StoreCore.setStaticField(_tableId, _keyTuple, 3, abi.encodePacked((numStartingTroops)), _fieldLayout);
   }
 
   /**
-   * @notice Set numStartingResources (using the specified store).
+   * @notice Set numStartingTroops (using the specified store).
    */
-  function setNumStartingResources(IStore _store, uint256 numStartingResources) internal {
+  function setNumStartingTroops(IStore _store, uint32 numStartingTroops) internal {
     bytes32[] memory _keyTuple = new bytes32[](0);
 
-    _store.setStaticField(_tableId, _keyTuple, 3, abi.encodePacked((numStartingResources)), _fieldLayout);
+    _store.setStaticField(_tableId, _keyTuple, 3, abi.encodePacked((numStartingTroops)), _fieldLayout);
   }
 
   /**
@@ -447,14 +447,14 @@ library Config {
     address enclave,
     address verifierContract,
     uint256 numBlocksInInterval,
-    uint256 numStartingResources,
+    uint32 numStartingTroops,
     uint256 claimedMoveLifeSpan
   ) internal {
     bytes memory _staticData = encodeStatic(
       enclave,
       verifierContract,
       numBlocksInInterval,
-      numStartingResources,
+      numStartingTroops,
       claimedMoveLifeSpan
     );
 
@@ -473,14 +473,14 @@ library Config {
     address enclave,
     address verifierContract,
     uint256 numBlocksInInterval,
-    uint256 numStartingResources,
+    uint32 numStartingTroops,
     uint256 claimedMoveLifeSpan
   ) internal {
     bytes memory _staticData = encodeStatic(
       enclave,
       verifierContract,
       numBlocksInInterval,
-      numStartingResources,
+      numStartingTroops,
       claimedMoveLifeSpan
     );
 
@@ -500,14 +500,14 @@ library Config {
     address enclave,
     address verifierContract,
     uint256 numBlocksInInterval,
-    uint256 numStartingResources,
+    uint32 numStartingTroops,
     uint256 claimedMoveLifeSpan
   ) internal {
     bytes memory _staticData = encodeStatic(
       enclave,
       verifierContract,
       numBlocksInInterval,
-      numStartingResources,
+      numStartingTroops,
       claimedMoveLifeSpan
     );
 
@@ -527,7 +527,7 @@ library Config {
       _table.enclave,
       _table.verifierContract,
       _table.numBlocksInInterval,
-      _table.numStartingResources,
+      _table.numStartingTroops,
       _table.claimedMoveLifeSpan
     );
 
@@ -547,7 +547,7 @@ library Config {
       _table.enclave,
       _table.verifierContract,
       _table.numBlocksInInterval,
-      _table.numStartingResources,
+      _table.numStartingTroops,
       _table.claimedMoveLifeSpan
     );
 
@@ -567,7 +567,7 @@ library Config {
       _table.enclave,
       _table.verifierContract,
       _table.numBlocksInInterval,
-      _table.numStartingResources,
+      _table.numStartingTroops,
       _table.claimedMoveLifeSpan
     );
 
@@ -591,7 +591,7 @@ library Config {
       address enclave,
       address verifierContract,
       uint256 numBlocksInInterval,
-      uint256 numStartingResources,
+      uint32 numStartingTroops,
       uint256 claimedMoveLifeSpan
     )
   {
@@ -601,9 +601,9 @@ library Config {
 
     numBlocksInInterval = (uint256(Bytes.slice32(_blob, 40)));
 
-    numStartingResources = (uint256(Bytes.slice32(_blob, 72)));
+    numStartingTroops = (uint32(Bytes.slice4(_blob, 72)));
 
-    claimedMoveLifeSpan = (uint256(Bytes.slice32(_blob, 104)));
+    claimedMoveLifeSpan = (uint256(Bytes.slice32(_blob, 76)));
   }
 
   /**
@@ -621,7 +621,7 @@ library Config {
       _table.enclave,
       _table.verifierContract,
       _table.numBlocksInInterval,
-      _table.numStartingResources,
+      _table.numStartingTroops,
       _table.claimedMoveLifeSpan
     ) = decodeStatic(_staticData);
   }
@@ -661,10 +661,10 @@ library Config {
     address enclave,
     address verifierContract,
     uint256 numBlocksInInterval,
-    uint256 numStartingResources,
+    uint32 numStartingTroops,
     uint256 claimedMoveLifeSpan
   ) internal pure returns (bytes memory) {
-    return abi.encodePacked(enclave, verifierContract, numBlocksInInterval, numStartingResources, claimedMoveLifeSpan);
+    return abi.encodePacked(enclave, verifierContract, numBlocksInInterval, numStartingTroops, claimedMoveLifeSpan);
   }
 
   /**
@@ -677,14 +677,14 @@ library Config {
     address enclave,
     address verifierContract,
     uint256 numBlocksInInterval,
-    uint256 numStartingResources,
+    uint32 numStartingTroops,
     uint256 claimedMoveLifeSpan
   ) internal pure returns (bytes memory, PackedCounter, bytes memory) {
     bytes memory _staticData = encodeStatic(
       enclave,
       verifierContract,
       numBlocksInInterval,
-      numStartingResources,
+      numStartingTroops,
       claimedMoveLifeSpan
     );
 

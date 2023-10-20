@@ -9,7 +9,7 @@ export default mudConfig({
                 enclave: "address",
                 verifierContract: "address",
                 numBlocksInInterval: "uint256",
-                numStartingResources: "uint256",
+                numStartingTroops: "uint32",
                 claimedMoveLifeSpan: "uint256",
             },
         },

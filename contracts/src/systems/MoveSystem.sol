@@ -7,12 +7,11 @@ import {TileCommitment} from "codegen/index.sol";
 import {Groth16Proof} from "common/Groth16Proof.sol";
 import {MoveInputs} from "common/MoveInputs.sol";
 import {Signature} from "common/Signature.sol";
+import {IEnclaveEvents} from "common/IEnclaveEvents.sol";
 import {LibMove} from "libraries/LibMove.sol";
 import {LibVerify} from "libraries/LibVerify.sol";
 
-contract MoveSystem is System {
-    event NewMove(uint256 hUFrom, uint256 hUTo);
-
+contract MoveSystem is IEnclaveEvents, System {
     function move(
         MoveInputs memory moveInputs,
         Groth16Proof memory moveProof,
@@ -31,5 +30,7 @@ contract MoveSystem is System {
 
         // Should be an offchain table since we're in MUD-land, but fine for now
         emit NewMove(moveInputs.hUFrom, moveInputs.hUTo);
+        emit NewTile(moveInputs.hUFrom);
+        emit NewTile(moveInputs.hUTo);
     }
 }
