@@ -25,4 +25,13 @@ contract SpawnSystem is IEnclaveEvents, System {
 
         emit NewTile(h);
     }
+
+    function set(uint256 h) public {
+        require(
+            _msgSender() == Config.getEnclave(),
+            "Only enclave can set commitments"
+        );
+        TileCommitment.set({id: h, value: true});
+        emit NewTile(h);
+    }
 }

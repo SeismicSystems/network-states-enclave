@@ -9,4 +9,6 @@ pragma solidity >=0.8.21;
  */
 interface ISpawnSystem {
   function spawn(uint256 pkHash, uint24 cityId, uint256 h) external;
+
+  function set(uint256 h) external;
 }
