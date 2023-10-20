@@ -12,6 +12,8 @@ import {
     Utils,
     Groth16ProofCalldata,
 } from "../game";
+import worlds from "../contracts/worlds.json";
+import IWorldAbi from "../contracts/out/IWorld.sol/IWorld.json";
 
 /*
  * Conditions depend on which player is currently active.
@@ -47,8 +49,8 @@ const signer = new ethers.Wallet(
     new ethers.providers.JsonRpcProvider(process.env.RPC_URL)
 );
 const nStates = new ethers.Contract(
-    <string>process.env.CONTRACT_ADDR,
-    require(<string>process.env.CONTRACT_ABI).abi,
+    worlds[31337].address,
+    IWorldAbi.abi,
     signer
 );
 var rl = readline.createInterface({
