@@ -3,7 +3,7 @@ pragma solidity >=0.8.0;
 
 import {System} from "@latticexyz/world/src/System.sol";
 
-import {TileCommitment} from "codegen/index.sol";
+import {Config, CityCenterTroopCount, TileCommitment} from "codegen/index.sol";
 import {Groth16Proof} from "common/Groth16Proof.sol";
 import {MoveInputs} from "common/MoveInputs.sol";
 import {Signature} from "common/Signature.sol";
@@ -32,5 +32,13 @@ contract MoveSystem is IEnclaveEvents, System {
         emit NewMove(moveInputs.hUFrom, moveInputs.hUTo);
         emit NewTile(moveInputs.hUFrom);
         emit NewTile(moveInputs.hUTo);
+    }
+
+    function getCurrentInterval() public view returns (uint256) {
+        return block.number / Config.getNumBlocksInInterval();
+    }
+
+    function getCityCenterTroops(uint24 cityId) public view returns (uint32) {
+        return CityCenterTroopCount.get({id: cityId});
     }
 }

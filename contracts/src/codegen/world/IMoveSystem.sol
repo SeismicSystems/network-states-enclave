@@ -13,4 +13,8 @@ import { Signature } from "common/Signature.sol";
  */
 interface IMoveSystem {
   function move(MoveInputs memory moveInputs, Groth16Proof memory moveProof, Signature memory sig) external;
+
+  function getCurrentInterval() external view returns (uint256);
+
+  function getCityCenterTroops(uint24 cityId) external view returns (uint32);
 }
