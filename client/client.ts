@@ -171,24 +171,25 @@ async function signatureResponse(sig: string, blockNumber: number) {
     const unpackedSig: Signature = ethers.utils.splitSignature(sig);
 
     const moveInputs = {
-        currentWaterInterval: formattedProof.input[0],
+        fromIsCityCenter: formattedProof.input[7] === "1",
+        toIsCityCenter: formattedProof.input[8] === "1",
+        takingCity: formattedProof.input[9] === "1",
+        takingCapital: formattedProof.input[10] === "1",
+        ontoSelfOrUnowned: formattedProof.input[4] === "1",
+        fromCityId: Number(formattedProof.input[2]),
+        toCityId: Number(formattedProof.input[3]),
+        fromCityTroops: Number(formattedProof.input[11]),
+        toCityTroops: Number(formattedProof.input[12]),
+        numTroopsMoved: Number(formattedProof.input[5]),
+        enemyLoss: Number(formattedProof.input[6]),
+        currentInterval: formattedProof.input[0],
         fromPkHash: formattedProof.input[1],
-        fromCityId: formattedProof.input[2],
-        toCityId: formattedProof.input[3],
-        ontoSelfOrUnowned: formattedProof.input[4],
-        numTroopsMoved: formattedProof.input[5],
-        enemyLoss: formattedProof.input[6],
-        fromIsCityTile: formattedProof.input[7],
-        toIsCityTile: formattedProof.input[8],
-        takingCity: formattedProof.input[9],
-        takingCapital: formattedProof.input[10],
-        fromCityTroops: formattedProof.input[11],
-        toCityTroops: formattedProof.input[12],
         hTFrom: formattedProof.input[13],
         hTTo: formattedProof.input[14],
         hUFrom: formattedProof.input[15],
         hUTo: formattedProof.input[16],
     };
+
     const moveProof = {
         a: formattedProof.a,
         b: formattedProof.b,
