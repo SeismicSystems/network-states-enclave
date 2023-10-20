@@ -9,4 +9,24 @@ contract ConfigSystem is System {
     function setMoveVerifier(address moveVerifier) public {
         Config.setVerifierContract({verifierContract: moveVerifier});
     }
+
+    function setNumStartingTroops(uint32 numStartingTroops) public {
+        Config.setNumStartingTroops({numStartingTroops: numStartingTroops});
+    }
+
+    function setEnclave(address enclave) public {
+        Config.setEnclave({enclave: enclave});
+    }
+
+    function setClaimedMoveLifeSpan(uint256 claimedMoveLifeSpan) public {
+        Config.setClaimedMoveLifeSpan({
+            claimedMoveLifeSpan: claimedMoveLifeSpan
+        });
+    }
+
+    function setNumBlocksInInterval(uint256 numBlocksInInterval) public {
+        Config.setNumBlocksInInterval({
+            numBlocksInInterval: numBlocksInInterval
+        });
+    }
 }

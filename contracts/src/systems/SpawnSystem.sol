@@ -8,6 +8,7 @@ import {Config, CityPlayer, CityArea, CityTroopCount, CityCenterTroopCount, Play
 
 contract SpawnSystem is IEnclaveEvents, System {
     function spawn(uint256 pkHash, uint24 cityId, uint256 h) public {
+        require(_msgSender() == Config.getEnclave(), "Only enclave can spawn");
         require(cityId != 0, "City ID must be a non-zero value");
         require(CityPlayer.get({id: cityId}) == 0, "City is already in game");
 

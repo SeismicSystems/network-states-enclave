@@ -9,4 +9,12 @@ pragma solidity >=0.8.21;
  */
 interface IConfigSystem {
   function setMoveVerifier(address moveVerifier) external;
+
+  function setNumStartingTroops(uint32 numStartingTroops) external;
+
+  function setEnclave(address enclave) external;
+
+  function setClaimedMoveLifeSpan(uint256 claimedMoveLifeSpan) external;
+
+  function setNumBlocksInInterval(uint256 numBlocksInInterval) external;
 }
