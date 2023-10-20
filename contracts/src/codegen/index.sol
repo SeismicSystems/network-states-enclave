@@ -9,5 +9,4 @@ import { CityTroopCount, CityTroopCountTableId } from "./tables/CityTroopCount.s
 import { CityCenterTroopCount, CityCenterTroopCountTableId } from "./tables/CityCenterTroopCount.sol";
 import { CityArea, CityAreaTableId } from "./tables/CityArea.sol";
 import { CityPlayer, CityPlayerTableId } from "./tables/CityPlayer.sol";
-import { PlayerCities, PlayerCitiesTableId } from "./tables/PlayerCities.sol";
 import { PlayerLastUpdateBlock, PlayerLastUpdateBlockTableId } from "./tables/PlayerLastUpdateBlock.sol";

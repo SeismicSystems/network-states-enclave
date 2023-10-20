@@ -27,37 +27,9 @@ contract MoveSystem is System {
         TileCommitment.set({id: moveInputs.hUTo, value: true});
 
         LibMove.updateCityTroopCounts(moveInputs);
+        LibMove.updateCityOwnership(moveInputs);
 
         // Should be an offchain table since we're in MUD-land, but fine for now
         emit NewMove(moveInputs.hUFrom, moveInputs.hUTo);
     }
-
-    // /*
-    //  * Transfers ownership of one city to its new owner.
-    //  */
-    // function transferCityOwnership(
-    //     uint256 newOwner,
-    //     uint256 toCityId,
-    //     uint256 ontoSelfOrUnowned
-    // ) internal {
-    //     // If player is moving onto an enemy's city
-    //     if (ontoSelfOrUnowned == 0) {
-    //         uint256 enemy = citiesToPlayer[toCityId];
-
-    //         // Pop toCityId from enemyCityList
-    //         uint256 lastIndex = playerToCities[enemy].length - 1;
-    //         uint256 lastElement = playerToCities[enemy][lastIndex];
-    //         playerToCities[enemy][indexOfCity[toCityId]] = lastElement;
-    //         playerToCities[enemy].pop();
-
-    //         // The new index of lastElement is where toCityId was
-    //         indexOfCity[lastElement] = indexOfCity[toCityId];
-    //     }
-
-    //     uint256[] storage cityList = playerToCities[newOwner];
-    //     indexOfCity[toCityId] = cityList.length;
-    //     cityList.push(toCityId);
-    //     playerToCities[newOwner] = cityList;
-    //     citiesToPlayer[toCityId] = newOwner;
-    // }
 }

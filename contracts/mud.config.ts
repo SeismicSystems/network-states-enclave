@@ -44,12 +44,6 @@ export default mudConfig({
                 value: "uint256",
             },
         },
-        PlayerCities: {
-            keySchema: { pkHash: "uint256" },
-            valueSchema: {
-                value: "uint24[]",
-            },
-        },
         PlayerLastUpdateBlock: {
             keySchema: { pkHash: "uint256" },
             valueSchema: {
@@ -57,4 +51,11 @@ export default mudConfig({
             },
         },
     },
+    modules: [
+        {
+            name: "KeysWithValueModule",
+            root: true,
+            args: [resolveTableId("CityPlayer")],
+        },
+    ],
 });

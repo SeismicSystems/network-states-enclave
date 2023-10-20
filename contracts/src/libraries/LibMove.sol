@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.0;
 
-import {CityArea, CityTroopCount, CityCenterTroopCount, CityPlayer, PlayerCities, PlayerLastUpdateBlock, Config, TileCommitment} from "codegen/index.sol";
+import {CityArea, CityTroopCount, CityCenterTroopCount, CityPlayer, PlayerLastUpdateBlock, Config, TileCommitment} from "codegen/index.sol";
 import {MoveInputs} from "common/MoveInputs.sol";
 import {Signature} from "common/Signature.sol";
+import {LibCity} from "libraries/LibCity.sol";
 
 library LibMove {
     /// @notice Runs various checks for the move
@@ -121,6 +122,12 @@ library LibMove {
         }
     }
 
+    function updateCityOwnership(MoveInputs memory mv) internal {
+        if (mv.takingCity) {
+            CityPlayer.set({id: mv.toCityId, value: mv.fromPkHash});
+        }
+    }
+
     function _incrementCityTroops(
         uint24 cityId,
         uint32 increment,
@@ -156,7 +163,7 @@ library LibMove {
     }
 
     function _troopUpdate(uint256 pkHash) internal {
-        uint24[] memory cities = PlayerCities.get({pkHash: pkHash});
+        uint24[] memory cities = LibCity.getCities({pkHash: pkHash});
         uint256 numCities = cities.length;
         uint32 totalArea = 0;
         uint32 totalTroopCount = 0;
