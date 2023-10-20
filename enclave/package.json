@@ -14,5 +14,8 @@
   "scripts": {
     "dev": "ts-node server.ts 0",
     "dev:recover": "ts-node server.ts 1"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.1"
   }
 }
