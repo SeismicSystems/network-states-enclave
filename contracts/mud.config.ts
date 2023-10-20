@@ -57,26 +57,4 @@ export default mudConfig({
             },
         },
     },
-    modules: [
-        {
-            name: "KeysWithValueModule",
-            root: true,
-            args: [resolveTableId("CityState")],
-        },
-        {
-            name: "KeysWithValueModule",
-            root: true,
-            args: [resolveTableId("CityCenter")],
-        },
-        {
-            name: "KeysWithValueModule",
-            root: true,
-            args: [resolveTableId("StatePlayer")],
-        },
-    ],
-    enums: {
-        Direction: ["UP", "DOWN", "LEFT", "RIGHT"],
-        Terrain: ["BARE", "MOUNTAIN", "WATER"],
-        Bonus: ["NONE", "TROOP"],
-    },
 });
