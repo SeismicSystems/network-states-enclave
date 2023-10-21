@@ -356,14 +356,10 @@ export class Board {
         const tTo: Tile = this.getTile(to);
 
         const currentWaterInterval = (
-            await nStates.currentWaterInterval()
+            await nStates.getCurrentInterval()
         ).toNumber();
-        const fromCityTroops = (
-            await nStates.getCityTileResources(tFrom.cityId)
-        ).toNumber();
-        const toCityTroops = (
-            await nStates.getCityTileResources(tTo.cityId)
-        ).toNumber();
+        const fromCityTroops = await nStates.getCityCenterTroops(tFrom.cityId);
+        const toCityTroops = await nStates.getCityCenterTroops(tTo.cityId);
 
         // Most recent troop counts
         const fromUpdatedTroops = Board.computeUpdatedTroops(

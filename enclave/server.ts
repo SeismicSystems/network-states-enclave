@@ -13,6 +13,9 @@ import {
 } from "./socket";
 import { Queue } from "queue-typescript";
 import { Tile, Player, Board, Location, Utils } from "../game";
+import worlds from "../contracts/worlds.json";
+import IWorld from "../contracts/out/IWorld.sol/IWorld.json";
+import IEnclaveEvents from "../contracts/out/IEnclaveEvents.sol/IEnclaveEvents.json";
 
 /*
  * Whether the enclave's global state should be blank or pull from DA.
@@ -56,11 +59,9 @@ const signer = new ethers.Wallet(
     <string>process.env.DEV_PRIV_KEY,
     new ethers.providers.JsonRpcProvider(process.env.RPC_URL)
 );
-const nStates = new ethers.Contract(
-    <string>process.env.CONTRACT_ADDR,
-    require(<string>process.env.CONTRACT_ABI).abi,
-    signer
-);
+
+const abi = IWorld.abi.concat(IEnclaveEvents.abi);
+const nStates = new ethers.Contract(worlds[31337].address, abi, signer);
 
 type ClaimedMove = {
     uFrom: Tile;

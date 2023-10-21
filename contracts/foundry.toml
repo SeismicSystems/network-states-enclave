@@ -1,6 +1,23 @@
 [profile.default]
+solc_version = "0.8.21"
+ffi = false
+fuzz_runs = 256
+optimizer = true
+optimizer_runs = 3000
+verbosity = 1
 src = "src"
+test = "test"
 out = "out"
-libs = ["lib"]
+allow_paths = ["../../node_modules", "../../mud/packages"]
+extra_output_files = [
+  "abi",
+  "evm.bytecode"
+]
+fs_permissions = [{ access = "read", path = "./"}]
+gas_reports = ["*"]
 
-# See more config options https://github.com/foundry-rs/foundry/tree/master/config
+[profile.lattice-testnet]
+eth_rpc_url = "https://follower.testnet-chain.linfra.xyz"
+
+[profile.lattice-redstone-testnet]
+eth_rpc_url = "https://redstone.linfra.xyz/"
