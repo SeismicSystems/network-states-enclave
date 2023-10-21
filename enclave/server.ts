@@ -56,7 +56,7 @@ const io = new Server<
  * Boot up interface with Network States contract.
  */
 const signer = new ethers.Wallet(
-    <string>process.env.DEV_PRIV_KEY,
+    <string>process.env.PRIVATE_KEY,
     new ethers.providers.JsonRpcProvider(process.env.RPC_URL)
 );
 

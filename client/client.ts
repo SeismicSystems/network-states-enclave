@@ -45,7 +45,7 @@ const MOVE_KEYS: Record<string, number[]> = {
  * Boot up interface with 1) Network States contract and 2) the CLI.
  */
 const signer = new ethers.Wallet(
-    <string>process.env.DEV_PRIV_KEY,
+    <string>process.env.PRIVATE_KEY,
     new ethers.providers.JsonRpcProvider(process.env.RPC_URL)
 );
 const nStates = new ethers.Contract(
