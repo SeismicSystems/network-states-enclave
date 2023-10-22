@@ -5,8 +5,6 @@ pragma solidity >=0.8.21;
 
 import { Config, ConfigData, ConfigTableId } from "./tables/Config.sol";
 import { TileCommitment, TileCommitmentTableId } from "./tables/TileCommitment.sol";
-import { CityTroopCount, CityTroopCountTableId } from "./tables/CityTroopCount.sol";
-import { CityCenterTroopCount, CityCenterTroopCountTableId } from "./tables/CityCenterTroopCount.sol";
-import { CityArea, CityAreaTableId } from "./tables/CityArea.sol";
+import { City, CityData, CityTableId } from "./tables/City.sol";
 import { CityPlayer, CityPlayerTableId } from "./tables/CityPlayer.sol";
 import { PlayerLastUpdateBlock, PlayerLastUpdateBlockTableId } from "./tables/PlayerLastUpdateBlock.sol";

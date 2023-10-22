@@ -3,11 +3,12 @@ pragma solidity >=0.8.0;
 
 import {System} from "@latticexyz/world/src/System.sol";
 
-import {Config, CityCenterTroopCount, TileCommitment} from "codegen/index.sol";
+import {Config, City, TileCommitment} from "codegen/index.sol";
 import {Groth16Proof} from "common/Groth16Proof.sol";
 import {MoveInputs} from "common/MoveInputs.sol";
 import {Signature} from "common/Signature.sol";
 import {IEnclaveEvents} from "common/IEnclaveEvents.sol";
+import {LibCity} from "libraries/LibCity.sol";
 import {LibMove} from "libraries/LibMove.sol";
 import {LibVerify} from "libraries/LibVerify.sol";
 
@@ -26,7 +27,7 @@ contract MoveSystem is IEnclaveEvents, System {
         TileCommitment.set({id: moveInputs.hUTo, value: true});
 
         LibMove.updateCityTroopCounts(moveInputs);
-        LibMove.updateCityOwnership(moveInputs);
+        LibCity.updateCityOwnership(moveInputs);
 
         // Should be an offchain table since we're in MUD-land, but fine for now
         emit NewMove(moveInputs.hUFrom, moveInputs.hUTo);
@@ -39,6 +40,6 @@ contract MoveSystem is IEnclaveEvents, System {
     }
 
     function getCityCenterTroops(uint24 cityId) public view returns (uint32) {
-        return CityCenterTroopCount.get({id: cityId});
+        return City.getCenterTroopCount({id: cityId});
     }
 }
