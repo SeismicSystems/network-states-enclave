@@ -4,7 +4,7 @@ pragma solidity >=0.8.0;
 import {System} from "@latticexyz/world/src/System.sol";
 
 import {IEnclaveEvents} from "common/IEnclaveEvents.sol";
-import {Config, CityPlayer, CityArea, CityTroopCount, CityCenterTroopCount, PlayerLastUpdateBlock, TileCommitment} from "codegen/index.sol";
+import {Config, City, CityPlayer, PlayerLastUpdateBlock, TileCommitment} from "codegen/index.sol";
 
 contract SpawnSystem is IEnclaveEvents, System {
     function spawn(uint256 pkHash, uint24 cityId, uint256 h) public {
@@ -16,11 +16,14 @@ contract SpawnSystem is IEnclaveEvents, System {
 
         CityPlayer.set({id: cityId, value: pkHash});
 
-        CityArea.set({id: cityId, value: 1});
+        City.setArea({id: cityId, area: 1});
         uint32 numStartingTroops = Config.getNumStartingTroops();
-        CityTroopCount.set({id: cityId, value: numStartingTroops});
+        City.setTroopCount({id: cityId, troopCount: numStartingTroops});
 
-        CityCenterTroopCount.set({id: cityId, value: numStartingTroops});
+        City.setCenterTroopCount({
+            id: cityId,
+            centerTroopCount: numStartingTroops
+        });
         PlayerLastUpdateBlock.set({pkHash: pkHash, value: block.number});
 
         emit NewTile(h);

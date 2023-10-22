@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.0;
 
-import {CityArea, CityTroopCount, CityCenterTroopCount, CityPlayer, PlayerLastUpdateBlock, Config, TileCommitment} from "codegen/index.sol";
+import {City, CityPlayer, Config, PlayerLastUpdateBlock, TileCommitment} from "codegen/index.sol";
 import {MoveInputs} from "common/MoveInputs.sol";
 import {Signature} from "common/Signature.sol";
 import {LibCity} from "libraries/LibCity.sol";
@@ -69,10 +69,11 @@ library LibMove {
             });
         } else if (mv.fromIsCityCenter) {
             // Moving onto unowned tile
-            CityCenterTroopCount.set({
+            City.setCenterTroopCount({
                 id: mv.fromCityId,
-                value: CityCenterTroopCount.get({id: mv.fromCityId}) -
-                    mv.numTroopsMoved
+                centerTroopCount: City.getCenterTroopCount({
+                    id: mv.fromCityId
+                }) - mv.numTroopsMoved
             });
         }
 
@@ -100,18 +101,18 @@ library LibMove {
         }
 
         if (!mv.ontoSelfOrUnowned && !mv.takingCity && !mv.takingCapital) {
-            CityArea.set({
+            City.setArea({
                 id: mv.fromCityId,
-                value: CityArea.get({id: mv.fromCityId}) + 1
+                area: City.getArea({id: mv.fromCityId}) + 1
             });
-            CityArea.set({
+            City.setArea({
                 id: mv.toCityId,
-                value: CityArea.get({id: mv.toCityId}) - 1
+                area: City.getArea({id: mv.toCityId}) - 1
             });
         } else if (mv.toCityId == 0) {
-            CityArea.set({
+            City.setArea({
                 id: mv.fromCityId,
-                value: CityArea.get({id: mv.fromCityId}) + 1
+                area: City.getArea({id: mv.fromCityId}) + 1
             });
         }
 
@@ -133,14 +134,15 @@ library LibMove {
         uint32 increment,
         bool isCityCenter
     ) internal {
-        CityTroopCount.set({
+        City.setTroopCount({
             id: cityId,
-            value: CityTroopCount.get({id: cityId}) + increment
+            troopCount: City.getTroopCount({id: cityId}) + increment
         });
         if (isCityCenter) {
-            CityCenterTroopCount.set({
+            City.setCenterTroopCount({
                 id: cityId,
-                value: CityCenterTroopCount.get({id: cityId}) + increment
+                centerTroopCount: City.getCenterTroopCount({id: cityId}) +
+                    increment
             });
         }
     }
@@ -150,14 +152,15 @@ library LibMove {
         uint32 decrement,
         bool isCityCenter
     ) internal {
-        CityTroopCount.set({
+        City.setTroopCount({
             id: cityId,
-            value: CityTroopCount.get({id: cityId}) - decrement
+            troopCount: City.getTroopCount({id: cityId}) - decrement
         });
         if (isCityCenter) {
-            CityCenterTroopCount.set({
+            City.setCenterTroopCount({
                 id: cityId,
-                value: CityCenterTroopCount.get({id: cityId}) - decrement
+                centerTroopCount: City.getCenterTroopCount({id: cityId}) -
+                    decrement
             });
         }
     }
@@ -170,8 +173,8 @@ library LibMove {
 
         for (uint256 i = 0; i < numCities; i++) {
             uint24 cityId = cities[i];
-            totalArea += CityArea.get({id: cityId});
-            totalTroopCount += CityTroopCount.get({id: cityId});
+            totalArea += City.getArea({id: cityId});
+            totalTroopCount += City.getTroopCount({id: cityId});
         }
         // [TODO]: fix this formula
         // uint256 inc = ((block.number - playerLatestUpdateBlock[pkHash]) *
@@ -195,7 +198,7 @@ library LibMove {
     function _checkOntoSelfOrUnowned(
         MoveInputs memory mv
     ) internal view returns (bool) {
-        uint256 toCityOwner = CityPlayer.getValue({id: mv.toCityId});
+        uint256 toCityOwner = CityPlayer.get({id: mv.toCityId});
         if (toCityOwner == mv.fromPkHash || toCityOwner == 0) {
             return mv.ontoSelfOrUnowned;
         }
@@ -209,13 +212,13 @@ library LibMove {
         bool toCorrect = true;
         if (
             mv.fromIsCityCenter &&
-            mv.fromCityTroops != CityTroopCount.get({id: mv.fromCityId})
+            mv.fromCityTroops != City.getTroopCount({id: mv.fromCityId})
         ) {
             fromCorrect = false;
         }
         if (
             mv.toIsCityCenter &&
-            mv.toCityTroops != CityTroopCount.get({id: mv.toCityId})
+            mv.toCityTroops != City.getTroopCount({id: mv.toCityId})
         ) {
             toCorrect = false;
         }
