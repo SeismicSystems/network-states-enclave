@@ -55,14 +55,14 @@ library LibMove {
             (mv.ontoSelfOrUnowned && mv.toCityId != 0)
         ) {
             // Taking city/capital, or moving onto self-owned tile
-            _decrementCityTroops({
+            LibCity.decrementCityTroops({
                 cityId: mv.fromCityId,
                 decrement: mv.numTroopsMoved,
                 isCityCenter: mv.fromIsCityCenter
             });
         } else if (!mv.ontoSelfOrUnowned) {
             // Capturing enemy non-city tile or attacking enemy
-            _decrementCityTroops({
+            LibCity.decrementCityTroops({
                 cityId: mv.fromCityId,
                 decrement: mv.enemyLoss,
                 isCityCenter: mv.fromIsCityCenter
@@ -79,21 +79,21 @@ library LibMove {
 
         if (mv.ontoSelfOrUnowned && mv.toCityId != 0) {
             // Moving onto self-owned tile
-            _incrementCityTroops({
+            LibCity.incrementCityTroops({
                 cityId: mv.toCityId,
                 increment: mv.numTroopsMoved,
                 isCityCenter: mv.toIsCityCenter
             });
         } else if (mv.takingCity || mv.takingCapital) {
             // Taking enemy city/capital
-            _incrementCityTroops({
+            LibCity.incrementCityTroops({
                 cityId: mv.toCityId,
                 increment: mv.numTroopsMoved - mv.enemyLoss,
                 isCityCenter: mv.toIsCityCenter
             });
         } else if (!mv.ontoSelfOrUnowned) {
             // Capturing enemy non-city tile or attacking enemy
-            _decrementCityTroops({
+            LibCity.decrementCityTroops({
                 cityId: mv.toCityId,
                 decrement: mv.enemyLoss,
                 isCityCenter: mv.toIsCityCenter
@@ -123,48 +123,6 @@ library LibMove {
         }
     }
 
-    function updateCityOwnership(MoveInputs memory mv) internal {
-        if (mv.takingCity) {
-            CityPlayer.set({id: mv.toCityId, value: mv.fromPkHash});
-        }
-    }
-
-    function _incrementCityTroops(
-        uint24 cityId,
-        uint32 increment,
-        bool isCityCenter
-    ) internal {
-        City.setTroopCount({
-            id: cityId,
-            troopCount: City.getTroopCount({id: cityId}) + increment
-        });
-        if (isCityCenter) {
-            City.setCenterTroopCount({
-                id: cityId,
-                centerTroopCount: City.getCenterTroopCount({id: cityId}) +
-                    increment
-            });
-        }
-    }
-
-    function _decrementCityTroops(
-        uint24 cityId,
-        uint32 decrement,
-        bool isCityCenter
-    ) internal {
-        City.setTroopCount({
-            id: cityId,
-            troopCount: City.getTroopCount({id: cityId}) - decrement
-        });
-        if (isCityCenter) {
-            City.setCenterTroopCount({
-                id: cityId,
-                centerTroopCount: City.getCenterTroopCount({id: cityId}) -
-                    decrement
-            });
-        }
-    }
-
     function _troopUpdate(uint256 pkHash) internal {
         uint24[] memory cities = LibCity.getCities({pkHash: pkHash});
         uint256 numCities = cities.length;
@@ -182,7 +140,7 @@ library LibMove {
         //     totalResources) / numCities;
         uint32 inc = 1;
         for (uint256 i = 0; i < numCities; i++) {
-            _incrementCityTroops({
+            LibCity.incrementCityTroops({
                 cityId: cities[i],
                 increment: inc,
                 isCityCenter: true

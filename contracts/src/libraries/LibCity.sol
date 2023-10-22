@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.0;
 
-import {CityPlayer, CityPlayerTableId} from "codegen/index.sol";
+import {City, CityPlayer, CityPlayerTableId} from "codegen/index.sol";
+import {MoveInputs} from "common/MoveInputs.sol";
 
 import {getKeysWithValue} from "@latticexyz/world-modules/src/modules/keyswithvalue/getKeysWithValue.sol";
 import {PackedCounter} from "@latticexyz/store/src/PackedCounter.sol";
@@ -25,5 +26,47 @@ library LibCity {
             cities[i] = city;
         }
         return cities;
+    }
+
+    function updateCityOwnership(MoveInputs memory mv) internal {
+        if (mv.takingCity) {
+            CityPlayer.set({id: mv.toCityId, value: mv.fromPkHash});
+        }
+    }
+
+    function incrementCityTroops(
+        uint24 cityId,
+        uint32 increment,
+        bool isCityCenter
+    ) internal {
+        City.setTroopCount({
+            id: cityId,
+            troopCount: City.getTroopCount({id: cityId}) + increment
+        });
+        if (isCityCenter) {
+            City.setCenterTroopCount({
+                id: cityId,
+                centerTroopCount: City.getCenterTroopCount({id: cityId}) +
+                    increment
+            });
+        }
+    }
+
+    function decrementCityTroops(
+        uint24 cityId,
+        uint32 decrement,
+        bool isCityCenter
+    ) internal {
+        City.setTroopCount({
+            id: cityId,
+            troopCount: City.getTroopCount({id: cityId}) - decrement
+        });
+        if (isCityCenter) {
+            City.setCenterTroopCount({
+                id: cityId,
+                centerTroopCount: City.getCenterTroopCount({id: cityId}) -
+                    decrement
+            });
+        }
     }
 }

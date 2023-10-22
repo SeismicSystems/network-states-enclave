@@ -8,6 +8,7 @@ import {Groth16Proof} from "common/Groth16Proof.sol";
 import {MoveInputs} from "common/MoveInputs.sol";
 import {Signature} from "common/Signature.sol";
 import {IEnclaveEvents} from "common/IEnclaveEvents.sol";
+import {LibCity} from "libraries/LibCity.sol";
 import {LibMove} from "libraries/LibMove.sol";
 import {LibVerify} from "libraries/LibVerify.sol";
 
@@ -26,7 +27,7 @@ contract MoveSystem is IEnclaveEvents, System {
         TileCommitment.set({id: moveInputs.hUTo, value: true});
 
         LibMove.updateCityTroopCounts(moveInputs);
-        LibMove.updateCityOwnership(moveInputs);
+        LibCity.updateCityOwnership(moveInputs);
 
         // Should be an offchain table since we're in MUD-land, but fine for now
         emit NewMove(moveInputs.hUFrom, moveInputs.hUTo);
