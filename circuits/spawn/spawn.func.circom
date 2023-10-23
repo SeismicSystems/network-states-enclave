@@ -17,10 +17,10 @@ template Spawn() {
 
     var START_RESOURCES = 9;
 
+    signal input spawnCityId;
     signal input commitBlockHash;
     signal input hUnownedTile;
     signal input hSpawnTile;
-    signal input spawnCityId;
 
     signal input spawnTile[N_TL_ATRS];
 

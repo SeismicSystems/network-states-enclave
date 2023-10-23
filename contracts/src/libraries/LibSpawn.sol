@@ -7,7 +7,6 @@ import {Config, CityPlayer, CityArea, CityTroopCount, CityCenterTroopCount, Play
 
 library LibSpawn {
     /// @notice Runs various checks for the move
-
     function checkSpawnInputs(
         address player,
         SpawnInputs memory spawnInputs,

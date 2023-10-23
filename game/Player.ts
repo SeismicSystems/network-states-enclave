@@ -37,15 +37,14 @@ export class Player {
     public async constructSpawn(
         commitBlockHash: string,
         unonwedTile: Tile,
-        spawnTile: Tile,
-        nStates: any
+        spawnTile: Tile
     ) {
         const { proof, publicSignals } = await groth16.fullProve(
             {
+                spawnCityId: spawnTile.cityId.toString(),
                 commitBlockHash,
                 hUnownedTile: unonwedTile.hash(),
                 hSpawnTile: spawnTile.hash(),
-                spawnCityId: spawnTile.cityId.toString(),
                 spawnTile: spawnTile.toCircuitInput(),
             },
             Player.SPAWN_WASM,

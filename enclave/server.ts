@@ -163,7 +163,6 @@ async function getSpawnSignature(
     playerSecret: string
 ) {
     if (inRecoveryMode) {
-        console.log('hello');
         socket.disconnect();
         return;
     }
@@ -180,7 +179,6 @@ async function getSpawnSignature(
     }
 
     if (!sender || address != sender || claimedSpawns.has(address)) {
-        console.log('omg');
         socket.disconnect();
         return;
     }
@@ -218,7 +216,6 @@ async function getSpawnSignature(
 
     const unownedTile = b.getTile(l);
     if (!unownedTile.isSpawnable()) {
-        console.log("no good");
         return;
     }
 
@@ -365,7 +362,6 @@ async function getMoveSignature(socket: Socket, uFrom: any, uTo: any) {
  */
 function decrypt(socket: Socket, l: Location) {
     if (inRecoveryMode || !idToAddress.has(socket.id)) {
-        console.log('embarrasing')
         socket.disconnect();
         return;
     }
@@ -405,7 +401,6 @@ function onSpawnFinalize(player: string) {
         return;
     }
 
-    console.log("hello!");
     const spawn = claimedSpawns.get(player);
     if (spawn) {
         // Spawn is no longer pending

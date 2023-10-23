@@ -11,7 +11,9 @@ library LibSpawnVerify {
         SpawnInputs memory spawnInputs,
         Groth16Proof memory spawnProof
     ) internal view {
-        ISpawnVerifier spawnVerifierContract = ISpawnVerifier(Config.getSpawnVerifierContract());
+        ISpawnVerifier spawnVerifierContract = ISpawnVerifier(
+            Config.getSpawnVerifierContract()
+        );
         require(
             spawnVerifierContract.verifyProof(
                 spawnProof.a,
@@ -27,7 +29,7 @@ library LibSpawnVerify {
         SpawnInputs memory spawnInputs
     ) internal pure returns (uint256[4] memory) {
         return [
-            spawnInputs.spawnCityId,
+            uint256(spawnInputs.spawnCityId),
             spawnInputs.commitBlockHash,
             spawnInputs.hUnownedTile,
             spawnInputs.hSpawnTile

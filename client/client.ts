@@ -1,5 +1,5 @@
 import readline from "readline";
-import { ethers, Signature } from "ethers";
+import { BigNumber, ethers, Signature } from "ethers";
 import { io, Socket } from "socket.io-client";
 import dotenv from "dotenv";
 dotenv.config({ path: "../.env" });
@@ -38,6 +38,8 @@ const MOVE_KEYS: Record<string, number[]> = {
     s: [1, 0],
     d: [0, 1],
 };
+
+const SNARK_FIELD_SIZE = parseInt(<string>process.env.SNARK_FIELD_SIZE, 10);
 
 /*
  * Boot up interface with 1) Network States contract and 2) the CLI.
@@ -83,7 +85,7 @@ let commitBlockNumber: number;
 /*
  * Block hash of block number 'commitBlockNumber'. Used to get spawn location,
  */
-let commitBlockHash: string;
+let commitBlockHash;
 
 /*
  * Store pending move.
@@ -162,16 +164,15 @@ async function spawnSignatureResponse(sig: string, unowned: any, spawn: any) {
     const [prf, pubSigs] = await PLAYER.constructSpawn(
         commitBlockHash,
         unownedTile,
-        spawnTile,
-        nStates
+        spawnTile
     );
 
     const spawnFormattedProof = await Utils.exportCallDataGroth16(prf, pubSigs);
     const spawnInputs = {
-        spawnCityId: Number(spawnFormattedProof.input[3]),
-        commitBlockHash: spawnFormattedProof.input[0],
-        hUnownedTile: spawnFormattedProof.input[1],
-        hSpawnTile: spawnFormattedProof.input[2],
+        spawnCityId: Number(spawnFormattedProof.input[0]),
+        commitBlockHash: spawnFormattedProof.input[1],
+        hUnownedTile: spawnFormattedProof.input[2],
+        hSpawnTile: spawnFormattedProof.input[3],
     };
     const spawnProof = {
         a: spawnFormattedProof.a,
@@ -282,17 +283,11 @@ socket.on("connect", async () => {
 
     // Save block number player commited to spawning on
     commitBlockNumber = await PLAYER.commitToSpawn(nStates);
-    commitBlockHash = BigInt(
-        (await nStates.provider.getBlock(commitBlockNumber)).hash
-    ).toString();
+    commitBlockHash =
+        BigInt((await nStates.provider.getBlock(commitBlockNumber)).hash) %
+        BigInt(SNARK_FIELD_SIZE);
 
-    let blockHeight = commitBlockNumber;
-    while (blockHeight == commitBlockNumber) {
-        blockHeight = await nStates.provider.getBlockNumber();
-        console.log("waiting");
-        await Utils.sleep(1000);
-    }
-    console.log("talking to enclave now");
+    console.log("Getting spawn sig from enclave");
 
     const sig = await signer.signMessage(socket.id);
     socket.emit(
