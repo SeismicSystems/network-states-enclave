@@ -1,11 +1,10 @@
-// @ts-ignore
 import { PubKey } from "maci-domainobjs";
 import { genRandomSalt } from "maci-crypto";
-import { Player } from "./Player";
+import { Player } from "./Player.js";
 /*
  * poseidonPerm is a modified version of iden3's poseidonPerm.js.
  */
-const poseidonPerm = require("./poseidonPerm");
+import poseidonPerm from "./poseidonPerm.js";
 
 export type Location = {
     r: number;

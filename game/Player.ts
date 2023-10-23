@@ -11,7 +11,7 @@ import {
     hash2,
     hashOne,
 } from "maci-crypto";
-import { Location } from "./Tile";
+import { Location } from "./Tile.js";
 
 // Public key values that signify an unowned tile.
 const UNOWNED_PUB_X = hashOne(BigInt(0));
