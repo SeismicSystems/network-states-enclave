@@ -3,7 +3,7 @@ import { groth16 } from "snarkjs";
 import { Signature } from "maci-crypto";
 import crypto from "crypto";
 import { BigNumber } from "ethers";
-import { Location, Tile } from "./Tile";
+import { Tile } from "./Tile";
 
 export type Groth16Proof = {
     pi_a: [string, string, string];

@@ -14,7 +14,6 @@ struct MoveInputs {
     uint32 numTroopsMoved;
     uint32 enemyLoss;
     uint256 currentInterval;
-    uint256 fromPkHash;
     uint256 hTFrom;
     uint256 hTTo;
     uint256 hUFrom;

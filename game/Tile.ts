@@ -1,5 +1,3 @@
-// @ts-ignore
-import { PubKey } from "maci-domainobjs";
 import { genRandomSalt } from "maci-crypto";
 import { Player } from "./Player";
 /*
@@ -13,8 +11,8 @@ export type Location = {
 };
 
 export class Tile {
-    static UNOWNED: Player = new Player("_");
-    static MYSTERY: Player = new Player("?");
+    static UNOWNED: Player = new Player("_", "");
+    static MYSTERY: Player = new Player("?", "");
 
     // If cityId = 0 then the tile is considered unowned
     static UNOWNED_ID: number = 0;
@@ -86,19 +84,12 @@ export class Tile {
     }
 
     /*
-     * Returns the owner's public key as a string.
-     */
-    ownerPubKey(): string {
-        return this.owner.bjjPub.serialize();
-    }
-
-    /*
      * Convert to JSON object with all values as strings.
      */
     toJSON(): object {
         return {
             symbol: this.owner.symbol,
-            bjjPub: this.owner.bjjPub.serialize(),
+            address: this.owner.address,
             r: this.loc.r.toString(),
             c: this.loc.c.toString(),
             resources: this.resources.toString(),
@@ -131,6 +122,13 @@ export class Tile {
     }
 
     /*
+     * Return true if this Tile is a hill tile.
+     */
+    isHill(): boolean {
+        return this.tileType === Tile.HILL_TILE;
+    }
+
+    /*
      * Return true if this Tile is a city.
      */
     isCity(): boolean {
@@ -145,11 +143,24 @@ export class Tile {
     }
 
     /*
+     * Return true if player should be allowed to spawn over this tile.
+     */
+    isSpawnable(): boolean {
+        return (
+            this.isUnowned() &&
+            !this.isWater() &&
+            !this.isHill() &&
+            !this.isCity() &&
+            !this.isCapital()
+        );
+    }
+
+    /*
      * Convert JSON object to Tile.
      */
     static fromJSON(obj: any): Tile {
         return new Tile(
-            new Player(obj.symbol, undefined, PubKey.unserialize(obj.bjjPub)),
+            new Player(obj.symbol, obj.address),
             { r: parseInt(obj.r, 10), c: parseInt(obj.c, 10) },
             parseInt(obj.resources, 10),
             BigInt(obj.key),
@@ -223,5 +234,9 @@ export class Tile {
             0,
             this.WATER_TILE
         );
+    }
+
+    static spawn(pl: Player, l: Location, r: number, cityId: number): Tile {
+        return Tile.genOwned(pl, l, r, cityId, 0, Tile.CAPITAL_TILE);
     }
 }

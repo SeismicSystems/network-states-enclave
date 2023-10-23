@@ -65,7 +65,7 @@ async function sendRecoveredTile(index: number) {
 
         socket.emit("sendRecoveredTileResponse", {
             symbol: res.rows[0].symbol,
-            pubkey: res.rows[0].pubkey,
+            address: res.rows[0].address,
             ciphertext: res.rows[0].ciphertext,
             iv: res.rows[0].iv,
             tag: res.rows[0].tag,
@@ -79,21 +79,27 @@ async function sendRecoveredTile(index: number) {
  */
 async function saveToDatabase(encTile: any) {
     const symbol = encTile.symbol;
-    const pubkey = encTile.pubkey;
+    const address = encTile.address;
     const ciphertext = encTile.ciphertext;
     const iv = encTile.iv;
     const tag = encTile.tag;
 
-    if (!symbol || !pubkey || !ciphertext || !iv || !tag) {
+    if (
+        symbol == undefined ||
+        address == undefined ||
+        ciphertext == undefined ||
+        iv == undefined ||
+        tag == undefined
+    ) {
         return;
     }
 
     const client = await pool.connect();
     await client.query(
         `INSERT INTO 
-        encrypted_tiles (symbol, pubkey, ciphertext, iv, tag)
+        encrypted_tiles (symbol, address, ciphertext, iv, tag)
         VALUES ($1, $2, $3, $4, $5)`,
-        [symbol, pubkey, ciphertext, iv, tag]
+        [symbol, address, ciphertext, iv, tag]
     );
     console.log("Inserted");
 

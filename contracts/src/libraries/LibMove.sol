@@ -9,6 +9,7 @@ import {LibCity} from "libraries/LibCity.sol";
 library LibMove {
     /// @notice Runs various checks for the move
     function checkMoveInputs(
+        address player,
         MoveInputs memory moveInputs,
         Signature memory sig
     ) internal view {
@@ -26,12 +27,7 @@ library LibMove {
             "Move too far"
         );
         require(
-            moveInputs.fromPkHash ==
-                CityPlayer.getValue({id: moveInputs.fromCityId}),
-            "Must move owned city"
-        );
-        require(
-            _checkOntoSelfOrUnowned({mv: moveInputs}),
+            _checkOntoSelfOrUnowned({player: player, mv: moveInputs}),
             "Incorrect ontoSelfOrUnowned"
         );
         require(
@@ -122,9 +118,9 @@ library LibMove {
         }
     }
 
-    function updateCityOwnership(MoveInputs memory mv) internal {
+    function updateCityOwnership(address player, MoveInputs memory mv) internal {
         if (mv.takingCity) {
-            CityPlayer.set({id: mv.toCityId, value: mv.fromPkHash});
+            CityPlayer.set({id: mv.toCityId, value: player});
         }
     }
 
@@ -162,8 +158,8 @@ library LibMove {
         }
     }
 
-    function _troopUpdate(uint256 pkHash) internal {
-        uint24[] memory cities = LibCity.getCities({pkHash: pkHash});
+    function _troopUpdate(address player) internal {
+        uint24[] memory cities = LibCity.getCities({player: player});
         uint256 numCities = cities.length;
         uint32 totalArea = 0;
         uint32 totalTroopCount = 0;
@@ -185,7 +181,7 @@ library LibMove {
                 isCityCenter: true
             });
         }
-        PlayerLastUpdateBlock.set({pkHash: pkHash, value: block.number});
+        PlayerLastUpdateBlock.set({id: player, value: block.number});
     }
 
     function _getCurrentInterval() internal view returns (uint256) {
@@ -193,10 +189,11 @@ library LibMove {
     }
 
     function _checkOntoSelfOrUnowned(
+        address player,
         MoveInputs memory mv
     ) internal view returns (bool) {
-        uint256 toCityOwner = CityPlayer.getValue({id: mv.toCityId});
-        if (toCityOwner == mv.fromPkHash || toCityOwner == 0) {
+        address toCityOwner = CityPlayer.getValue({id: mv.toCityId});
+        if (toCityOwner == player || toCityOwner == address(0)) {
             return mv.ontoSelfOrUnowned;
         }
         return !mv.ontoSelfOrUnowned;

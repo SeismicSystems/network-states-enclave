@@ -5,6 +5,7 @@
   "license": "BSD-4-Clause",
   "scripts": {
     "dev:move": "bash dev.sh move artifacts/powersOfTau28_hez_final_17.ptau",
+    "dev:spawn": "bash dev.sh spawn artifacts/powersOfTau28_hez_final_17.ptau",
     "test": "mocha -r ts-node/register 'test/**/*.ts'"
   },
   "dependencies": {

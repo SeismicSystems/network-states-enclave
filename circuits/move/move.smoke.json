@@ -1,6 +1,5 @@
 {
     "currentWaterInterval": "28",
-    "fromPkHash": "9232778621618881227418971187877782263080370645003391971655463020486321916105",
     "fromCityId": "1",
     "toCityId": "0",
     "ontoSelfOrUnowned": "1",
@@ -53,6 +52,5 @@
         "0"
     ],
     "fromUpdatedTroops": "9",
-    "toUpdatedTroops": "0",
-    "privKeyHash": "7221462148141198318363776173320024150516675100056431160260080980206190735341"
+    "toUpdatedTroops": "0"
 }

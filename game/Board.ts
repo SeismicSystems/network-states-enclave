@@ -35,17 +35,9 @@ export class Board {
             let row: Tile[] = new Array<Tile>();
             for (let j = 0; j < sz; j++) {
                 if (isInit) {
-                    let tl: Tile;
-                    if (i === 0 && j === 1) {
-                        tl = Tile.hill({ r: i, c: j });
-                    } else if (i === 1 && j === 1) {
-                        tl = Tile.water({ r: i, c: j });
-                    } else {
-                        tl = Tile.genUnowned({ r: i, c: j });
-                    }
+                    let tl = Tile.genUnowned({ r: i, c: j });
                     if (nStates) {
                         await nStates.set(tl.hash());
-                        await Utils.sleep(200);
                     }
                     row.push(tl);
                 } else {
@@ -101,9 +93,8 @@ export class Board {
 
         this.setTile(tl);
 
-        const pubkey = pl.bjjPub.serialize();
-        this.playerCapital.set(pubkey, cityId);
-        this.playerCities.set(pubkey, new Set<number>().add(cityId));
+        this.playerCapital.set(pl.address, cityId);
+        this.playerCities.set(pl.address, new Set<number>().add(cityId));
         this.cityTiles.set(
             cityId,
             new Set<string>().add(JSON.stringify({ r, c }))
@@ -111,8 +102,7 @@ export class Board {
 
         // Update the global state on-chain.
         if (nStates) {
-            await nStates.spawn(pl.pubKeyHash(), cityId, this.t[r][c].hash());
-            await Utils.sleep(200);
+            await nStates.spawn(pl.address, cityId, this.t[r][c].hash());
         }
     }
 
@@ -120,7 +110,7 @@ export class Board {
      * Does the player have a capital? Enclave function.
      */
     public isSpawned(pl: Player): boolean {
-        return this.playerCapital.has(pl.bjjPub.serialize());
+        return this.playerCapital.has(pl.address);
     }
 
     /*
@@ -178,8 +168,8 @@ export class Board {
      */
     public setTile(tl: Tile) {
         const oldTile = this.t[tl.loc.r][tl.loc.c];
-        const oldOwner = oldTile.ownerPubKey();
-        const newOwner = tl.ownerPubKey();
+        const oldOwner = oldTile.owner.address;
+        const newOwner = tl.owner.address;
 
         if (oldOwner !== newOwner) {
             // Some type of capture happened: must update state
@@ -238,7 +228,7 @@ export class Board {
             if (
                 this.inBounds(nr, nc) &&
                 this.playerCities
-                    .get(reqPlayer.bjjPub.serialize())
+                    .get(reqPlayer.address)
                     ?.has(this.t[nr][nc].cityId)
             ) {
                 foundNeighbor = true;
@@ -299,7 +289,7 @@ export class Board {
             throw Error("Cannot move without mobilizing at least 1 troop.");
         }
         let uTo: Tile;
-        if (tTo.ownerPubKey() === tFrom.ownerPubKey()) {
+        if (tTo.owner.address === tFrom.owner.address) {
             uTo = Tile.genOwned(
                 tTo.owner,
                 tTo.loc,
@@ -347,7 +337,6 @@ export class Board {
      * troops from one tile to another. Moves all but one troop for development.
      */
     public async constructMove(
-        bjjPrivKeyHash: BigInt,
         from: Location,
         to: Location,
         nStates: any
@@ -394,17 +383,16 @@ export class Board {
 
         const enemyLoss = Math.min(toUpdatedTroops, nMobilize);
         const ontoSelfOrUnowned =
-            tTo.ownerPubKey() === tFrom.ownerPubKey() || tTo.isUnowned()
+            tTo.owner.address === tFrom.owner.address || tTo.isUnowned()
                 ? "1"
                 : "0";
-        const capturedTile = uTo.ownerPubKey() != tTo.ownerPubKey();
+        const capturedTile = uTo.owner.address != tTo.owner.address;
         const takingCity = tTo.isCity() && capturedTile ? "1" : "0";
         const takingCapital = tTo.isCapital() && capturedTile ? "1" : "0";
 
         const { proof, publicSignals } = await groth16.fullProve(
             {
                 currentWaterInterval: currentWaterInterval.toString(),
-                fromPkHash: tFrom.owner.pubKeyHash(),
                 fromCityId: tFrom.cityId.toString(),
                 toCityId: tTo.cityId.toString(),
                 ontoSelfOrUnowned,
@@ -426,7 +414,6 @@ export class Board {
                 uTo: uTo.toCircuitInput(),
                 fromUpdatedTroops: fromUpdatedTroops.toString(),
                 toUpdatedTroops: toUpdatedTroops.toString(),
-                privKeyHash: bjjPrivKeyHash.toString(),
             },
             Board.MOVE_WASM,
             Board.MOVE_PROVKEY

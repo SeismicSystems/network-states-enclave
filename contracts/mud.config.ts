@@ -7,11 +7,24 @@ export default mudConfig({
             keySchema: {},
             valueSchema: {
                 enclave: "address",
-                verifierContract: "address",
+                spawnVerifierContract: "address",
+                moveVerifierContract: "address",
                 numBlocksInInterval: "uint256",
                 numStartingTroops: "uint32",
                 claimedMoveLifeSpan: "uint256",
             },
+        },
+        SpawnCommitment: {
+            keySchema: { id: "address" },
+            valueSchema: {
+                value: "uint256",
+            }
+        },
+        SpawnChallengeHash: {
+            keySchema: { id: "address" },
+            valueSchema: {
+                value: "uint256",
+            }
         },
         TileCommitment: {
             keySchema: { id: "uint256" },
@@ -41,11 +54,11 @@ export default mudConfig({
         CityPlayer: {
             keySchema: { id: "uint24" },
             valueSchema: {
-                value: "uint256",
+                value: "address",
             },
         },
         PlayerLastUpdateBlock: {
-            keySchema: { pkHash: "uint256" },
+            keySchema: { id: "address" },
             valueSchema: {
                 value: "uint256",
             },
