@@ -133,7 +133,7 @@ export class Tile {
     /*
      * Return true if this Tile is a city.
      */
-    isCity(): boolean {
+    isCityCenter(): boolean {
         return this.tileType === Tile.CITY_TILE;
     }
 
