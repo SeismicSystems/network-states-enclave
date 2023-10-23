@@ -12,10 +12,14 @@ import {
     SocketData,
 } from "./socket";
 import { Queue } from "queue-typescript";
-import { Tile, Player, Board, Location, Utils } from "../game";
-import worlds from "../contracts/worlds.json";
-import IWorld from "../contracts/out/IWorld.sol/IWorld.json";
-import IEnclaveEvents from "../contracts/out/IEnclaveEvents.sol/IEnclaveEvents.json";
+import { TerrainUtils } from "../game/Terrain.js";
+import { Tile, Location } from "../game/Tile.js";
+import { Player } from "../game/Player.js";
+import { Board } from "../game/Board.js";
+import { Utils } from "../game/Utils.js";
+import worlds from "../contracts/worlds.json" assert { type: "json" };
+import IWorld from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "json" };
+import IEnclaveEvents from "../contracts/out/IEnclaveEvents.sol/IEnclaveEvents.json" assert { type: "json" };
 
 /*
  * Whether the enclave's global state should be blank or pull from DA.
@@ -427,7 +431,7 @@ function onMoveFinalize(hUFrom: string, hUTo: string) {
                     }
                 });
             });
-        } else if (ownershipChanged && tTo.isCity()) {
+        } else if (ownershipChanged && tTo.isCityCenter()) {
             b.cityTiles.get(tTo.cityId)?.forEach((locString: string) => {
                 const loc = JSON.parse(locString);
                 if (loc) {
@@ -557,6 +561,9 @@ nStates.provider.on("block", async (n) => {
 server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
     b = new Board();
 
+    const terrainUtils = new TerrainUtils();
+    await terrainUtils.setup();
+
     if (inRecoveryMode) {
         // Get previous encryption key
         tileEncryptionKey = Buffer.from(
@@ -567,7 +574,7 @@ server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
         );
 
         // Seed board, but do not update global state
-        await b.seed(BOARD_SIZE, true, undefined);
+        await b.seed(BOARD_SIZE, true, undefined, terrainUtils.getTerrainAtLoc);
 
         // Cannot recover until DA node connects
         console.log("In recovery mode, waiting for DA node to connect");
@@ -581,7 +588,7 @@ server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
             tileEncryptionKey.toString("hex")
         );
 
-        await b.seed(BOARD_SIZE, true, nStates);
+        await b.seed(BOARD_SIZE, true, nStates, terrainUtils.getTerrainAtLoc);
 
         for (let r = 0; r < BOARD_SIZE; r++) {
             for (let c = 0; c < BOARD_SIZE; c++) {
