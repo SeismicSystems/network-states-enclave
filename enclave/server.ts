@@ -362,14 +362,17 @@ async function getMoveSignature(socket: Socket, uFrom: any, uTo: any) {
  */
 function decrypt(socket: Socket, l: Location) {
     if (inRecoveryMode || !idToAddress.has(socket.id)) {
+        console.log('oh no');
         socket.disconnect();
         return;
     }
 
     const owner = new Player("", idToAddress.get(socket.id)!);
     if (b.noFog(l, owner)) {
+        console.log('yay');
         socket.emit("decryptResponse", b.getTile(l).toJSON());
     } else {
+        console.log('nay')
         socket.emit("decryptResponse", Tile.mystery(l).toJSON());
     }
 }
@@ -403,6 +406,7 @@ function onSpawnFinalize(player: string) {
 
     const spawn = claimedSpawns.get(player);
     if (spawn) {
+
         // Spawn is no longer pending
         claimedSpawns.delete(player);
 

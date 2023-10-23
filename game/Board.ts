@@ -171,46 +171,55 @@ export class Board {
         const oldOwner = oldTile.owner.address;
         const newOwner = tl.owner.address;
 
-        if (oldOwner !== newOwner) {
-            // Some type of capture happened: must update state
-            if (oldTile.isCapital()) {
-                this.playerCapital.delete(oldOwner);
+        if (!this.isSpawned(tl.owner)) {
+            // Initialize player's data
+            this.playerCapital.set(newOwner, tl.cityId);
+            this.playerCities.set(newOwner, new Set<number>().add(tl.cityId));
+            this.cityTiles.set(
+                tl.cityId,
+                new Set<string>().add(JSON.stringify(tl.loc))
+            );
+        } else {
+            if (oldOwner !== newOwner) {
+                // Some type of capture happened: must update state
+                if (oldTile.isCapital()) {
+                    this.playerCapital.delete(oldOwner);
 
-                for (let cityId of this.playerCities.get(oldOwner)!) {
+                    for (let cityId of this.playerCities.get(oldOwner)!) {
+                        // Change tiles' ownership
+                        for (let locString of this.cityTiles.get(cityId)!) {
+                            const loc = JSON.parse(locString);
+                            if (loc) {
+                                let tile = this.t[loc.r][loc.c];
+                                tile.owner = tl.owner;
+                                this.t[loc.r][loc.c] = tile;
+                            }
+                        }
+
+                        this.playerCities.get(newOwner)?.add(cityId);
+                    }
+                    this.playerCities.delete(oldOwner);
+                } else if (oldTile.isCity()) {
                     // Change tiles' ownership
-                    for (let locString of this.cityTiles.get(cityId)!) {
+                    for (let locString of this.cityTiles.get(oldTile.cityId)!) {
                         const loc = JSON.parse(locString);
                         if (loc) {
                             let tile = this.t[loc.r][loc.c];
-                            tile.owner = tl.owner;
+                            tile.owner = oldTile.owner;
                             this.t[loc.r][loc.c] = tile;
                         }
                     }
 
-                    this.playerCities.get(newOwner)?.add(cityId);
+                    this.playerCities.get(oldOwner)?.delete(tl.cityId);
+                    this.playerCities.get(newOwner)?.add(tl.cityId);
+                } else {
+                    // Normal/water tile with a new owner
+                    const locString = JSON.stringify(tl.loc);
+                    this.cityTiles.get(oldTile.cityId)?.delete(locString);
+                    this.cityTiles.get(tl.cityId)?.add(locString);
                 }
-                this.playerCities.delete(oldOwner);
-            } else if (oldTile.isCity()) {
-                // Change tiles' ownership
-                for (let locString of this.cityTiles.get(oldTile.cityId)!) {
-                    const loc = JSON.parse(locString);
-                    if (loc) {
-                        let tile = this.t[loc.r][loc.c];
-                        tile.owner = oldTile.owner;
-                        this.t[loc.r][loc.c] = tile;
-                    }
-                }
-
-                this.playerCities.get(oldOwner)?.delete(tl.cityId);
-                this.playerCities.get(newOwner)?.add(tl.cityId);
-            } else {
-                // Normal/water tile with a new owner
-                const locString = JSON.stringify(tl.loc);
-                this.cityTiles.get(oldTile.cityId)?.delete(locString);
-                this.cityTiles.get(tl.cityId)?.add(locString);
             }
         }
-
         this.t[tl.loc.r][tl.loc.c] = tl;
     }
 
