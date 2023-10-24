@@ -1,9 +1,9 @@
 import { genRandomSalt } from "maci-crypto";
-import { Player } from "./Player";
+import { Player } from "./Player.js";
 /*
  * poseidonPerm is a modified version of iden3's poseidonPerm.js.
  */
-const poseidonPerm = require("./poseidonPerm");
+import poseidonPerm from "./poseidonPerm.js";
 
 export type Location = {
     r: number;
@@ -131,7 +131,7 @@ export class Tile {
     /*
      * Return true if this Tile is a city.
      */
-    isCity(): boolean {
+    isCityCenter(): boolean {
         return this.tileType === Tile.CITY_TILE;
     }
 
@@ -150,7 +150,7 @@ export class Tile {
             this.isUnowned() &&
             !this.isWater() &&
             !this.isHill() &&
-            !this.isCity() &&
+            !this.isCityCenter() &&
             !this.isCapital()
         );
     }

@@ -395,6 +395,15 @@
     fastfile "0.0.20"
     ffjavascript "^0.2.48"
 
+"@latticexyz/noise@^2.0.0-next.12":
+  version "2.0.0-next.12"
+  resolved "https://registry.yarnpkg.com/@latticexyz/noise/-/noise-2.0.0-next.12.tgz#a92ed89a2458e417a4b6e99a6c579b4f22de13fc"
+  integrity sha512-9ZI1CNkcw+43GNZmuqiHrQX2gW+g9do2iAKC4DuQgSl5me9e8U5C2P5jQprsejNRDiUlcvoOqy9xftxH6/RtLA==
+  dependencies:
+    abdk-libraries-solidity "^3.0.0"
+    ds-test "https://github.com/dapphub/ds-test.git#e282159d5170298eb2455a6c05280ab5a73a4ef0"
+    forge-std "https://github.com/foundry-rs/forge-std.git#74cfb77e308dd188d2f58864aaf44963ae6b88b1"
+
 "@noble/curves@1.1.0", "@noble/curves@~1.1.0":
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/@noble/curves/-/curves-1.1.0.tgz#f13fc667c89184bc04cccb9b11e8e7bae27d8c3d"
@@ -517,6 +526,11 @@
   version "1.1.2"
   resolved "https://registry.yarnpkg.com/@ungap/promise-all-settled/-/promise-all-settled-1.1.2.tgz#aa58042711d6e3275dd37dc597e5d31e8c290a44"
   integrity sha512-sL/cEvJWAnClXw0wHk85/2L0G6Sj8UB0Ctc1TEMbKSsmpRosqhwj9gWgFRZSrBr2f9tiXISwNhCPmlfqUqyb9Q==
+
+abdk-libraries-solidity@^3.0.0:
+  version "3.2.0"
+  resolved "https://registry.yarnpkg.com/abdk-libraries-solidity/-/abdk-libraries-solidity-3.2.0.tgz#bd0b4f3edd89d0a64e8b1f0000a0cb10f989a0ae"
+  integrity sha512-JyedKxyqsszb9qCTX+YCOQHA4m0YAq9p77Qvumiy8LJLLrm1FfA9D3pdSAZN5wrmi3PSv0y3Svy8c/C+8S9K8g==
 
 abortcontroller-polyfill@^1.7.3:
   version "1.7.5"
@@ -1313,6 +1327,10 @@ dom-walk@^0.1.0:
   resolved "https://registry.yarnpkg.com/dom-walk/-/dom-walk-0.1.2.tgz#0c548bef048f4d1f2a97249002236060daa3fd84"
   integrity sha512-6QvTW9mrGeIegrFXdtQi9pk7O/nSK6lSdXW2eqUspN5LWD7UTji2Fqw5V2YLjBpHEoU9Xl/eUWNpDeZvoyOv2w==
 
+"ds-test@https://github.com/dapphub/ds-test.git#e282159d5170298eb2455a6c05280ab5a73a4ef0":
+  version "1.0.0"
+  resolved "https://github.com/dapphub/ds-test.git#e282159d5170298eb2455a6c05280ab5a73a4ef0"
+
 ecc-jsbn@~0.1.1:
   version "0.1.2"
   resolved "https://registry.yarnpkg.com/ecc-jsbn/-/ecc-jsbn-0.1.2.tgz#3a83a904e54353287874c564b7549386849a98c9"
@@ -1772,6 +1790,10 @@ forever-agent@~0.6.1:
   version "0.6.1"
   resolved "https://registry.yarnpkg.com/forever-agent/-/forever-agent-0.6.1.tgz#fbc71f0c41adeb37f96c577ad1ed42d8fdacca91"
   integrity sha512-j0KLYPhm6zeac4lz3oJ3o65qvgQCcPubiyotZrXqEaG4hNagNYO8qdlUrX5vwqv9ohqeT/Z3j6+yW067yWWdUw==
+
+"forge-std@https://github.com/foundry-rs/forge-std.git#74cfb77e308dd188d2f58864aaf44963ae6b88b1":
+  version "1.6.0"
+  resolved "https://github.com/foundry-rs/forge-std.git#74cfb77e308dd188d2f58864aaf44963ae6b88b1"
 
 form-data-encoder@1.7.1:
   version "1.7.1"

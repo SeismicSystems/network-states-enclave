@@ -20,6 +20,25 @@ export type Groth16ProofCalldata = {
     input: string[];
 };
 
+export enum Terrain {
+    BARE,
+    WATER,
+    HILL,
+}
+
+export type TerrainGenerator = (location: Location) => Terrain;
+
+export const dummyTerrainGenerator = (location: Location) => {
+    const { r: i, c: j } = location;
+    if (i === 0 && j === 1) {
+        return Terrain.HILL;
+    } else if (i === 1 && j === 1) {
+        return Terrain.WATER;
+    } else {
+        return Terrain.BARE;
+    }
+};
+
 export class Utils {
     /*
      * Call `await` on the return value of this function to block.

@@ -33,23 +33,12 @@ export default mudConfig({
                 value: "bool",
             },
         },
-        CityTroopCount: {
+        City: {
             keySchema: { id: "uint24" },
             valueSchema: {
-                value: "uint32",
-            },
-        },
-        CityCenterTroopCount: {
-            keySchema: { id: "uint24" },
-            valueSchema: {
-                value: "uint32",
-            },
-        },
-        CityArea: {
-            keySchema: { id: "uint24" },
-            // Tracks total city area for this city (not incl. water tiles)
-            valueSchema: {
-                value: "uint32",
+                troopCount: "uint32",
+                centerTroopCount: "uint32",
+                area: "uint32",
             },
         },
         CityPlayer: {
