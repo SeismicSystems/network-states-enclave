@@ -205,13 +205,13 @@ library LibMove {
     ) internal view returns (bool) {
         if (
             mv.fromIsCityCenter &&
-            mv.fromCityTroops != City.getTroopCount({id: mv.fromCityId})
+            mv.fromCityTroops != City.getCenterTroopCount({id: mv.fromCityId})
         ) {
             return false;
         }
         if (
             mv.toIsCityCenter &&
-            mv.toCityTroops != City.getTroopCount({id: mv.toCityId})
+            mv.toCityTroops != City.getCenterTroopCount({id: mv.toCityId})
         ) {
             return false;
         }
