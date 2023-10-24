@@ -34,6 +34,7 @@ const START_RESOURCES: number = parseInt(
     <string>process.env.START_RESOURCES,
     10
 );
+const SNARK_FIELD_SIZE = parseInt(<string>process.env.SNARK_FIELD_SIZE, 10);
 
 /*
  * Number of blocks that a claimed move is allowed to be pending without being
@@ -202,10 +203,7 @@ async function getSpawnSignature(
     addressToId.set(sender, socket.id);
 
     // Compute location
-    // [TODO]: is this correct???
-    const commitBlockHash = BigInt(
-        (await nStates.provider.getBlock(latestBlockCommited)).hash
-    );
+    const commitBlockHash = await nStates.getBlockHash(latestBlockCommited);
 
     // [TODO]: determine formula for row/col
     const rawRow = poseidonPerm([0, playerChallenge, commitBlockHash, 0])[0];

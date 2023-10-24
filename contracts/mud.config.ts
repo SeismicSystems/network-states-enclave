@@ -9,6 +9,7 @@ export default mudConfig({
                 enclave: "address",
                 spawnVerifierContract: "address",
                 moveVerifierContract: "address",
+                snarkFieldSize: "uint256",
                 numBlocksInInterval: "uint256",
                 numStartingTroops: "uint32",
                 claimedMoveLifeSpan: "uint256",

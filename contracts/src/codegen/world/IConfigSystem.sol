@@ -12,6 +12,8 @@ interface IConfigSystem {
 
   function setMoveVerifier(address moveVerifier) external;
 
+  function setSnarkFieldSize(uint256 fieldSize) external;
+
   function setNumStartingTroops(uint32 numStartingTroops) external;
 
   function setEnclave(address enclave) external;

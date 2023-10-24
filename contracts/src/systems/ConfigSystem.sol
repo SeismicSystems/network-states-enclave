@@ -14,6 +14,10 @@ contract ConfigSystem is System {
         Config.setMoveVerifierContract({moveVerifierContract: moveVerifier});
     }
 
+    function setSnarkFieldSize(uint256 fieldSize) public {
+        Config.setSnarkFieldSize({snarkFieldSize: fieldSize});
+    }
+
     function setNumStartingTroops(uint32 numStartingTroops) public {
         Config.setNumStartingTroops({numStartingTroops: numStartingTroops});
     }

@@ -25,10 +25,12 @@ contract PostDeploy is Script {
 
         // Set env variables
         address enclave = vm.envAddress("DEV_CONTRACT_OWNER");
+        uint256 fieldSize = vm.envUint("SNARK_FIELD_SIZE");
         uint256 updateInterval = vm.envUint("UPDATE_INTERVAL");
         uint32 startTroops = uint32(vm.envUint("START_RESOURCES"));
         uint256 claimedMoveLifeSpan = vm.envUint("CLAIMED_MOVE_LIFE_SPAN");
         IWorld(worldAddress).setEnclave(enclave);
+        IWorld(worldAddress).setSnarkFieldSize(fieldSize);
         IWorld(worldAddress).setNumBlocksInInterval(updateInterval);
         IWorld(worldAddress).setNumStartingTroops(startTroops);
         IWorld(worldAddress).setClaimedMoveLifeSpan(claimedMoveLifeSpan);

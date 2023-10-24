@@ -108,9 +108,7 @@ async function commitToSpawn() {
 
     // Save block number player commited to spawning
     commitBlockNumber = await PLAYER.commitToSpawn(nStates);
-    commitBlockHash =
-        BigInt((await nStates.provider.getBlock(commitBlockNumber)).hash) %
-        BigInt(SNARK_FIELD_SIZE);
+    commitBlockHash = await nStates.getBlockHash(commitBlockNumber);
 
     console.log("Getting spawn sig from enclave");
 
@@ -174,7 +172,7 @@ async function spawnSignatureResponse(sig: string, prev: any, spawn: any) {
     const spawnTile = Tile.fromJSON(spawn);
 
     cursor = spawnTile.loc;
-
+    
     const [prf, pubSigs] = await PLAYER.constructSpawn(
         commitBlockHash,
         prevTile,
@@ -202,7 +200,7 @@ async function spawnSignatureResponse(sig: string, prev: any, spawn: any) {
         b: commitBlockNumber,
     };
 
-    console.log('Submitting spawn proof to nStates');
+    console.log("Submitting spawn proof to nStates");
     try {
         await nStates.spawn(spawnInputs, spawnProof, spawnSig);
     } catch (error) {

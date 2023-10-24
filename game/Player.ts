@@ -47,7 +47,7 @@ export class Player {
             {
                 canSpawn: prevTile.isSpawnable() ? "1" : "0",
                 spawnCityId: spawnTile.cityId.toString(),
-                commitBlockHash,
+                commitBlockHash: commitBlockHash.toString(),
                 hPrevTile: prevTile.hash(),
                 hSpawnTile: spawnTile.hash(),
                 prevTile: prevTile.toCircuitInput(),

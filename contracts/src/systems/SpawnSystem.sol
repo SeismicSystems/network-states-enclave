@@ -61,4 +61,9 @@ contract SpawnSystem is IEnclaveEvents, System {
     ) public view returns (uint256) {
         return SpawnChallengeHash.get(player);
     }
+
+    function getBlockHash(uint256 blockCommited) public view returns (uint256) {
+        uint256 snarkFieldSize = Config.getSnarkFieldSize();
+        return uint256(blockhash(blockCommited)) % snarkFieldSize;
+    }
 }

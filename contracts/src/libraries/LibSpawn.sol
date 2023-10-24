@@ -19,10 +19,23 @@ library LibSpawn {
             "City is already in game"
         );
         require(
+            checkBlockHash(player, spawnInputs.commitBlockHash),
+            "incorrect commitBlockHash"
+        );
+        require(
             _getSigner(spawnInputs.hPrevTile, spawnInputs.hSpawnTile, sig) ==
                 Config.getEnclave(),
             "Enclave spawn sig incorrect"
         );
+    }
+
+    function checkBlockHash(
+        address player,
+        uint256 blockHash
+    ) internal view returns (bool) {
+        uint256 blockCommited = SpawnCommitment.get(player);
+        uint256 snarkFieldSize = Config.getSnarkFieldSize();
+        return uint256(blockhash(blockCommited)) % snarkFieldSize == blockHash;
     }
 
     function spawnPlayer(address player, SpawnInputs memory sp) internal {

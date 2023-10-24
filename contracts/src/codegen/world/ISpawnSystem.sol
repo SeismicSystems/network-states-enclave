@@ -21,4 +21,6 @@ interface ISpawnSystem {
   function getSpawnCommitment(address player) external view returns (uint256);
 
   function getSpawnChallengeHash(address player) external view returns (uint256);
+
+  function getBlockHash(uint256 blockCommited) external view returns (uint256);
 }
