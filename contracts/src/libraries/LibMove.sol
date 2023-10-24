@@ -170,13 +170,13 @@ library LibMove {
         bool toCorrect = true;
         if (
             mv.fromIsCityCenter &&
-            mv.fromCityTroops != City.getTroopCount({id: mv.fromCityId})
+            mv.fromCityTroops != City.getCenterTroopCount({id: mv.fromCityId})
         ) {
             fromCorrect = false;
         }
         if (
             mv.toIsCityCenter &&
-            mv.toCityTroops != City.getTroopCount({id: mv.toCityId})
+            mv.toCityTroops != City.getCenterTroopCount({id: mv.toCityId})
         ) {
             toCorrect = false;
         }
