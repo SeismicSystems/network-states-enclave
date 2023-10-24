@@ -35,8 +35,6 @@ const MOVE_KEYS: Record<string, number[]> = {
     d: [0, 1],
 };
 
-const SNARK_FIELD_SIZE = parseInt(<string>process.env.SNARK_FIELD_SIZE, 10);
-
 /*
  * Boot up interface with 1) Network States contract and 2) the CLI.
  */
@@ -123,6 +121,53 @@ async function commitToSpawn() {
 }
 
 /*
+ * Response to getSpawnSignature. No matter if the response contains valid tiles
+ * or null values indicating that location is not spawnable, the player must
+ * send a zkp in order to try again.
+ */
+async function spawnSignatureResponse(sig: string, prev: any, spawn: any) {
+    const prevTile = Tile.fromJSON(prev);
+    const spawnTile = Tile.fromJSON(spawn);
+
+    cursor = spawnTile.loc;
+
+    const [prf, pubSigs] = await PLAYER.constructSpawn(
+        commitBlockHash,
+        prevTile,
+        spawnTile
+    );
+
+    const spawnFormattedProof = await Utils.exportCallDataGroth16(prf, pubSigs);
+    const spawnInputs = {
+        canSpawn: spawnFormattedProof.input[0] === "1",
+        spawnCityId: Number(spawnFormattedProof.input[1]),
+        commitBlockHash: spawnFormattedProof.input[2],
+        hPrevTile: spawnFormattedProof.input[3],
+        hSpawnTile: spawnFormattedProof.input[4],
+        hSecret: spawnFormattedProof.input[5],
+    };
+    const spawnProof = {
+        a: spawnFormattedProof.a,
+        b: spawnFormattedProof.b,
+        c: spawnFormattedProof.c,
+    };
+    const unpackedSig = ethers.utils.splitSignature(sig);
+    const spawnSig = {
+        v: unpackedSig.v,
+        r: unpackedSig.r,
+        s: unpackedSig.s,
+        b: commitBlockNumber,
+    };
+
+    console.log("Submitting spawn proof to nStates");
+    try {
+        await nStates.spawn(spawnInputs, spawnProof, spawnSig);
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+/*
  * Constructs new states induced by army at cursor moving in one of the
  * cardinal directions. Alerts enclave of intended move before sending it
  * to chain. Currently hardcoded to move all but one army unit to the next
@@ -159,52 +204,6 @@ async function move(inp: string, currentBlockHeight: number) {
         socket.emit("getMoveSignature", uFrom, uTo);
     } catch (error) {
         console.log(error);
-    }
-}
-
-/*
- * Response to getSpawnSignature. No matter if the response contains valid tiles
- * or null values indicating that location is not spawnable, the player must
- * send a zkp in order to try again.
- */
-async function spawnSignatureResponse(sig: string, prev: any, spawn: any) {
-    const prevTile = Tile.fromJSON(prev);
-    const spawnTile = Tile.fromJSON(spawn);
-
-    cursor = spawnTile.loc;
-    
-    const [prf, pubSigs] = await PLAYER.constructSpawn(
-        commitBlockHash,
-        prevTile,
-        spawnTile
-    );
-
-    const spawnFormattedProof = await Utils.exportCallDataGroth16(prf, pubSigs);
-    const spawnInputs = {
-        canSpawn: spawnFormattedProof.input[0] === "1",
-        spawnCityId: Number(spawnFormattedProof.input[1]),
-        commitBlockHash: spawnFormattedProof.input[2],
-        hPrevTile: spawnFormattedProof.input[3],
-        hSpawnTile: spawnFormattedProof.input[4],
-    };
-    const spawnProof = {
-        a: spawnFormattedProof.a,
-        b: spawnFormattedProof.b,
-        c: spawnFormattedProof.c,
-    };
-    const unpackedSig = ethers.utils.splitSignature(sig);
-    const spawnSig = {
-        v: unpackedSig.v,
-        r: unpackedSig.r,
-        s: unpackedSig.s,
-        b: commitBlockNumber,
-    };
-
-    console.log("Submitting spawn proof to nStates");
-    try {
-        await nStates.spawn(spawnInputs, spawnProof, spawnSig);
-    } catch (error) {
-        console.error(error);
     }
 }
 

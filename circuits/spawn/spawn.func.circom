@@ -26,9 +26,11 @@ template Spawn() {
     signal input commitBlockHash;
     signal input hPrevTile;
     signal input hSpawnTile;
+    signal input hSecret;
 
     signal input prevTile[N_TL_ATRS];
     signal input spawnTile[N_TL_ATRS];
+    signal input secret;
 
     // Spawn tile must be correct
     // [TODO]: constrain row and column
@@ -61,4 +63,9 @@ template Spawn() {
         isCapital]);
     signal canSpawnCorrect <== IsEqual()([circuitCanSpawn, canSpawn]);
     canSpawnCorrect === 1;
+
+    // secret should hash to hSecret
+    signal circuitHSecret <== Poseidon(1)([secret]);
+    signal hSecretCorrect <== IsEqual()([circuitHSecret, hSecret]);
+    hSecretCorrect === 1;
 }

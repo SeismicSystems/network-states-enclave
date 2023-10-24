@@ -15,6 +15,7 @@ export class Player {
     address: string;
     socketId?: string;
     secret: BigInt;
+    hSecret: string;
 
     constructor(symb: string, address: string, socketId?: string) {
         this.symbol = symb;
@@ -22,17 +23,18 @@ export class Player {
         if (socketId) {
             this.socketId = socketId;
         }
-        this.secret = genRandomSalt();
+        this.sampleSecret();
     }
 
     public sampleSecret() {
         this.secret = genRandomSalt();
+        this.hSecret = poseidonPerm([0, this.secret])[0].toString();
     }
 
     public async commitToSpawn(nStates: any) {
         const h = poseidonPerm([0, this.secret])[0].toString();
         const transaction = await nStates.commitToSpawn(h);
-        
+
         // Wait to get the transaction block number
         const receipt = await transaction.wait();
         return receipt.blockNumber;
@@ -50,8 +52,10 @@ export class Player {
                 commitBlockHash: commitBlockHash.toString(),
                 hPrevTile: prevTile.hash(),
                 hSpawnTile: spawnTile.hash(),
+                hSecret: this.hSecret,
                 prevTile: prevTile.toCircuitInput(),
                 spawnTile: spawnTile.toCircuitInput(),
+                secret: this.secret.toString(),
             },
             Player.SPAWN_WASM,
             Player.SPAWN_PROVKEY

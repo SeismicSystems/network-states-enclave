@@ -34,7 +34,6 @@ const START_RESOURCES: number = parseInt(
     <string>process.env.START_RESOURCES,
     10
 );
-const SNARK_FIELD_SIZE = parseInt(<string>process.env.SNARK_FIELD_SIZE, 10);
 
 /*
  * Number of blocks that a claimed move is allowed to be pending without being
