@@ -28,9 +28,12 @@ library LibCity {
         return cities;
     }
 
-    function updateCityOwnership(MoveInputs memory mv) internal {
+    function updateCityOwnership(
+        address player,
+        MoveInputs memory mv
+    ) internal {
         if (mv.takingCity) {
-            CityPlayer.set({id: mv.toCityId, value: mv.fromPkHash});
+            CityPlayer.set({id: mv.toCityId, value: player});
         }
     }
 

@@ -12,15 +12,18 @@ import {
     SocketData,
 } from "./socket";
 import { Queue } from "queue-typescript";
-import { Tile, Player, Board, Location, Utils } from "../game";
-/*
- * poseidonPerm is a modified version of iden3's poseidonPerm.js.
- */
-const poseidonPerm = require("../game/poseidonPerm");
 import { TerrainUtils } from "../game/Terrain.js";
+import { Tile, Location } from "../game/Tile.js";
+import { Player } from "../game/Player.js";
+import { Board } from "../game/Board.js";
+import { Utils } from "../game/Utils.js";
 import worlds from "../contracts/worlds.json" assert { type: "json" };
 import IWorld from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "json" };
 import IEnclaveEvents from "../contracts/out/IEnclaveEvents.sol/IEnclaveEvents.json" assert { type: "json" };
+/*
+ * poseidonPerm is a modified version of iden3's poseidonPerm.js.
+ */
+import poseidonPerm from "../game/poseidonPerm.js";
 
 /*
  * Whether the enclave's global state should be blank or pull from DA.
@@ -255,7 +258,7 @@ async function getSpawnSignature(
 
     if (
         latestBlockCommited == 0 ||
-        hSecret != poseidonPerm([0, playerSecret])[0]
+        hSecret != poseidonPerm([BigInt(0), playerChallenge])[0]
     ) {
         console.log(
             "Player already has enclave sig, or hSecret is inconsistent"
@@ -643,7 +646,6 @@ function dequeueTileIfDAConnected() {
 }
 
 /*
->>>>>>> 12af9f3a1b393e19fd072d8eadcae8bdd96e4629
  * Callback function called on new block events. Deletes claimed moves that
  * are unresolved for too long.
  */

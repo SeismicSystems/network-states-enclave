@@ -6,7 +6,6 @@ pragma solidity >=0.8.21;
 import { Config, ConfigData, ConfigTableId } from "./tables/Config.sol";
 import { SpawnCommitment, SpawnCommitmentTableId } from "./tables/SpawnCommitment.sol";
 import { SpawnChallengeHash, SpawnChallengeHashTableId } from "./tables/SpawnChallengeHash.sol";
-import { Founded, FoundedTableId } from "./tables/Founded.sol";
 import { TileCommitment, TileCommitmentTableId } from "./tables/TileCommitment.sol";
 import { City, CityData, CityTableId } from "./tables/City.sol";
 import { CityPlayer, CityPlayerTableId } from "./tables/CityPlayer.sol";

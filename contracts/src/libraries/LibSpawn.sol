@@ -3,7 +3,7 @@ pragma solidity >=0.8.0;
 
 import {SpawnInputs} from "common/SpawnInputs.sol";
 import {Signature} from "common/Signature.sol";
-import {Config, CityPlayer, CityArea, CityTroopCount, CityCenterTroopCount, PlayerLastUpdateBlock, SpawnCommitment, SpawnChallengeHash, TileCommitment} from "codegen/index.sol";
+import {Config, CityPlayer, City, PlayerLastUpdateBlock, SpawnCommitment, SpawnChallengeHash, TileCommitment} from "codegen/index.sol";
 
 library LibSpawn {
     /// @notice Runs various checks for the move
@@ -49,10 +49,14 @@ library LibSpawn {
 
         CityPlayer.set(sp.spawnCityId, player);
 
-        CityArea.set(sp.spawnCityId, 1);
         uint32 numStartingTroops = Config.getNumStartingTroops();
-        CityTroopCount.set(sp.spawnCityId, numStartingTroops);
-        CityCenterTroopCount.set(sp.spawnCityId, numStartingTroops);
+        City.set({
+            id: sp.spawnCityId,
+            troopCount: numStartingTroops,
+            centerTroopCount: numStartingTroops,
+            area: 1
+        });
+
         PlayerLastUpdateBlock.set(player, block.number);
     }
 

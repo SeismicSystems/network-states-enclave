@@ -130,14 +130,14 @@ library LibMove {
         uint32 increment,
         bool isCityCenter
     ) internal {
-        CityTroopCount.set({
+        City.setTroopCount({
             id: cityId,
-            value: CityTroopCount.get({id: cityId}) + increment
+            troopCount: City.getTroopCount({id: cityId}) + increment
         });
         if (isCityCenter) {
-            CityCenterTroopCount.set({
+            City.setCenterTroopCount({
                 id: cityId,
-                value: CityCenterTroopCount.get({id: cityId}) + increment
+                centerTroopCount: City.getCenterTroopCount({id: cityId}) + increment
             });
         }
     }
@@ -147,14 +147,14 @@ library LibMove {
         uint32 decrement,
         bool isCityCenter
     ) internal {
-        CityTroopCount.set({
+        City.setTroopCount({
             id: cityId,
-            value: CityTroopCount.get({id: cityId}) - decrement
+            troopCount: City.getTroopCount({id: cityId}) - decrement
         });
         if (isCityCenter) {
-            CityCenterTroopCount.set({
+            City.setCenterTroopCount({
                 id: cityId,
-                value: CityCenterTroopCount.get({id: cityId}) - decrement
+                centerTroopCount: City.getCenterTroopCount({id: cityId}) - decrement
             });
         }
     }
