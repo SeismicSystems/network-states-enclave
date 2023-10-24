@@ -295,7 +295,8 @@ socket.on("connect", async () => {
     b = new Board();
     await b.seed(BOARD_SIZE, false, nStates);
 
-    await commitToSpawn();
+    const sig = await signer.signMessage(socket.id);
+    socket.emit("login", PLAYER.address, sig);
 });
 
 /*

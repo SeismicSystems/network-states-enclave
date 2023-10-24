@@ -151,6 +151,63 @@ let queuedTilesDA = new Queue<EncryptedTile>();
 let recoveryModeIndex = 0;
 
 /*
+ * If player is already spawned, return visible tiles for decryption. If not,
+ * tell player to initiate spawning.
+ */
+function login(socket: Socket, address: string, sigStr: string) {
+    if (inRecoveryMode) {
+        socket.disconnect();
+        return;
+    }
+
+    if (addressToId.has(address)) {
+        console.log("Address already logged on");
+        socket.disconnect();
+        return;
+    }
+
+    let sender: string | undefined;
+    try {
+        sender = ethers.utils.verifyMessage(socket.id, sigStr);
+    } catch (error) {
+        console.log("Malignant signature", sigStr);
+        socket.disconnect();
+        return;
+    }
+
+    if (!sender || address != sender) {
+        console.log("Incorrect address given or bad signature");
+        socket.disconnect();
+        return;
+    }
+
+    idToAddress.set(socket.id, address);
+    addressToId.set(address, socket.id);
+
+    if (b.isSpawned(new Player("", address))) {
+        idToAddress.set(socket.id, address);
+        addressToId.set(address, socket.id);
+
+        playerLatestBlock.set(address, 0);
+
+        let visibleTiles = new Set<string>();
+        b.playerCities.get(address)?.forEach((cityId: number) => {
+            b.cityTiles.get(cityId)?.forEach((locString: string) => {
+                const tl = JSON.parse(locString);
+                if (tl) {
+                    for (let loc of b.getNearbyLocations(tl)) {
+                        visibleTiles.add(JSON.stringify(loc));
+                    }
+                }
+            });
+        });
+        socket.emit("loginResponse", Array.from(visibleTiles));
+    } else {
+        socket.emit("trySpawn");
+    }
+}
+
+/*
  * Propose to spawn at location l. Returns a signature of the old and new tiles
  * at location for contract to verify, or null value if player cannot spawn at
  * this location.
@@ -162,23 +219,29 @@ async function getSpawnSignature(
     sigStr: string,
     playerSecret: string
 ) {
-    if (inRecoveryMode) {
+    const sender = idToAddress.get(socket.id);
+    if (inRecoveryMode || !sender) {
         socket.disconnect();
         return;
     }
 
-    let sender: string | undefined;
+    if (claimedSpawns.has(sender)) {
+        console.log("Already committed to spawn");
+        socket.disconnect();
+        return;
+    }
+
+    if (claimedSpawns.has(address)) {
+        console.log("Already committed to spawn");
+        socket.disconnect();
+        return;
+    }
+
     let playerChallenge: BigInt | undefined;
     try {
-        sender = ethers.utils.verifyMessage(socket.id, sigStr);
         playerChallenge = BigInt(playerSecret);
     } catch (error) {
-        console.log("Malignant signature or secret: ", sigStr);
-        socket.disconnect();
-        return;
-    }
-
-    if (!sender || address != sender || claimedSpawns.has(address)) {
+        console.log("Malignant secret: ", sigStr);
         socket.disconnect();
         return;
     }
@@ -193,6 +256,9 @@ async function getSpawnSignature(
         latestBlockCommited == 0 ||
         hSecret != poseidonPerm([0, playerSecret])[0]
     ) {
+        console.log(
+            "Player already has enclave sig, or hSecret is inconsistent"
+        );
         socket.disconnect();
         return;
     }
@@ -593,16 +659,19 @@ function upkeepClaimedMoves() {
 io.on("connection", (socket: Socket) => {
     console.log("Connected: ", socket.id);
 
+    socket.on("login", (address: string, sig: string) => {
+        login(socket, address, sig);
+    });
     socket.on(
         "getSpawnSignature",
-        (symb: string, address: string, sig: string, s: string) => {
+        async (symb: string, address: string, sig: string, s: string) => {
             getSpawnSignature(socket, symb, address, sig, s);
         }
     );
     socket.on("handshakeDA", () => {
         handshakeDA(socket);
     });
-    socket.on("getMoveSignature", (uFrom: any, uTo: any) => {
+    socket.on("getMoveSignature", async (uFrom: any, uTo: any) => {
         getMoveSignature(socket, uFrom, uTo);
     });
     socket.on("decrypt", (l: Location) => {

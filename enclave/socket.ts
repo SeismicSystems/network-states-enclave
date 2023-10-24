@@ -14,7 +14,7 @@ interface ServerToClientEvents {
 }
 
 interface ClientToServerEvents {
-    login: (l: Location, symb: string, address: string, sig: string) => void;
+    login: (address: string, sig: string) => void;
     handshakeDA: () => void;
     decrypt: (l: Location) => void;
     getSpawnSignature: (
