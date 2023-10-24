@@ -212,7 +212,7 @@ async function getSpawnSignature(
     const rawCol = poseidonPerm([0, playerChallenge, commitBlockHash, 1])[0];
     const r = Number(rawRow % BigInt(b.t.length));
     const c = Number(rawCol % BigInt(b.t.length));
-    const l = { r: 0, c: 0 };
+    const l = { r, c };
 
     const prevTile = b.getTile(l);
     const hPrevTile = prevTile.hash();

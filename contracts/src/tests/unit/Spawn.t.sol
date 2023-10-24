@@ -26,30 +26,27 @@ contract SpawnTest is MudTest {
         vm.stopPrank();
     }
 
-    // function test_SpawnReset() public {
-    //     address player = address(0xface);
-    //     vm.roll(10);
-    //     vm.prank(player);
-    //     world.commitToSpawn(123);
+    function test_SpawnReset() public {
+        address player = address(0xface);
+        vm.roll(10);
+        vm.prank(player);
+        world.commitToSpawn(123);
 
-    //     console.log(
-    //         "SpawnCommitment before reset",
-    //         SpawnCommitment.getValue(player)
-    //     );
+        console.log(
+            "SpawnCommitment before reset",
+            SpawnCommitment.getValue(player)
+        );
 
-    //     assertTrue(SpawnCommitment.getValue(player) != 0);
+        assertTrue(SpawnCommitment.getValue(player) != 0);
 
-    //     vm.prank(player);
-    //     world.resetPlayer();
+        console.log(
+            "SpawnCommitment after reset",
+            SpawnCommitment.getValue(player)
+        );
 
-    //     console.log(
-    //         "SpawnCommitment after reset",
-    //         SpawnCommitment.getValue(player)
-    //     );
+        assertEq(SpawnCommitment.getValue(player), 0);
 
-    //     assertEq(SpawnCommitment.getValue(player), 0);
-
-    //     vm.prank(player);
-    //     world.commitToSpawn(123);
-    // }
+        vm.prank(player);
+        world.commitToSpawn(123);
+    }
 }

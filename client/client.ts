@@ -189,7 +189,6 @@ async function spawnSignatureResponse(sig: string, prev: any, spawn: any) {
         hPrevTile: spawnFormattedProof.input[3],
         hSpawnTile: spawnFormattedProof.input[4],
     };
-    console.log(spawnInputs);
     const spawnProof = {
         a: spawnFormattedProof.a,
         b: spawnFormattedProof.b,
@@ -203,18 +202,11 @@ async function spawnSignatureResponse(sig: string, prev: any, spawn: any) {
         b: commitBlockNumber,
     };
 
+    console.log('Submitting spawn proof to nStates');
     try {
-        console.log('Submitting spawn proof to nStates');
-        const tx = await nStates.spawn(spawnInputs, spawnProof, spawnSig);
-
-        // If player cannot spawn, then wait for the next block and try again
-        if (!spawnInputs.canSpawn) {
-            await tx.wait();
-            await commitToSpawn();
-        }
+        await nStates.spawn(spawnInputs, spawnProof, spawnSig);
     } catch (error) {
         console.error(error);
-        await commitToSpawn();
     }
 }
 
@@ -302,8 +294,6 @@ async function errorResponse(msg: string) {
  */
 socket.on("connect", async () => {
     console.log("Server connection established");
-
-    console.log(signer.address);
 
     b = new Board();
     await b.seed(BOARD_SIZE, false, nStates);
