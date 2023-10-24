@@ -4,16 +4,12 @@ import { io, Socket } from "socket.io-client";
 import dotenv from "dotenv";
 dotenv.config({ path: "../.env" });
 import { ServerToClientEvents, ClientToServerEvents } from "../enclave/socket";
-import {
-    Player,
-    Tile,
-    Board,
-    Location,
-    Utils,
-    Groth16ProofCalldata,
-} from "../game";
-import worlds from "../contracts/worlds.json";
-import IWorldAbi from "../contracts/out/IWorld.sol/IWorld.json";
+import { Tile, Location } from "../game/Tile.js";
+import { Player } from "../game/Player.js";
+import { Board } from "../game/Board.js";
+import { Utils, Groth16ProofCalldata } from "../game/Utils.js";
+import worlds from "../contracts/worlds.json" assert { type: "json" };
+import IWorldAbi from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "json" };
 
 /*
  * Conditions depend on which player is currently active.
@@ -229,6 +225,8 @@ socket.on("connect", async () => {
     console.log("Server connection established");
 
     b = new Board();
+
+    // Pass in dummy function to terrain generator because init is false
     await b.seed(BOARD_SIZE, false, nStates);
 
     // Player can submit moves starting next block

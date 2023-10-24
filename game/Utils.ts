@@ -3,7 +3,7 @@ import { groth16 } from "snarkjs";
 import { Signature } from "maci-crypto";
 import crypto from "crypto";
 import { BigNumber } from "ethers";
-import { Location, Tile } from "./Tile";
+import { Location, Tile } from "./Tile.js";
 
 export type Groth16Proof = {
     pi_a: [string, string, string];
@@ -18,6 +18,25 @@ export type Groth16ProofCalldata = {
     b: [[string, string], [string, string]];
     c: [string, string];
     input: string[];
+};
+
+export enum Terrain {
+    BARE,
+    WATER,
+    HILL,
+}
+
+export type TerrainGenerator = (location: Location) => Terrain;
+
+export const dummyTerrainGenerator = (location: Location) => {
+    const { r: i, c: j } = location;
+    if (i === 0 && j === 1) {
+        return Terrain.HILL;
+    } else if (i === 1 && j === 1) {
+        return Terrain.WATER;
+    } else {
+        return Terrain.BARE;
+    }
 };
 
 export class Utils {

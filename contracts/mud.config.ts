@@ -13,6 +13,13 @@ export default mudConfig({
                 claimedMoveLifeSpan: "uint256",
             },
         },
+        // Stores the blockNumber that the most recent state by the given pkHash was foundeds
+        Founded: {
+            keySchema: { pkHash: "uint256" },
+            valueSchema: {
+                value: "uint256",
+            },
+        },
         TileCommitment: {
             keySchema: { id: "uint256" },
             valueSchema: {

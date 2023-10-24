@@ -1,20 +1,21 @@
 {
-  "name": "client",
-  "version": "1.0.0",
-  "main": "client.ts",
-  "license": "BSD-4-Clause",
-  "scripts": {
-    "devA": "ts-node client.ts A 0 0",
-    "devB": "ts-node client.ts B 0 4",
-    "devC": "ts-node client.ts C 4 0"
-  },
-  "dependencies": {
-    "dotenv": "^16.3.1",
-    "ethers": "^5.7.2",
-    "socket.io-client": "^4.7.1"
-  },
-  "devDependencies": {
-    "ts-node": "^10.9.1",
-    "typescript": "^5.2.2"
-  }
+    "name": "client",
+    "type": "module",
+    "version": "1.0.0",
+    "main": "client.ts",
+    "license": "BSD-4-Clause",
+    "scripts": {
+        "devA": "ts-node --esm client.ts A 0 0",
+        "devB": "ts-node --esm client.ts B 0 4",
+        "devC": "ts-node --esm client.ts C 4 0"
+    },
+    "dependencies": {
+        "dotenv": "^16.3.1",
+        "ethers": "^5.7.2",
+        "socket.io-client": "^4.7.1"
+    },
+    "devDependencies": {
+        "ts-node": "^10.9.1",
+        "typescript": "^5.2.2"
+    }
 }

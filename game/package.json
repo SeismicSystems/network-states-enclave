@@ -1,14 +1,16 @@
 {
-  "name": "game",
-  "version": "1.0.0",
-  "main": "index.ts",
-  "license": "BSD-4-Clause",
-  "dependencies": {
-    "@types/circomlibjs": "^0.1.2",
-    "circomlibjs": "^0.1.7",
-    "maci-crypto": "^1.1.2",
-    "maci-domainobjs": "^1.1.2",
-    "snarkjs": "^0.7.0",
-    "text-encoding-utf-8": "^1.0.2"
-  }
+    "name": "game",
+    "type": "module",
+    "version": "1.0.0",
+    "main": "index.ts",
+    "license": "BSD-4-Clause",
+    "dependencies": {
+        "@latticexyz/noise": "^2.0.0-next.12",
+        "@types/circomlibjs": "^0.1.2",
+        "circomlibjs": "^0.1.7",
+        "maci-crypto": "^1.1.2",
+        "maci-domainobjs": "^1.1.2",
+        "snarkjs": "^0.7.0",
+        "text-encoding-utf-8": "^1.0.2"
+    }
 }

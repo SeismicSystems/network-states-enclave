@@ -1,8 +1,8 @@
 // @ts-ignore
 import { groth16 } from "snarkjs";
-import { Groth16Proof, Utils } from "./Utils";
-import { Player } from "./Player";
-import { Tile, Location } from "./Tile";
+import { Groth16Proof, Terrain, TerrainGenerator, Utils } from "./Utils.js";
+import { Player } from "./Player.js";
+import { Tile, Location } from "./Tile.js";
 
 export class Board {
     static MOVE_WASM: string = "../circuits/move/move.wasm";
@@ -30,18 +30,34 @@ export class Board {
      * hashes along the way. Doesn't do any sampling if isInit flag is off.
      * With that setting, it only initializes board with mystery tiles.
      */
-    public async seed(sz: number, isInit: boolean, nStates: any) {
+
+    public async seed(
+        sz: number,
+        isInit: boolean,
+        nStates: any,
+        terrainGenerator?: TerrainGenerator
+    ) {
+        if (isInit && !terrainGenerator)
+            throw Error("[Board] Terrain Generator not provided");
         for (let i = 0; i < sz; i++) {
             let row: Tile[] = new Array<Tile>();
             for (let j = 0; j < sz; j++) {
                 if (isInit) {
                     let tl: Tile;
-                    if (i === 0 && j === 1) {
-                        tl = Tile.hill({ r: i, c: j });
-                    } else if (i === 1 && j === 1) {
-                        tl = Tile.water({ r: i, c: j });
-                    } else {
-                        tl = Tile.genUnowned({ r: i, c: j });
+                    const location = { r: i, c: j };
+                    const terrain = terrainGenerator(location);
+                    switch (terrain) {
+                        case Terrain.BARE:
+                            tl = Tile.genUnowned(location);
+                            break;
+                        case Terrain.WATER:
+                            tl = Tile.water(location);
+                            break;
+                        case Terrain.HILL:
+                            tl = Tile.hill(location);
+                            break;
+                        default:
+                            throw new Error("Invalid terrain type.");
                     }
                     if (nStates) {
                         await nStates.set(tl.hash());
@@ -200,7 +216,7 @@ export class Board {
                     this.playerCities.get(newOwner)?.add(cityId);
                 }
                 this.playerCities.delete(oldOwner);
-            } else if (oldTile.isCity()) {
+            } else if (oldTile.isCityCenter()) {
                 // Change tiles' ownership
                 for (let locString of this.cityTiles.get(oldTile.cityId)!) {
                     const loc = JSON.parse(locString);
@@ -276,7 +292,7 @@ export class Board {
             const deltaTroops =
                 tTile.latestUpdateInterval - currentWaterInterval;
             return Math.max(tTile.resources + deltaTroops, 0);
-        } else if (tTile.isCity() || tTile.isCapital()) {
+        } else if (tTile.isCityCenter() || tTile.isCapital()) {
             return cityTroops;
         }
 
@@ -398,7 +414,7 @@ export class Board {
                 ? "1"
                 : "0";
         const capturedTile = uTo.ownerPubKey() != tTo.ownerPubKey();
-        const takingCity = tTo.isCity() && capturedTile ? "1" : "0";
+        const takingCity = tTo.isCityCenter() && capturedTile ? "1" : "0";
         const takingCapital = tTo.isCapital() && capturedTile ? "1" : "0";
 
         const { proof, publicSignals } = await groth16.fullProve(
@@ -410,8 +426,9 @@ export class Board {
                 ontoSelfOrUnowned,
                 numTroopsMoved: nMobilize.toString(),
                 enemyLoss: enemyLoss.toString(),
-                fromIsCityTile: tFrom.isCity() || tFrom.isCapital() ? "1" : "0",
-                toIsCityTile: tTo.isCity() || tTo.isCapital() ? "1" : "0",
+                fromIsCityTile:
+                    tFrom.isCityCenter() || tFrom.isCapital() ? "1" : "0",
+                toIsCityTile: tTo.isCityCenter() || tTo.isCapital() ? "1" : "0",
                 takingCity,
                 takingCapital,
                 fromCityTroops: fromCityTroops.toString(),
