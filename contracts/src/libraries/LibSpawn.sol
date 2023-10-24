@@ -15,6 +15,10 @@ library LibSpawn {
         require(SpawnCommitment.getValue(player) != 0, "Commit to spawn first");
         require(spawnInputs.spawnCityId != 0, "City ID must be non-zero");
         require(
+            TileCommitment.get(spawnInputs.hPrevTile),
+            "Must spawn on existing tile"
+        );
+        require(
             CityPlayer.getValue(spawnInputs.spawnCityId) == address(0),
             "City is already in game"
         );
@@ -30,10 +34,7 @@ library LibSpawn {
         checkBlockHash(player, spawnInputs.commitBlockHash);
     }
 
-    function checkBlockHash(
-        address player,
-        uint256 blockHash
-    ) internal view {
+    function checkBlockHash(address player, uint256 blockHash) internal view {
         uint256 blockCommited = SpawnCommitment.get(player);
         uint256 snarkFieldSize = Config.getSnarkFieldSize();
         require(

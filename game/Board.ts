@@ -399,6 +399,30 @@ export class Board {
         const takingCity = tTo.isCity() && capturedTile ? "1" : "0";
         const takingCapital = tTo.isCapital() && capturedTile ? "1" : "0";
 
+        console.log({
+            currentWaterInterval: currentWaterInterval.toString(),
+            fromCityId: tFrom.cityId.toString(),
+            toCityId: tTo.cityId.toString(),
+            ontoSelfOrUnowned,
+            numTroopsMoved: nMobilize.toString(),
+            enemyLoss: enemyLoss.toString(),
+            fromIsCityTile: tFrom.isCity() || tFrom.isCapital() ? "1" : "0",
+            toIsCityTile: tTo.isCity() || tTo.isCapital() ? "1" : "0",
+            takingCity,
+            takingCapital,
+            fromCityTroops: fromCityTroops.toString(),
+            toCityTroops: toCityTroops.toString(),
+            hTFrom: tFrom.hash(),
+            hTTo: tTo.hash(),
+            hUFrom: uFrom.hash(),
+            hUTo: uTo.hash(),
+            tFrom: tFrom.toCircuitInput(),
+            tTo: tTo.toCircuitInput(),
+            uFrom: uFrom.toCircuitInput(),
+            uTo: uTo.toCircuitInput(),
+            fromUpdatedTroops: fromUpdatedTroops.toString(),
+            toUpdatedTroops: toUpdatedTroops.toString(),
+        });
         const { proof, publicSignals } = await groth16.fullProve(
             {
                 currentWaterInterval: currentWaterInterval.toString(),
