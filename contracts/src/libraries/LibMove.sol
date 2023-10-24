@@ -202,21 +202,19 @@ library LibMove {
     function _checkCityTroops(
         MoveInputs memory mv
     ) internal view returns (bool) {
-        bool fromCorrect = true;
-        bool toCorrect = true;
         if (
             mv.fromIsCityCenter &&
             mv.fromCityTroops != CityTroopCount.get({id: mv.fromCityId})
         ) {
-            fromCorrect = false;
+            return false;
         }
         if (
             mv.toIsCityCenter &&
             mv.toCityTroops != CityTroopCount.get({id: mv.toCityId})
         ) {
-            toCorrect = false;
+            return false;
         }
-        return fromCorrect && toCorrect;
+        return true;
     }
 
     function _getSigner(
