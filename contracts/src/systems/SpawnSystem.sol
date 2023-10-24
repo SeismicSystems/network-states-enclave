@@ -61,4 +61,8 @@ contract SpawnSystem is IEnclaveEvents, System {
     ) public view returns (uint256) {
         return SpawnChallengeHash.get(player);
     }
+
+    // function resetPlayer() public {
+    //     LibSpawn.resetPlayer(_msgSender());
+    // }
 }
