@@ -25,6 +25,10 @@ export class Player {
         this.secret = genRandomSalt();
     }
 
+    public sampleSecret() {
+        this.secret = genRandomSalt();
+    }
+
     public async commitToSpawn(nStates: any) {
         const h = poseidonPerm([0, this.secret])[0].toString();
         const transaction = await nStates.commitToSpawn(h);
@@ -36,15 +40,17 @@ export class Player {
 
     public async constructSpawn(
         commitBlockHash: string,
-        unonwedTile: Tile,
+        prevTile: Tile,
         spawnTile: Tile
     ) {
         const { proof, publicSignals } = await groth16.fullProve(
             {
+                canSpawn: prevTile.isSpawnable() ? "1" : "0",
                 spawnCityId: spawnTile.cityId.toString(),
                 commitBlockHash,
-                hUnownedTile: unonwedTile.hash(),
+                hPrevTile: prevTile.hash(),
                 hSpawnTile: spawnTile.hash(),
+                prevTile: prevTile.toCircuitInput(),
                 spawnTile: spawnTile.toCircuitInput(),
             },
             Player.SPAWN_WASM,

@@ -2,9 +2,10 @@ import { Location } from "../game";
 
 interface ServerToClientEvents {
     loginResponse: (locs: string[]) => void;
+    trySpawn: () => void;
     handshakeDAResponse: (inRecoveryMode: boolean) => void;
     decryptResponse: (t: any) => void;
-    spawnSignatureResponse: (sig: string, unowned: any, spawn: any) => void;
+    spawnSignatureResponse: (sig: string, prev: any, spawn: any) => void;
     moveSignatureResponse: (sig: string, b: number) => void;
     errorResponse: (msg: string) => void;
     updateDisplay: (locs: string[]) => void;

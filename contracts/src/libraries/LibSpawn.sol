@@ -3,7 +3,7 @@ pragma solidity >=0.8.0;
 
 import {SpawnInputs} from "common/SpawnInputs.sol";
 import {Signature} from "common/Signature.sol";
-import {Config, CityPlayer, CityArea, CityTroopCount, CityCenterTroopCount, PlayerLastUpdateBlock, SpawnCommitment, TileCommitment} from "codegen/index.sol";
+import {Config, CityPlayer, CityArea, CityTroopCount, CityCenterTroopCount, PlayerLastUpdateBlock, SpawnCommitment, SpawnChallengeHash, TileCommitment} from "codegen/index.sol";
 
 library LibSpawn {
     /// @notice Runs various checks for the move
@@ -19,14 +19,14 @@ library LibSpawn {
             "City is already in game"
         );
         require(
-            _getSigner(spawnInputs.hUnownedTile, spawnInputs.hSpawnTile, sig) ==
+            _getSigner(spawnInputs.hPrevTile, spawnInputs.hSpawnTile, sig) ==
                 Config.getEnclave(),
             "Enclave spawn sig incorrect"
         );
     }
 
     function spawnPlayer(address player, SpawnInputs memory sp) internal {
-        TileCommitment.deleteRecord(sp.hUnownedTile);
+        TileCommitment.deleteRecord(sp.hPrevTile);
         TileCommitment.set(sp.hSpawnTile, true);
 
         CityPlayer.set(sp.spawnCityId, player);
@@ -38,12 +38,17 @@ library LibSpawn {
         PlayerLastUpdateBlock.set(player, block.number);
     }
 
+    function resetPlayer(address player) internal {
+        SpawnCommitment.deleteRecord(player);
+        SpawnChallengeHash.deleteRecord(player);
+    }
+
     function _getSigner(
-        uint256 hUnownedTile,
+        uint256 hPrevTile,
         uint256 hSpawnTile,
         Signature memory sig
     ) public pure returns (address) {
-        bytes32 hash = keccak256(abi.encode(sig.b, hUnownedTile, hSpawnTile));
+        bytes32 hash = keccak256(abi.encode(sig.b, hPrevTile, hSpawnTile));
         bytes32 prefixedHash = keccak256(
             abi.encodePacked("\x19Ethereum Signed Message:\n32", hash)
         );

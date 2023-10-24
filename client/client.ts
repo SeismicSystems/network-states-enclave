@@ -19,10 +19,6 @@ import IWorldAbi from "../contracts/out/IWorld.sol/IWorld.json";
  * Conditions depend on which player is currently active.
  */
 const PLAYER_SYMBOL: string = process.argv[2];
-const PLAYER_START: Location = {
-    r: Number(process.argv[3]),
-    c: Number(process.argv[4]),
-};
 const PLAYER_PRIVKEY = JSON.parse(<string>process.env.ETH_PRIVKEYS)[
     PLAYER_SYMBOL
 ];
@@ -57,7 +53,7 @@ var rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
 });
-let cursor = PLAYER_START;
+let cursor: Location;
 
 const PLAYER = new Player(PLAYER_SYMBOL, signer.address);
 
@@ -75,7 +71,7 @@ let isSpawned = false;
  * Last block when player requested an enclave signature. Player's cannot submit
  * more than one move in a block.
  */
-let clientLatestMoveBlock: number;
+let clientLatestMoveBlock: number = 0;
 
 /*
  * Last block when player commited to spawning.
@@ -105,6 +101,27 @@ const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
  */
 function updatePlayerView(l: Location) {
     socket.emit("decrypt", l);
+}
+
+async function commitToSpawn() {
+    PLAYER.sampleSecret();
+
+    // Save block number player commited to spawning
+    commitBlockNumber = await PLAYER.commitToSpawn(nStates);
+    commitBlockHash =
+        BigInt((await nStates.provider.getBlock(commitBlockNumber)).hash) %
+        BigInt(SNARK_FIELD_SIZE);
+
+    console.log("Getting spawn sig from enclave");
+
+    const sig = await signer.signMessage(socket.id);
+    socket.emit(
+        "getSpawnSignature",
+        PLAYER.symbol,
+        PLAYER.address,
+        sig,
+        PLAYER.secret.toString()
+    );
 }
 
 /*
@@ -152,28 +169,27 @@ async function move(inp: string, currentBlockHeight: number) {
  * or null values indicating that location is not spawnable, the player must
  * send a zkp in order to try again.
  */
-async function spawnSignatureResponse(sig: string, unowned: any, spawn: any) {
-    const unownedTile = Tile.fromJSON(unowned);
+async function spawnSignatureResponse(sig: string, prev: any, spawn: any) {
+    const prevTile = Tile.fromJSON(prev);
     const spawnTile = Tile.fromJSON(spawn);
 
-    if (unownedTile.isMystery()) {
-        // Send dummy ZKP in order to restart spawning
-        return;
-    }
+    cursor = spawnTile.loc;
 
     const [prf, pubSigs] = await PLAYER.constructSpawn(
         commitBlockHash,
-        unownedTile,
+        prevTile,
         spawnTile
     );
 
     const spawnFormattedProof = await Utils.exportCallDataGroth16(prf, pubSigs);
     const spawnInputs = {
-        spawnCityId: Number(spawnFormattedProof.input[0]),
-        commitBlockHash: spawnFormattedProof.input[1],
-        hUnownedTile: spawnFormattedProof.input[2],
-        hSpawnTile: spawnFormattedProof.input[3],
+        canSpawn: spawnFormattedProof.input[0] === "1",
+        spawnCityId: Number(spawnFormattedProof.input[1]),
+        commitBlockHash: spawnFormattedProof.input[2],
+        hPrevTile: spawnFormattedProof.input[3],
+        hSpawnTile: spawnFormattedProof.input[4],
     };
+    console.log(spawnInputs);
     const spawnProof = {
         a: spawnFormattedProof.a,
         b: spawnFormattedProof.b,
@@ -187,7 +203,19 @@ async function spawnSignatureResponse(sig: string, unowned: any, spawn: any) {
         b: commitBlockNumber,
     };
 
-    await nStates.spawn(spawnInputs, spawnProof, spawnSig);
+    try {
+        console.log('Submitting spawn proof to nStates');
+        const tx = await nStates.spawn(spawnInputs, spawnProof, spawnSig);
+
+        // If player cannot spawn, then wait for the next block and try again
+        if (!spawnInputs.canSpawn) {
+            await tx.wait();
+            await commitToSpawn();
+        }
+    } catch (error) {
+        console.error(error);
+        await commitToSpawn();
+    }
 }
 
 /*
@@ -275,28 +303,12 @@ async function errorResponse(msg: string) {
 socket.on("connect", async () => {
     console.log("Server connection established");
 
+    console.log(signer.address);
+
     b = new Board();
     await b.seed(BOARD_SIZE, false, nStates);
 
-    // Player can submit moves starting next block
-    clientLatestMoveBlock = 0;
-
-    // Save block number player commited to spawning on
-    commitBlockNumber = await PLAYER.commitToSpawn(nStates);
-    commitBlockHash =
-        BigInt((await nStates.provider.getBlock(commitBlockNumber)).hash) %
-        BigInt(SNARK_FIELD_SIZE);
-
-    console.log("Getting spawn sig from enclave");
-
-    const sig = await signer.signMessage(socket.id);
-    socket.emit(
-        "getSpawnSignature",
-        PLAYER.symbol,
-        PLAYER.address,
-        sig,
-        PLAYER.secret.toString()
-    );
+    await commitToSpawn();
 });
 
 /*
@@ -313,6 +325,7 @@ process.stdin.on("keypress", async (str) => {
  * Attach event handlers.
  */
 socket.on("spawnSignatureResponse", spawnSignatureResponse);
+socket.on("trySpawn", commitToSpawn);
 socket.on("loginResponse", loginResponse);
 socket.on("decryptResponse", decryptResponse);
 socket.on("moveSignatureResponse", moveSignatureResponse);

@@ -68,7 +68,7 @@ const abi = IWorld.abi.concat(IEnclaveEvents.abi);
 const nStates = new ethers.Contract(worlds[31337].address, abi, signer);
 
 type ClaimedSpawn = {
-    unownedTile: Tile;
+    prevTile: Tile;
     spawnTile: Tile;
 };
 
@@ -212,14 +212,10 @@ async function getSpawnSignature(
     const rawCol = poseidonPerm([0, playerChallenge, commitBlockHash, 1])[0];
     const r = Number(rawRow % BigInt(b.t.length));
     const c = Number(rawCol % BigInt(b.t.length));
-    const l = { r, c };
+    const l = { r: 0, c: 0 };
 
-    const unownedTile = b.getTile(l);
-    if (!unownedTile.isSpawnable()) {
-        return;
-    }
-
-    const hUnownedTile = unownedTile.hash();
+    const prevTile = b.getTile(l);
+    const hPrevTile = prevTile.hash();
     const spawnTile = Tile.spawn(
         new Player(symbol, address),
         l,
@@ -229,78 +225,21 @@ async function getSpawnSignature(
     cityId++;
     const hSpawnTile = spawnTile.hash();
 
-    claimedSpawns.set(address, { unownedTile, spawnTile });
+    claimedSpawns.set(address, { prevTile, spawnTile });
 
     // Is this right???
     const digest = utils.solidityKeccak256(
         ["uint256", "uint256", "uint256"],
-        [latestBlockCommited, hUnownedTile, hSpawnTile]
+        [latestBlockCommited, hPrevTile, hSpawnTile]
     );
     const sig = await signer.signMessage(utils.arrayify(digest));
 
     socket.emit(
         "spawnSignatureResponse",
         sig,
-        unownedTile.toJSON(),
+        prevTile.toJSON(),
         spawnTile.toJSON()
     );
-}
-
-/*
- * Dev function for spawning a player on the map or logging back in.
- *
- * [TODO]: the enclave should not be calling the contract's spawn
- * function on behalf of the player. In prod, client will sample cityId.
- */
-async function login(
-    socket: Socket,
-    l: Location,
-    reqPlayer: Player,
-    sigStr: string
-) {
-    if (inRecoveryMode) {
-        socket.disconnect();
-        return;
-    }
-
-    let sender: string | undefined;
-    try {
-        sender = ethers.utils.verifyMessage(socket.id, sigStr);
-    } catch (error) {
-        console.log("Malignant signature: ", sigStr);
-        socket.disconnect();
-    }
-
-    if (sender && reqPlayer.address == sender) {
-        // Spawn if player is connected for the first time
-        if (!b.isSpawned(reqPlayer)) {
-            await b.spawn(l, reqPlayer, START_RESOURCES, cityId, nStates);
-            cityId++;
-
-            // Attempt to push encrypted tiles to DA
-            enqueueTile(b.getTile(l));
-            dequeueTileIfDAConnected();
-        }
-
-        // Pair the public key and the socket ID
-        idToAddress.set(socket.id, sender);
-        addressToId.set(sender, socket.id);
-
-        playerLatestBlock.set(sender, 0);
-
-        let visibleTiles = new Set<string>();
-        b.playerCities.get(reqPlayer.address)?.forEach((cityId: number) => {
-            b.cityTiles.get(cityId)?.forEach((locString: string) => {
-                const tl = JSON.parse(locString);
-                if (tl) {
-                    for (let loc of b.getNearbyLocations(tl)) {
-                        visibleTiles.add(JSON.stringify(loc));
-                    }
-                }
-            });
-        });
-        socket.emit("loginResponse", Array.from(visibleTiles));
-    }
 }
 
 /*
@@ -362,17 +301,14 @@ async function getMoveSignature(socket: Socket, uFrom: any, uTo: any) {
  */
 function decrypt(socket: Socket, l: Location) {
     if (inRecoveryMode || !idToAddress.has(socket.id)) {
-        console.log('oh no');
         socket.disconnect();
         return;
     }
 
     const owner = new Player("", idToAddress.get(socket.id)!);
     if (b.noFog(l, owner)) {
-        console.log('yay');
         socket.emit("decryptResponse", b.getTile(l).toJSON());
     } else {
-        console.log('nay')
         socket.emit("decryptResponse", Tile.mystery(l).toJSON());
     }
 }
@@ -395,22 +331,24 @@ function disconnect(socket: Socket) {
 }
 
 /*
- * Callback function for when a NewSpawn event is emitted. Fetches player's
- * spawn tile and pushes into enclave's internal beliefs. Alerts players in
- * range to decrypt.
+ * Callback function for when a NewSpawnAttempt event is emitted. Event is
+ * emitted when a player tries to spawn in, whether or not they can. After
+ * doing so, they should be allowed to try to spawn again.
  */
-function onSpawnFinalize(player: string) {
+function onSpawnAttempt(player: string, success: boolean) {
     if (inRecoveryMode) {
         return;
     }
 
     const spawn = claimedSpawns.get(player);
-    if (spawn) {
+    claimedSpawns.delete(player);
+    const socketId = addressToId.get(player);
 
-        // Spawn is no longer pending
-        claimedSpawns.delete(player);
-
+    if (success && spawn && socketId) {
+        // Spawn in player
         b.setTile(spawn.spawnTile);
+
+        playerLatestBlock.set(player, 0);
 
         enqueueTile(spawn.spawnTile);
         dequeueTileIfDAConnected();
@@ -419,8 +357,10 @@ function onSpawnFinalize(player: string) {
             .getNearbyLocations(spawn.spawnTile.loc)
             .map((loc) => JSON.stringify(loc));
 
-        io.emit("loginResponse", visibleLocs);
-    } else {
+        io.to(socketId).emit("loginResponse", visibleLocs);
+    } else if (!success) {
+        io.to(socketId).emit("trySpawn");
+    } else if (socketId) {
         console.error(`Player ${player} spawned without a signature.`);
     }
 }
@@ -662,12 +602,6 @@ io.on("connection", (socket: Socket) => {
             getSpawnSignature(socket, symb, address, sig, s);
         }
     );
-    socket.on(
-        "login",
-        (l: Location, symb: string, address: string, sig: string) => {
-            login(socket, l, new Player(symb, address), sig);
-        }
-    );
     socket.on("handshakeDA", () => {
         handshakeDA(socket);
     });
@@ -691,11 +625,8 @@ io.on("connection", (socket: Socket) => {
     });
 });
 
-/*
- * Event handler for NewSpawn event.
- */
-nStates.on(nStates.filters.NewSpawn(), (player) => {
-    onSpawnFinalize(player);
+nStates.on(nStates.filters.NewSpawnAttempt(), (player, success) => {
+    onSpawnAttempt(player, success);
 });
 
 /*

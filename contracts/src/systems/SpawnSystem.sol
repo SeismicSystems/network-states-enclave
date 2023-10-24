@@ -31,10 +31,16 @@ contract SpawnSystem is IEnclaveEvents, System {
         LibSpawn.checkSpawnInputs(_msgSender(), spawnInputs, sig);
         LibSpawnVerify.verifySpawnProof(spawnInputs, spawnProof);
 
-        LibSpawn.spawnPlayer(_msgSender(), spawnInputs);
+        if (spawnInputs.canSpawn) {
+            LibSpawn.spawnPlayer(_msgSender(), spawnInputs);
 
-        emit NewTile(spawnInputs.hSpawnTile);
-        emit NewSpawn(_msgSender());
+            emit NewTile(spawnInputs.hSpawnTile);
+            emit NewSpawnAttempt(_msgSender(), true);
+        } else {
+            LibSpawn.resetPlayer(_msgSender());
+
+            emit NewSpawnAttempt(_msgSender(), false);
+        }
     }
 
     function set(uint256 h) public {

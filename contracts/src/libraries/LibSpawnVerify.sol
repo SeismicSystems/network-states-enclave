@@ -27,11 +27,12 @@ library LibSpawnVerify {
 
     function _spawnInputsToArray(
         SpawnInputs memory spawnInputs
-    ) internal pure returns (uint256[4] memory) {
+    ) internal pure returns (uint256[5] memory) {
         return [
+            spawnInputs.canSpawn ? 1 : 0,
             uint256(spawnInputs.spawnCityId),
             spawnInputs.commitBlockHash,
-            spawnInputs.hUnownedTile,
+            spawnInputs.hPrevTile,
             spawnInputs.hSpawnTile
         ];
     }
