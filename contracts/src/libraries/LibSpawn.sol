@@ -3,7 +3,7 @@ pragma solidity >=0.8.0;
 
 import {SpawnInputs} from "common/SpawnInputs.sol";
 import {Signature} from "common/Signature.sol";
-import {Config, CityPlayer, City, PlayerLastUpdateBlock, SpawnCommitment, SpawnChallengeHash, TileCommitment} from "codegen/index.sol";
+import {Config, CityPlayer, City, PlayerLastUpdateBlock, SpawnCommitment, TileCommitment} from "codegen/index.sol";
 
 library LibSpawn {
     /// @notice Runs various checks for the move
@@ -12,7 +12,7 @@ library LibSpawn {
         SpawnInputs memory spawnInputs,
         Signature memory sig
     ) internal view {
-        require(SpawnCommitment.getValue(player) != 0, "Commit to spawn first");
+        require(SpawnCommitment.getBlockNumber(player) != 0, "Commit to spawn first");
         require(spawnInputs.spawnCityId != 0, "City ID must be non-zero");
         require(
             TileCommitment.get(spawnInputs.hPrevTile),
@@ -28,14 +28,14 @@ library LibSpawn {
             "Enclave spawn sig incorrect"
         );
         require(
-            SpawnChallengeHash.get(player) == spawnInputs.hSecret,
+            SpawnCommitment.getChallengeHash(player) == spawnInputs.hSecret,
             "Incorrect player secret hash"
         );
         checkBlockHash(player, spawnInputs.commitBlockHash);
     }
 
     function checkBlockHash(address player, uint256 blockHash) internal view {
-        uint256 blockCommited = SpawnCommitment.get(player);
+        uint256 blockCommited = SpawnCommitment.getBlockNumber(player);
         uint256 snarkFieldSize = Config.getSnarkFieldSize();
         require(
             uint256(blockhash(blockCommited)) % snarkFieldSize == blockHash,
@@ -62,7 +62,6 @@ library LibSpawn {
 
     function resetPlayer(address player) internal {
         SpawnCommitment.deleteRecord(player);
-        SpawnChallengeHash.deleteRecord(player);
     }
 
     function _getSigner(

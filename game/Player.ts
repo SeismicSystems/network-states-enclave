@@ -5,7 +5,7 @@ import { genRandomSalt } from "maci-crypto";
 /*
  * poseidonPerm is a modified version of iden3's poseidonPerm.js.
  */
-const poseidonPerm = require("./poseidonPerm");
+import poseidonPerm from "../game/poseidonPerm.js";
 
 export class Player {
     static SPAWN_WASM: string = "../circuits/spawn/spawn.wasm";
@@ -28,11 +28,11 @@ export class Player {
 
     public sampleSecret() {
         this.secret = genRandomSalt();
-        this.hSecret = poseidonPerm([0, this.secret])[0].toString();
+        this.hSecret = poseidonPerm([BigInt(0), this.secret])[0].toString();
     }
 
     public async commitToSpawn(nStates: any) {
-        const h = poseidonPerm([0, this.secret])[0].toString();
+        const h = poseidonPerm([BigInt(0), this.secret])[0].toString();
         const transaction = await nStates.commitToSpawn(h);
 
         // Wait to get the transaction block number

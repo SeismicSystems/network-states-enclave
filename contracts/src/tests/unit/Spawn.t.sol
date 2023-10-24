@@ -34,17 +34,17 @@ contract SpawnTest is MudTest {
 
         console.log(
             "SpawnCommitment before reset",
-            SpawnCommitment.getValue(player)
+            SpawnCommitment.getBlockNumber(player)
         );
 
-        assertTrue(SpawnCommitment.getValue(player) != 0);
+        assertTrue(SpawnCommitment.getBlockNumber(player) != 0);
 
         console.log(
             "SpawnCommitment after reset",
-            SpawnCommitment.getValue(player)
+            SpawnCommitment.getBlockNumber(player)
         );
 
-        assertEq(SpawnCommitment.getValue(player), 0);
+        assertEq(SpawnCommitment.getBlockNumber(player), 0);
 
         vm.prank(player);
         world.commitToSpawn(123);

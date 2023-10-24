@@ -18,13 +18,8 @@ export default mudConfig({
         SpawnCommitment: {
             keySchema: { id: "address" },
             valueSchema: {
-                value: "uint256",
-            }
-        },
-        SpawnChallengeHash: {
-            keySchema: { id: "address" },
-            valueSchema: {
-                value: "uint256",
+                blockNumber: "uint256",
+                challengeHash: "uint256"
             }
         },
         TileCommitment: {
