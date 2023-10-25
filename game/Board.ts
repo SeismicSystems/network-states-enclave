@@ -213,6 +213,12 @@ export class Board {
 
                     this.playerCities.get(oldOwner)?.delete(tl.cityId);
                     this.playerCities.get(newOwner)?.add(tl.cityId);
+
+                    // Check if oldOwner lost all cities
+                    const cities = this.playerCities.get(oldOwner);
+                    if (cities && cities.size == 0) {
+                        this.playerCities.delete(oldOwner);
+                    }
                 } else {
                     // Normal/water tile with a new owner
                     const locString = JSON.stringify(tl.loc);
