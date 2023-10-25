@@ -203,13 +203,11 @@ export class Board {
             if (oldOwner !== newOwner) {
                 // Some type of capture happened: must update state
                 if (oldTile.isCityCenter()) {
-                    // Change tiles' ownership
+                    // Change tile ownership
                     for (let locString of this.cityTiles.get(oldTile.cityId)!) {
                         const loc = JSON.parse(locString);
                         if (loc) {
-                            let tile = this.t[loc.r][loc.c];
-                            tile.owner = oldTile.owner;
-                            this.t[loc.r][loc.c] = tile;
+                            this.t[loc.r][loc.c].owner = tl.owner;
                         }
                     }
 
@@ -223,7 +221,7 @@ export class Board {
                 }
                 this.playerCities.delete(oldOwner);
             } else if (oldTile.isCityCenter()) {
-                // Change tiles' ownership
+                // Change tile ownership
                 for (let locString of this.cityTiles.get(oldTile.cityId)!) {
                     const loc = JSON.parse(locString);
                     if (loc) {
