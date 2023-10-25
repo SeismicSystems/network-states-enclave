@@ -13,16 +13,13 @@ export class Player {
 
     symbol: string;
     address: string;
-    socketId?: string;
     secret: BigInt;
     hSecret: string;
 
     constructor(symb: string, address: string, socketId?: string) {
         this.symbol = symb;
         this.address = address;
-        if (socketId) {
-            this.socketId = socketId;
-        }
+        
         this.sampleSecret();
     }
 
