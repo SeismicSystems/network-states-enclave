@@ -47,10 +47,9 @@ library LibMove {
     function updateCityTroopCounts(MoveInputs memory mv) internal {
         if (
             mv.takingCity ||
-            mv.takingCapital ||
             (mv.ontoSelfOrUnowned && mv.toCityId != 0)
         ) {
-            // Taking city/capital, or moving onto self-owned tile
+            // Taking city, or moving onto self-owned tile
             LibCity.decrementCityTroops({
                 cityId: mv.fromCityId,
                 decrement: mv.numTroopsMoved,
@@ -80,8 +79,8 @@ library LibMove {
                 increment: mv.numTroopsMoved,
                 isCityCenter: mv.toIsCityCenter
             });
-        } else if (mv.takingCity || mv.takingCapital) {
-            // Taking enemy city/capital
+        } else if (mv.takingCity) {
+            // Taking enemy city
             LibCity.incrementCityTroops({
                 cityId: mv.toCityId,
                 increment: mv.numTroopsMoved - mv.enemyLoss,
@@ -96,7 +95,7 @@ library LibMove {
             });
         }
 
-        if (!mv.ontoSelfOrUnowned && !mv.takingCity && !mv.takingCapital) {
+        if (!mv.ontoSelfOrUnowned && !mv.takingCity) {
             City.setArea({
                 id: mv.fromCityId,
                 area: City.getArea({id: mv.fromCityId}) + 1

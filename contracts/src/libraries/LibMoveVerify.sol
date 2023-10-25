@@ -25,7 +25,7 @@ library LibMoveVerify {
 
     function _moveInputsToArray(
         MoveInputs memory moveInputs
-    ) internal pure returns (uint256[16] memory) {
+    ) internal pure returns (uint256[15] memory) {
         return [
             moveInputs.currentInterval,
             moveInputs.fromCityId,
@@ -36,7 +36,6 @@ library LibMoveVerify {
             moveInputs.fromIsCityCenter ? 1 : 0,
             moveInputs.toIsCityCenter ? 1 : 0,
             moveInputs.takingCity ? 1 : 0,
-            moveInputs.takingCapital ? 1 : 0,
             moveInputs.fromCityTroops,
             moveInputs.toCityTroops,
             moveInputs.hTFrom,

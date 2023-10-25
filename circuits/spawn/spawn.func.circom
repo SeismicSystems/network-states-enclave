@@ -15,9 +15,8 @@ template Spawn() {
     var TYPE_IDX = 6;
 
     var CITY_TYPE = 1;
-    var CAPITAL_TYPE = 2;
-    var WATER_TYPE = 3;
-    var HILL_TYPE = 4;
+    var WATER_TYPE = 2;
+    var HILL_TYPE = 3;
 
     var START_RESOURCES = 9;
 
@@ -38,7 +37,7 @@ template Spawn() {
         [spawnTile[RSRC_IDX], START_RESOURCES],
         [spawnTile[CITY_IDX], spawnCityId],
         [spawnTile[UPD_IDX], 0],
-        [spawnTile[TYPE_IDX], CAPITAL_TYPE]
+        [spawnTile[TYPE_IDX], CITY_TYPE]
     ]);
     spawnTileCorrect === 1;
 
@@ -57,10 +56,9 @@ template Spawn() {
     signal isWater <== IsEqual()([prevTile[TYPE_IDX], WATER_TYPE]);
     signal isHill <== IsEqual()([prevTile[TYPE_IDX], HILL_TYPE]);
     signal isCity <== IsEqual()([prevTile[TYPE_IDX], CITY_TYPE]);
-    signal isCapital <== IsEqual()([prevTile[TYPE_IDX], CAPITAL_TYPE]);
     
-    signal circuitCanSpawn <== BatchIsZero(5)([isOwned, isWater, isHill, isCity, 
-        isCapital]);
+    signal circuitCanSpawn <== BatchIsZero(4)([isOwned, isWater, isHill, 
+        isCity]);
     signal canSpawnCorrect <== IsEqual()([circuitCanSpawn, canSpawn]);
     canSpawnCorrect === 1;
 

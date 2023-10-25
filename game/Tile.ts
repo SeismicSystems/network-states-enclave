@@ -20,9 +20,8 @@ export class Tile {
     // tileType options
     static NORMAL_TILE: number = 0;
     static CITY_TILE: number = 1;
-    static CAPITAL_TILE: number = 2;
-    static WATER_TILE: number = 3;
-    static HILL_TILE: number = 4;
+    static WATER_TILE: number = 2;
+    static HILL_TILE: number = 3;
 
     owner: Player;
     loc: Location;
@@ -136,13 +135,6 @@ export class Tile {
     }
 
     /*
-     * Return true if this Tile is a capital.
-     */
-    isCapital(): boolean {
-        return this.tileType === Tile.CAPITAL_TILE;
-    }
-
-    /*
      * Return true if player should be allowed to spawn over this tile.
      */
     isSpawnable(): boolean {
@@ -150,8 +142,7 @@ export class Tile {
             this.isUnowned() &&
             !this.isWater() &&
             !this.isHill() &&
-            !this.isCityCenter() &&
-            !this.isCapital()
+            !this.isCityCenter()
         );
     }
 
@@ -237,6 +228,6 @@ export class Tile {
     }
 
     static spawn(pl: Player, l: Location, r: number, cityId: number): Tile {
-        return Tile.genOwned(pl, l, r, cityId, 0, Tile.CAPITAL_TILE);
+        return Tile.genOwned(pl, l, r, cityId, 0, Tile.CITY_TILE);
     }
 }
