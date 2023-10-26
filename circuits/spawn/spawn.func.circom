@@ -4,7 +4,7 @@ include "../node_modules/maci-circuits/node_modules/circomlib/circuits/poseidon.
 include "../utils/utils.circom";
 
 template CheckSpawnTile(N_TL_ATRS, RSRC_IDX, CITY_IDX, UPD_IDX, TYPE_IDX,
-    START_RESOURCES, CAPITAL_TYPE) {
+    START_RESOURCES, CITY_TYPE) {
     signal input spawnCityId;
 
     signal input spawnTile[N_TL_ATRS];
@@ -13,7 +13,7 @@ template CheckSpawnTile(N_TL_ATRS, RSRC_IDX, CITY_IDX, UPD_IDX, TYPE_IDX,
         [spawnTile[RSRC_IDX], START_RESOURCES],
         [spawnTile[CITY_IDX], spawnCityId],
         [spawnTile[UPD_IDX], 0],
-        [spawnTile[TYPE_IDX], CAPITAL_TYPE]
+        [spawnTile[TYPE_IDX], CITY_TYPE]
     ]);
 }
 
@@ -35,8 +35,8 @@ template CheckTileHashes(N_TL_ATRS) {
     out <== AND()(hPrevTileCorrect, hSpawnTileCorrect);
 }
 
-template CheckCanSpawn(N_TL_ATRS, CITY_IDX, TYPE_IDX, CITY_TYPE, CAPITAL_TYPE, 
-    WATER_TYPE, HILL_TYPE) {
+template CheckCanSpawn(N_TL_ATRS, CITY_IDX, TYPE_IDX, CITY_TYPE, WATER_TYPE, 
+    HILL_TYPE) {
     signal input canSpawn;
 
     signal input prevTile[N_TL_ATRS];
@@ -48,10 +48,9 @@ template CheckCanSpawn(N_TL_ATRS, CITY_IDX, TYPE_IDX, CITY_TYPE, CAPITAL_TYPE,
     signal isWater <== IsEqual()([prevTile[TYPE_IDX], WATER_TYPE]);
     signal isHill <== IsEqual()([prevTile[TYPE_IDX], HILL_TYPE]);
     signal isCity <== IsEqual()([prevTile[TYPE_IDX], CITY_TYPE]);
-    signal isCapital <== IsEqual()([prevTile[TYPE_IDX], CAPITAL_TYPE]);
     
-    signal circuitCanSpawn <== BatchIsZero(5)([isOwned, isWater, isHill, isCity, 
-        isCapital]);
+    signal circuitCanSpawn <== BatchIsZero(4)([isOwned, isWater, isHill, 
+        isCity]);
     out <== IsEqual()([circuitCanSpawn, canSpawn]);
 }
 
@@ -85,7 +84,7 @@ template Spawn() {
     // Spawn tile must be correct
     // [TODO]: constrain row and column
     signal spawnTileCorrect <== CheckSpawnTile(N_TL_ATRS, RSRC_IDX, CITY_IDX, 
-        UPD_IDX, TYPE_IDX, START_RESOURCES, CAPITAL_TYPE)(spawnCityId, 
+        UPD_IDX, TYPE_IDX, START_RESOURCES, CITY_TYPE)(spawnCityId, 
         spawnTile);
     spawnTileCorrect === 1;
 
@@ -96,7 +95,7 @@ template Spawn() {
 
     // Constrain canSpawn
     signal canSpawnCorrect <== CheckCanSpawn(N_TL_ATRS, CITY_IDX, TYPE_IDX, 
-        CITY_TYPE, CAPITAL_TYPE, WATER_TYPE, HILL_TYPE)(canSpawn, prevTile);
+        CITY_TYPE, WATER_TYPE, HILL_TYPE)(canSpawn, prevTile);
     canSpawnCorrect === 1;
 
     // blind should hash to hBlind

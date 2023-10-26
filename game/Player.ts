@@ -13,7 +13,6 @@ export class Player {
 
     symbol: string;
     address: string;
-    socketId?: string;
     blind: BigInt;
     hBlind: string;
 

@@ -418,7 +418,7 @@ export class Board {
                 : "0";
         const capturedTile = uTo.owner.address != tTo.owner.address;
         const takingCity = tTo.isCityCenter() && capturedTile ? "1" : "0";
-        
+
         const { proof, publicSignals } = await groth16.fullProve(
             {
                 currentWaterInterval: currentWaterInterval.toString(),

@@ -204,6 +204,11 @@ function decryptResponse(t: any) {
     const tl = Tile.fromJSON(t);
     b.t[tl.loc.r][tl.loc.c] = tl;
 
+    // Set cursor if not already set
+    if (!cursor && tl.isCityCenter()) {
+        cursor = tl.loc;
+    }
+
     console.clear();
     b.printView();
     process.stdout.write(MOVE_PROMPT);
