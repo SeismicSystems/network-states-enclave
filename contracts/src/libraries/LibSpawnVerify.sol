@@ -34,7 +34,7 @@ library LibSpawnVerify {
             spawnInputs.commitBlockHash,
             spawnInputs.hPrevTile,
             spawnInputs.hSpawnTile,
-            spawnInputs.hSecret
+            spawnInputs.hBlind
         ];
     }
 }

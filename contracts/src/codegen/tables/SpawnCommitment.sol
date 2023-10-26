@@ -31,7 +31,7 @@ FieldLayout constant _fieldLayout = FieldLayout.wrap(
 
 struct SpawnCommitmentData {
   uint256 blockNumber;
-  uint256 challengeHash;
+  uint256 blindHash;
 }
 
 library SpawnCommitment {
@@ -82,7 +82,7 @@ library SpawnCommitment {
   function getFieldNames() internal pure returns (string[] memory fieldNames) {
     fieldNames = new string[](2);
     fieldNames[0] = "blockNumber";
-    fieldNames[1] = "challengeHash";
+    fieldNames[1] = "blindHash";
   }
 
   /**
@@ -170,9 +170,9 @@ library SpawnCommitment {
   }
 
   /**
-   * @notice Get challengeHash.
+   * @notice Get blindHash.
    */
-  function getChallengeHash(address id) internal view returns (uint256 challengeHash) {
+  function getBlindHash(address id) internal view returns (uint256 blindHash) {
     bytes32[] memory _keyTuple = new bytes32[](1);
     _keyTuple[0] = bytes32(uint256(uint160(id)));
 
@@ -181,9 +181,9 @@ library SpawnCommitment {
   }
 
   /**
-   * @notice Get challengeHash.
+   * @notice Get blindHash.
    */
-  function _getChallengeHash(address id) internal view returns (uint256 challengeHash) {
+  function _getBlindHash(address id) internal view returns (uint256 blindHash) {
     bytes32[] memory _keyTuple = new bytes32[](1);
     _keyTuple[0] = bytes32(uint256(uint160(id)));
 
@@ -192,9 +192,9 @@ library SpawnCommitment {
   }
 
   /**
-   * @notice Get challengeHash (using the specified store).
+   * @notice Get blindHash (using the specified store).
    */
-  function getChallengeHash(IStore _store, address id) internal view returns (uint256 challengeHash) {
+  function getBlindHash(IStore _store, address id) internal view returns (uint256 blindHash) {
     bytes32[] memory _keyTuple = new bytes32[](1);
     _keyTuple[0] = bytes32(uint256(uint160(id)));
 
@@ -203,33 +203,33 @@ library SpawnCommitment {
   }
 
   /**
-   * @notice Set challengeHash.
+   * @notice Set blindHash.
    */
-  function setChallengeHash(address id, uint256 challengeHash) internal {
+  function setBlindHash(address id, uint256 blindHash) internal {
     bytes32[] memory _keyTuple = new bytes32[](1);
     _keyTuple[0] = bytes32(uint256(uint160(id)));
 
-    StoreSwitch.setStaticField(_tableId, _keyTuple, 1, abi.encodePacked((challengeHash)), _fieldLayout);
+    StoreSwitch.setStaticField(_tableId, _keyTuple, 1, abi.encodePacked((blindHash)), _fieldLayout);
   }
 
   /**
-   * @notice Set challengeHash.
+   * @notice Set blindHash.
    */
-  function _setChallengeHash(address id, uint256 challengeHash) internal {
+  function _setBlindHash(address id, uint256 blindHash) internal {
     bytes32[] memory _keyTuple = new bytes32[](1);
     _keyTuple[0] = bytes32(uint256(uint160(id)));
 
-    StoreCore.setStaticField(_tableId, _keyTuple, 1, abi.encodePacked((challengeHash)), _fieldLayout);
+    StoreCore.setStaticField(_tableId, _keyTuple, 1, abi.encodePacked((blindHash)), _fieldLayout);
   }
 
   /**
-   * @notice Set challengeHash (using the specified store).
+   * @notice Set blindHash (using the specified store).
    */
-  function setChallengeHash(IStore _store, address id, uint256 challengeHash) internal {
+  function setBlindHash(IStore _store, address id, uint256 blindHash) internal {
     bytes32[] memory _keyTuple = new bytes32[](1);
     _keyTuple[0] = bytes32(uint256(uint160(id)));
 
-    _store.setStaticField(_tableId, _keyTuple, 1, abi.encodePacked((challengeHash)), _fieldLayout);
+    _store.setStaticField(_tableId, _keyTuple, 1, abi.encodePacked((blindHash)), _fieldLayout);
   }
 
   /**
@@ -280,8 +280,8 @@ library SpawnCommitment {
   /**
    * @notice Set the full data using individual values.
    */
-  function set(address id, uint256 blockNumber, uint256 challengeHash) internal {
-    bytes memory _staticData = encodeStatic(blockNumber, challengeHash);
+  function set(address id, uint256 blockNumber, uint256 blindHash) internal {
+    bytes memory _staticData = encodeStatic(blockNumber, blindHash);
 
     PackedCounter _encodedLengths;
     bytes memory _dynamicData;
@@ -295,8 +295,8 @@ library SpawnCommitment {
   /**
    * @notice Set the full data using individual values.
    */
-  function _set(address id, uint256 blockNumber, uint256 challengeHash) internal {
-    bytes memory _staticData = encodeStatic(blockNumber, challengeHash);
+  function _set(address id, uint256 blockNumber, uint256 blindHash) internal {
+    bytes memory _staticData = encodeStatic(blockNumber, blindHash);
 
     PackedCounter _encodedLengths;
     bytes memory _dynamicData;
@@ -310,8 +310,8 @@ library SpawnCommitment {
   /**
    * @notice Set the full data using individual values (using the specified store).
    */
-  function set(IStore _store, address id, uint256 blockNumber, uint256 challengeHash) internal {
-    bytes memory _staticData = encodeStatic(blockNumber, challengeHash);
+  function set(IStore _store, address id, uint256 blockNumber, uint256 blindHash) internal {
+    bytes memory _staticData = encodeStatic(blockNumber, blindHash);
 
     PackedCounter _encodedLengths;
     bytes memory _dynamicData;
@@ -326,7 +326,7 @@ library SpawnCommitment {
    * @notice Set the full data using the data struct.
    */
   function set(address id, SpawnCommitmentData memory _table) internal {
-    bytes memory _staticData = encodeStatic(_table.blockNumber, _table.challengeHash);
+    bytes memory _staticData = encodeStatic(_table.blockNumber, _table.blindHash);
 
     PackedCounter _encodedLengths;
     bytes memory _dynamicData;
@@ -341,7 +341,7 @@ library SpawnCommitment {
    * @notice Set the full data using the data struct.
    */
   function _set(address id, SpawnCommitmentData memory _table) internal {
-    bytes memory _staticData = encodeStatic(_table.blockNumber, _table.challengeHash);
+    bytes memory _staticData = encodeStatic(_table.blockNumber, _table.blindHash);
 
     PackedCounter _encodedLengths;
     bytes memory _dynamicData;
@@ -356,7 +356,7 @@ library SpawnCommitment {
    * @notice Set the full data using the data struct (using the specified store).
    */
   function set(IStore _store, address id, SpawnCommitmentData memory _table) internal {
-    bytes memory _staticData = encodeStatic(_table.blockNumber, _table.challengeHash);
+    bytes memory _staticData = encodeStatic(_table.blockNumber, _table.blindHash);
 
     PackedCounter _encodedLengths;
     bytes memory _dynamicData;
@@ -370,10 +370,10 @@ library SpawnCommitment {
   /**
    * @notice Decode the tightly packed blob of static data using this table's field layout.
    */
-  function decodeStatic(bytes memory _blob) internal pure returns (uint256 blockNumber, uint256 challengeHash) {
+  function decodeStatic(bytes memory _blob) internal pure returns (uint256 blockNumber, uint256 blindHash) {
     blockNumber = (uint256(Bytes.slice32(_blob, 0)));
 
-    challengeHash = (uint256(Bytes.slice32(_blob, 32)));
+    blindHash = (uint256(Bytes.slice32(_blob, 32)));
   }
 
   /**
@@ -387,7 +387,7 @@ library SpawnCommitment {
     PackedCounter,
     bytes memory
   ) internal pure returns (SpawnCommitmentData memory _table) {
-    (_table.blockNumber, _table.challengeHash) = decodeStatic(_staticData);
+    (_table.blockNumber, _table.blindHash) = decodeStatic(_staticData);
   }
 
   /**
@@ -424,8 +424,8 @@ library SpawnCommitment {
    * @notice Tightly pack static (fixed length) data using this table's schema.
    * @return The static data, encoded into a sequence of bytes.
    */
-  function encodeStatic(uint256 blockNumber, uint256 challengeHash) internal pure returns (bytes memory) {
-    return abi.encodePacked(blockNumber, challengeHash);
+  function encodeStatic(uint256 blockNumber, uint256 blindHash) internal pure returns (bytes memory) {
+    return abi.encodePacked(blockNumber, blindHash);
   }
 
   /**
@@ -436,9 +436,9 @@ library SpawnCommitment {
    */
   function encode(
     uint256 blockNumber,
-    uint256 challengeHash
+    uint256 blindHash
   ) internal pure returns (bytes memory, PackedCounter, bytes memory) {
-    bytes memory _staticData = encodeStatic(blockNumber, challengeHash);
+    bytes memory _staticData = encodeStatic(blockNumber, blindHash);
 
     PackedCounter _encodedLengths;
     bytes memory _dynamicData;

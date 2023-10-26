@@ -22,7 +22,7 @@ contract SpawnSystem is IEnclaveEvents, System {
         SpawnCommitment.set({
             id: _msgSender(),
             blockNumber: block.number,
-            challengeHash: h
+            blindHash: h
         });
     }
 
@@ -59,10 +59,10 @@ contract SpawnSystem is IEnclaveEvents, System {
         return SpawnCommitment.getBlockNumber(player);
     }
 
-    function getSpawnChallengeHash(
+    function getSpawnblindHash(
         address player
     ) public view returns (uint256) {
-        return SpawnCommitment.getChallengeHash(player);
+        return SpawnCommitment.getBlindHash(player);
     }
 
     function getBlockHash(uint256 blockCommited) public view returns (uint256) {

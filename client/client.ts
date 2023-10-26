@@ -112,7 +112,7 @@ async function commitToSpawn() {
         PLAYER.symbol,
         PLAYER.address,
         sig,
-        PLAYER.secret.toString()
+        PLAYER.blind.toString()
     );
 }
 
@@ -134,26 +134,11 @@ async function spawnSignatureResponse(sig: string, prev: any, spawn: any) {
     );
 
     const spawnFormattedProof = await Utils.exportCallDataGroth16(prf, pubSigs);
-    const spawnInputs = {
-        canSpawn: spawnFormattedProof.input[0] === "1",
-        spawnCityId: Number(spawnFormattedProof.input[1]),
-        commitBlockHash: spawnFormattedProof.input[2],
-        hPrevTile: spawnFormattedProof.input[3],
-        hSpawnTile: spawnFormattedProof.input[4],
-        hSecret: spawnFormattedProof.input[5],
-    };
-    const spawnProof = {
-        a: spawnFormattedProof.a,
-        b: spawnFormattedProof.b,
-        c: spawnFormattedProof.c,
-    };
-    const unpackedSig = ethers.utils.splitSignature(sig);
-    const spawnSig = {
-        v: unpackedSig.v,
-        r: unpackedSig.r,
-        s: unpackedSig.s,
-        b: commitBlockNumber,
-    };
+    const [spawnInputs, spawnProof, spawnSig] = Utils.unpackSpawnInputs(
+        spawnFormattedProof,
+        sig,
+        commitBlockNumber
+    );
 
     console.log("Submitting spawn proof to nStates");
     try {
@@ -229,38 +214,11 @@ function decryptResponse(t: any) {
  * sent to the chain for approval.
  */
 async function moveSignatureResponse(sig: string, blockNumber: number) {
-    const unpackedSig: Signature = ethers.utils.splitSignature(sig);
-
-    const moveInputs = {
-        fromIsCityCenter: formattedProof.input[6] === "1",
-        toIsCityCenter: formattedProof.input[7] === "1",
-        takingCity: formattedProof.input[8] === "1",
-        takingCapital: formattedProof.input[9] === "1",
-        ontoSelfOrUnowned: formattedProof.input[3] === "1",
-        fromCityId: Number(formattedProof.input[1]),
-        toCityId: Number(formattedProof.input[2]),
-        fromCityTroops: Number(formattedProof.input[10]),
-        toCityTroops: Number(formattedProof.input[11]),
-        numTroopsMoved: Number(formattedProof.input[4]),
-        enemyLoss: Number(formattedProof.input[5]),
-        currentInterval: formattedProof.input[0],
-        hTFrom: formattedProof.input[12],
-        hTTo: formattedProof.input[13],
-        hUFrom: formattedProof.input[14],
-        hUTo: formattedProof.input[15],
-    };
-
-    const moveProof = {
-        a: formattedProof.a,
-        b: formattedProof.b,
-        c: formattedProof.c,
-    };
-    const moveSig = {
-        v: unpackedSig.v,
-        r: unpackedSig.r,
-        s: unpackedSig.s,
-        b: blockNumber,
-    };
+    const [moveInputs, moveProof, moveSig] = Utils.unpackMoveInputs(
+        formattedProof,
+        sig,
+        blockNumber
+    );
 
     await nStates.move(moveInputs, moveProof, moveSig);
 }

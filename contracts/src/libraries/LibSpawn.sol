@@ -28,7 +28,7 @@ library LibSpawn {
             "Enclave spawn sig incorrect"
         );
         require(
-            SpawnCommitment.getChallengeHash(player) == spawnInputs.hSecret,
+            SpawnCommitment.getBlindHash(player) == spawnInputs.hBlind,
             "Incorrect player secret hash"
         );
         checkBlockHash(player, spawnInputs.commitBlockHash);

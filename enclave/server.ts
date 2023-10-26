@@ -254,14 +254,14 @@ async function getSpawnSignature(
     const latestBlockCommited = Number(
         await nStates.getSpawnCommitment(address)
     );
-    const hSecret = await nStates.getSpawnChallengeHash(address);
+    const hBlind = await nStates.getSpawnblindHash(address);
 
     if (
         latestBlockCommited == 0 ||
-        hSecret != poseidonPerm([BigInt(0), playerChallenge])[0]
+        hBlind != poseidonPerm([BigInt(0), playerChallenge])[0]
     ) {
         console.log(
-            "Player already has enclave sig, or hSecret is inconsistent"
+            "Player already has enclave sig, or hBlind is inconsistent"
         );
         socket.disconnect();
         return;

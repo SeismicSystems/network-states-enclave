@@ -19,7 +19,7 @@ export default mudConfig({
             keySchema: { id: "address" },
             valueSchema: {
                 blockNumber: "uint256",
-                challengeHash: "uint256"
+                blindHash: "uint256"
             }
         },
         TileCommitment: {

@@ -27,6 +27,10 @@ library LibMove {
             "Move too far"
         );
         require(
+            CityPlayer.get(moveInputs.fromCityId) == player,
+            "Must own tile player moves from"
+        );
+        require(
             _checkOntoSelfOrUnowned({player: player, mv: moveInputs}),
             "Incorrect ontoSelfOrUnowned"
         );
@@ -119,7 +123,10 @@ library LibMove {
         }
     }
 
-    function updateCityOwnership(address player, MoveInputs memory mv) internal {
+    function updateCityOwnership(
+        address player,
+        MoveInputs memory mv
+    ) internal {
         if (mv.takingCity) {
             CityPlayer.set({id: mv.toCityId, value: player});
         }
@@ -137,7 +144,8 @@ library LibMove {
         if (isCityCenter) {
             City.setCenterTroopCount({
                 id: cityId,
-                centerTroopCount: City.getCenterTroopCount({id: cityId}) + increment
+                centerTroopCount: City.getCenterTroopCount({id: cityId}) +
+                    increment
             });
         }
     }
@@ -154,7 +162,8 @@ library LibMove {
         if (isCityCenter) {
             City.setCenterTroopCount({
                 id: cityId,
-                centerTroopCount: City.getCenterTroopCount({id: cityId}) - decrement
+                centerTroopCount: City.getCenterTroopCount({id: cityId}) -
+                    decrement
             });
         }
     }
