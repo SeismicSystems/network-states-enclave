@@ -26,6 +26,12 @@ contract ConfigSystem is System {
         Config.setEnclave({enclave: enclave});
     }
 
+    function setEnclaveRandCommitment(uint256 randCommitment) public {
+        Config.setEnclaveRandCommitment({
+            enclaveRandCommitment: randCommitment
+        });
+    }
+
     function setClaimedMoveLifeSpan(uint256 claimedMoveLifeSpan) public {
         Config.setClaimedMoveLifeSpan({
             claimedMoveLifeSpan: claimedMoveLifeSpan

@@ -5,6 +5,10 @@ import { Signature } from "maci-crypto";
 import crypto from "crypto";
 import { BigNumber } from "ethers";
 import { Tile, Location } from "./Tile";
+/*
+ * poseidonPerm is a modified version of iden3's poseidonPerm.js.
+ */
+import poseidonPerm from "../game/poseidonPerm.js";
 
 export type Groth16Proof = {
     pi_a: [string, string, string];
@@ -31,9 +35,9 @@ export type TerrainGenerator = (location: Location) => Terrain;
 
 export const dummyTerrainGenerator = (location: Location) => {
     const { r: i, c: j } = location;
-    if (i === 0 && j === 1) {
+    if (i === BigInt(0) && j === BigInt(1)) {
         return Terrain.HILL;
-    } else if (i === 1 && j === 1) {
+    } else if (i === BigInt(1) && j === BigInt(1)) {
         return Terrain.WATER;
     } else {
         return Terrain.BARE;
@@ -84,6 +88,14 @@ export class Utils {
             result = (result << BigInt(8)) + BigInt(msg.charCodeAt(i));
         }
         return result;
+    }
+
+    /*
+     * Wrapper for poseidonPerm, which is a modified version of iden3's 
+     * poseidonPerm.js.
+     */
+    static poseidonExt(inputs: BigInt[]) {
+        return poseidonPerm([BigInt(0), ...inputs])[0];
     }
 
     /*

@@ -7,6 +7,7 @@ export default mudConfig({
             keySchema: {},
             valueSchema: {
                 enclave: "address",
+                enclaveRandCommitment: "uint256",
                 spawnVerifierContract: "address",
                 moveVerifierContract: "address",
                 snarkFieldSize: "uint256",
