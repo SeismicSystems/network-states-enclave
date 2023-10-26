@@ -20,10 +20,6 @@ import { Utils } from "../game/Utils.js";
 import worlds from "../contracts/worlds.json" assert { type: "json" };
 import IWorld from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "json" };
 import IEnclaveEvents from "../contracts/out/IEnclaveEvents.sol/IEnclaveEvents.json" assert { type: "json" };
-/*
- * poseidonPerm is a modified version of iden3's poseidonPerm.js.
- */
-import poseidonPerm from "../game/poseidonPerm.js";
 
 /*
  * Whether the enclave's global state should be blank or pull from DA.
@@ -70,6 +66,12 @@ const signer = new ethers.Wallet(
 
 const abi = IWorld.abi.concat(IEnclaveEvents.abi);
 const nStates = new ethers.Contract(worlds[31337].address, abi, signer);
+
+/*
+ * Enclave randomness that it commits to in contract. Used for virtual tile
+ * commitments.
+ */
+let r: BigInt;
 
 type ClaimedSpawn = {
     prevTile: Tile;
@@ -258,7 +260,7 @@ async function getSpawnSignature(
 
     if (
         latestBlockCommited == 0 ||
-        hBlind != poseidonPerm([BigInt(0), playerChallenge])[0]
+        hBlind != Utils.poseidonExt([playerChallenge])
     ) {
         console.log(
             "Player already has enclave sig, or hBlind is inconsistent"
@@ -275,10 +277,10 @@ async function getSpawnSignature(
     const commitBlockHash = await nStates.getBlockHash(latestBlockCommited);
 
     // [TODO]: determine formula for row/col
-    const rawRow = poseidonPerm([0, playerChallenge, commitBlockHash, 0])[0];
-    const rawCol = poseidonPerm([0, playerChallenge, commitBlockHash, 1])[0];
-    const r = Number(rawRow % BigInt(b.t.length));
-    const c = Number(rawCol % BigInt(b.t.length));
+    const rawRow = Utils.poseidonExt([playerChallenge, commitBlockHash, 0]);
+    const rawCol = Utils.poseidonExt([playerChallenge, commitBlockHash, 1]);
+    const r = BigInt(rawRow % b.t.length);
+    const c = BigInt(rawCol % b.t.length);
     const l = { r, c };
 
     const prevTile = b.getTile(l);
@@ -734,18 +736,19 @@ server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
 
         // Generate and save encryption key
         tileEncryptionKey = Utils.genAESEncKey();
+
         fs.writeFileSync(
             process.env.ENCRYPTION_KEY_PATH!,
             tileEncryptionKey.toString("hex")
         );
 
-        await b.seed(BOARD_SIZE, true, nStates, terrainUtils.getTerrainAtLoc);
-
-        for (let r = 0; r < BOARD_SIZE; r++) {
-            for (let c = 0; c < BOARD_SIZE; c++) {
-                enqueueTile(b.t[r][c]);
-            }
-        }
+        // Commit to enclave randomness, derived from AES key for DA
+        r = Utils.poseidonExt([
+            BigInt("0x" + tileEncryptionKey.toString("hex")),
+        ]);
+        await nStates.setEnclaveRandCommitment(
+            Utils.poseidonExt([r]).toString()
+        );
     }
 
     console.log(

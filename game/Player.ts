@@ -1,6 +1,7 @@
 // @ts-ignore
 import { groth16 } from "snarkjs";
 import { Tile } from "./Tile";
+import { Utils } from "./Utils"
 import { genRandomSalt } from "maci-crypto";
 /*
  * poseidonPerm is a modified version of iden3's poseidonPerm.js.
@@ -29,7 +30,7 @@ export class Player {
     }
 
     public async commitToSpawn(nStates: any) {
-        const h = poseidonPerm([BigInt(0), this.blind])[0].toString();
+        const h = Utils.poseidonExt([this.blind]).toString();
         const transaction = await nStates.commitToSpawn(h);
 
         // Wait to get the transaction block number

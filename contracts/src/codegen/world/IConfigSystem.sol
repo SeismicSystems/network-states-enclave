@@ -18,6 +18,8 @@ interface IConfigSystem {
 
   function setEnclave(address enclave) external;
 
+  function setEnclaveRandCommitment(uint256 randCommitment) external;
+
   function setClaimedMoveLifeSpan(uint256 claimedMoveLifeSpan) external;
 
   function setNumBlocksInInterval(uint256 numBlocksInInterval) external;

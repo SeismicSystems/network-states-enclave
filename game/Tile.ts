@@ -1,13 +1,10 @@
 import { genRandomSalt } from "maci-crypto";
 import { Player } from "./Player.js";
-/*
- * poseidonPerm is a modified version of iden3's poseidonPerm.js.
- */
-import poseidonPerm from "./poseidonPerm.js";
+import { Utils } from "./Utils.js";
 
 export type Location = {
-    r: number;
-    c: number;
+    r: BigInt;
+    c: BigInt;
 };
 
 export class Tile {
@@ -68,7 +65,7 @@ export class Tile {
      * Compute hash of this Tile and convert it into a decimal string.
      */
     hash(): string {
-        return poseidonPerm([
+        return Utils.poseidonExt([
             BigInt(0),
             ...this.toCircuitInput().map((e) => BigInt(e)),
         ])[0].toString();
@@ -79,7 +76,7 @@ export class Tile {
      * string representation.
      */
     nullifier(): string {
-        return poseidonPerm([BigInt(0), this.key])[0].toString();
+        return Utils.poseidonExt([this.key]).toString();
     }
 
     /*
@@ -152,7 +149,7 @@ export class Tile {
     static fromJSON(obj: any): Tile {
         return new Tile(
             new Player(obj.symbol, obj.address),
-            { r: parseInt(obj.r, 10), c: parseInt(obj.c, 10) },
+            { r: BigInt(obj.r), c: BigInt(obj.c) },
             parseInt(obj.resources, 10),
             BigInt(obj.key),
             parseInt(obj.cityId, 10),
