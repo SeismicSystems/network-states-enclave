@@ -454,16 +454,7 @@ function onMoveFinalize(hUFrom: string, hUTo: string) {
 
         // Alert all nearby players that an updateDisplay is needed
         let updatedLocs = [move.uFrom.loc];
-        if (ownershipChanged && tTo.isCapital()) {
-            b.playerCities.get(prevOwner)?.forEach((cityId: number) => {
-                b.cityTiles.get(cityId)?.forEach((locString: string) => {
-                    const loc = JSON.parse(locString);
-                    if (loc) {
-                        updatedLocs.push(loc);
-                    }
-                });
-            });
-        } else if (ownershipChanged && tTo.isCityCenter()) {
+        if (ownershipChanged && tTo.isCityCenter()) {
             b.cityTiles.get(tTo.cityId)?.forEach((locString: string) => {
                 const loc = JSON.parse(locString);
                 if (loc) {

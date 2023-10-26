@@ -13,14 +13,12 @@ export class Board {
 
     t: Tile[][];
 
-    playerCapital: Map<string, number>;
     playerCities: Map<string, Set<number>>;
     cityTiles: Map<number, Set<string>>;
 
     public constructor() {
         this.t = new Array<Array<Tile>>();
 
-        this.playerCapital = new Map<string, number>();
         this.playerCities = new Map<string, Set<number>>();
         this.cityTiles = new Map<number, Set<string>>();
     }
@@ -111,12 +109,11 @@ export class Board {
             resource,
             cityId,
             0,
-            Tile.CAPITAL_TILE
+            Tile.CITY_TILE
         );
 
         this.setTile(tl);
 
-        this.playerCapital.set(pl.address, cityId);
         this.playerCities.set(pl.address, new Set<number>().add(cityId));
         this.cityTiles.set(
             cityId,
@@ -130,10 +127,11 @@ export class Board {
     }
 
     /*
-     * Does the player have a capital? Enclave function.
+     * Does the player have a city? Enclave function.
      */
     public isSpawned(pl: Player): boolean {
-        return this.playerCapital.has(pl.address);
+        const cities = this.playerCities.get(pl.address);
+        return cities && cities.size > 0;
     }
 
     /*
@@ -196,7 +194,6 @@ export class Board {
 
         if (!this.isSpawned(tl.owner)) {
             // Initialize player's data
-            this.playerCapital.set(newOwner, tl.cityId);
             this.playerCities.set(newOwner, new Set<number>().add(tl.cityId));
             this.cityTiles.set(
                 tl.cityId,
@@ -205,36 +202,23 @@ export class Board {
         } else {
             if (oldOwner !== newOwner) {
                 // Some type of capture happened: must update state
-                if (oldTile.isCapital()) {
-                    this.playerCapital.delete(oldOwner);
-
-                    for (let cityId of this.playerCities.get(oldOwner)!) {
-                        // Change tiles' ownership
-                        for (let locString of this.cityTiles.get(cityId)!) {
-                            const loc = JSON.parse(locString);
-                            if (loc) {
-                                let tile = this.t[loc.r][loc.c];
-                                tile.owner = tl.owner;
-                                this.t[loc.r][loc.c] = tile;
-                            }
-                        }
-
-                        this.playerCities.get(newOwner)?.add(cityId);
-                    }
-                    this.playerCities.delete(oldOwner);
-                } else if (oldTile.isCityCenter()) {
-                    // Change tiles' ownership
+                if (oldTile.isCityCenter()) {
+                    // Change tile ownership
                     for (let locString of this.cityTiles.get(oldTile.cityId)!) {
                         const loc = JSON.parse(locString);
                         if (loc) {
-                            let tile = this.t[loc.r][loc.c];
-                            tile.owner = oldTile.owner;
-                            this.t[loc.r][loc.c] = tile;
+                            this.t[loc.r][loc.c].owner = tl.owner;
                         }
                     }
 
                     this.playerCities.get(oldOwner)?.delete(tl.cityId);
                     this.playerCities.get(newOwner)?.add(tl.cityId);
+
+                    // Check if oldOwner lost all cities
+                    const cities = this.playerCities.get(oldOwner);
+                    if (cities && cities.size == 0) {
+                        this.playerCities.delete(oldOwner);
+                    }
                 } else {
                     // Normal/water tile with a new owner
                     const locString = JSON.stringify(tl.loc);
@@ -243,7 +227,7 @@ export class Board {
                 }
                 this.playerCities.delete(oldOwner);
             } else if (oldTile.isCityCenter()) {
-                // Change tiles' ownership
+                // Change tile ownership
                 for (let locString of this.cityTiles.get(oldTile.cityId)!) {
                     const loc = JSON.parse(locString);
                     if (loc) {
@@ -317,7 +301,7 @@ export class Board {
             const deltaTroops =
                 tTile.latestUpdateInterval - currentWaterInterval;
             return Math.max(tTile.resources + deltaTroops, 0);
-        } else if (tTile.isCityCenter() || tTile.isCapital()) {
+        } else if (tTile.isCityCenter()) {
             return cityTroops;
         }
 
@@ -370,13 +354,8 @@ export class Board {
             if (uTo.resources < 0) {
                 uTo.owner = uFrom.owner;
                 uTo.resources *= -1;
-                if (
-                    tTo.tileType != Tile.CITY_TILE &&
-                    tTo.tileType != Tile.CAPITAL_TILE
-                ) {
+                if (tTo.tileType != Tile.CITY_TILE) {
                     uTo.cityId = uFrom.cityId;
-                } else if (tTo.tileType === Tile.CAPITAL_TILE) {
-                    uTo.tileType = Tile.CITY_TILE;
                 }
             }
         }
@@ -439,8 +418,7 @@ export class Board {
                 : "0";
         const capturedTile = uTo.owner.address != tTo.owner.address;
         const takingCity = tTo.isCityCenter() && capturedTile ? "1" : "0";
-        const takingCapital = tTo.isCapital() && capturedTile ? "1" : "0";
-        
+
         const { proof, publicSignals } = await groth16.fullProve(
             {
                 currentWaterInterval: currentWaterInterval.toString(),
@@ -449,11 +427,9 @@ export class Board {
                 ontoSelfOrUnowned,
                 numTroopsMoved: nMobilize.toString(),
                 enemyLoss: enemyLoss.toString(),
-                fromIsCityTile:
-                    tFrom.isCityCenter() || tFrom.isCapital() ? "1" : "0",
-                toIsCityTile: tTo.isCityCenter() || tTo.isCapital() ? "1" : "0",
+                fromIsCityTile: tFrom.isCityCenter() ? "1" : "0",
+                toIsCityTile: tTo.isCityCenter() ? "1" : "0",
                 takingCity,
-                takingCapital,
                 fromCityTroops: fromCityTroops.toString(),
                 toCityTroops: toCityTroops.toString(),
                 hTFrom: tFrom.hash(),

@@ -5,7 +5,6 @@ struct MoveInputs {
     bool fromIsCityCenter;
     bool toIsCityCenter;
     bool takingCity;
-    bool takingCapital;
     bool ontoSelfOrUnowned;
     uint24 fromCityId;
     uint24 toCityId;

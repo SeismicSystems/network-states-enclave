@@ -13,20 +13,17 @@ export class Player {
 
     symbol: string;
     address: string;
-    socketId?: string;
     blind: BigInt;
     hBlind: string;
 
     constructor(symb: string, address: string, socketId?: string) {
         this.symbol = symb;
         this.address = address;
-        if (socketId) {
-            this.socketId = socketId;
-        }
-        this.sampleSecret();
+        
+        this.sampleBlind();
     }
 
-    public sampleSecret() {
+    public sampleBlind() {
         this.blind = genRandomSalt();
         this.hBlind = poseidonPerm([BigInt(0), this.blind])[0].toString();
     }

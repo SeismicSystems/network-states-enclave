@@ -98,7 +98,7 @@ function updatePlayerView(l: Location) {
 }
 
 async function commitToSpawn() {
-    PLAYER.sampleSecret();
+    PLAYER.sampleBlind();
 
     // Save block number player commited to spawning
     commitBlockNumber = await PLAYER.commitToSpawn(nStates);
@@ -203,6 +203,11 @@ async function loginResponse(locs: string[]) {
 function decryptResponse(t: any) {
     const tl = Tile.fromJSON(t);
     b.t[tl.loc.r][tl.loc.c] = tl;
+
+    // Set cursor if not already set
+    if (!cursor && tl.isCityCenter()) {
+        cursor = tl.loc;
+    }
 
     console.clear();
     b.printView();
