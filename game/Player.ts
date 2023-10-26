@@ -20,10 +20,10 @@ export class Player {
         this.symbol = symb;
         this.address = address;
         
-        this.sampleSecret();
+        this.sampleBlind();
     }
 
-    public sampleSecret() {
+    public sampleBlind() {
         this.blind = genRandomSalt();
         this.hBlind = poseidonPerm([BigInt(0), this.blind])[0].toString();
     }

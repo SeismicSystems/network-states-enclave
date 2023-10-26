@@ -98,7 +98,7 @@ function updatePlayerView(l: Location) {
 }
 
 async function commitToSpawn() {
-    PLAYER.sampleSecret();
+    PLAYER.sampleBlind();
 
     // Save block number player commited to spawning
     commitBlockNumber = await PLAYER.commitToSpawn(nStates);
