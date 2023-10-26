@@ -4,7 +4,6 @@ include "../node_modules/maci-circuits/node_modules/circomlib/circuits/poseidon.
 include "../node_modules/maci-circuits/node_modules/circomlib/circuits/comparators.circom";
 include "../node_modules/maci-circuits/node_modules/circomlib/circuits/mux1.circom";
 include "../node_modules/maci-circuits/node_modules/circomlib/circuits/mux2.circom";
-include "../node_modules/maci-circuits/node_modules/circomlib/circuits/babyjub.circom";
 include "../utils/utils.circom";
 
 template CheckTileHash(N_TL_ATRS) {
