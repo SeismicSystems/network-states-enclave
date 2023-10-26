@@ -4,7 +4,6 @@ include "../node_modules/maci-circuits/node_modules/circomlib/circuits/poseidon.
 include "../node_modules/maci-circuits/node_modules/circomlib/circuits/comparators.circom";
 include "../node_modules/maci-circuits/node_modules/circomlib/circuits/mux1.circom";
 include "../node_modules/maci-circuits/node_modules/circomlib/circuits/mux2.circom";
-include "../node_modules/maci-circuits/node_modules/circomlib/circuits/babyjub.circom";
 include "../utils/utils.circom";
 
 template CheckTileHash(N_TL_ATRS) {
@@ -29,22 +28,13 @@ template CheckAuth(N_TL_ATRS) {
     signal input hTTo;
     signal input hUFrom;
     signal input hUTo;
-    signal input fromPkHash;
 
     signal input tFrom[N_TL_ATRS];
     signal input tTo[N_TL_ATRS];
     signal input uFrom[N_TL_ATRS];
     signal input uTo[N_TL_ATRS];
-    signal input privKeyHash;
 
     signal output out;
-
-    // Whether player 'owns' the 'from' tile
-    component bjj = BabyPbk();
-    bjj.in <== privKeyHash;
-    signal circuitFromPkHash <== Poseidon(2)([bjj.Ax, bjj.Ay]);
-    signal pkHashCorrect <== IsEqual()([circuitFromPkHash, fromPkHash]);
-    signal pkHashIncorrect <== NOT()(pkHashCorrect);
 
     // Whether hashes were computed correctly
     signal hTFromCorrect <== CheckTileHash(N_TL_ATRS)(hTFrom, tFrom);
@@ -59,7 +49,7 @@ template CheckAuth(N_TL_ATRS) {
     signal hUToCorrect <== CheckTileHash(N_TL_ATRS)(hUTo, uTo);
     signal hUToIncorrect <== NOT()(hUToCorrect);
 
-    out <== BatchIsZero(5)([pkHashIncorrect, hTFromIncorrect, hTToIncorrect, 
+    out <== BatchIsZero(4)([hTFromIncorrect, hTToIncorrect, 
         hUFromIncorrect, hUToIncorrect]);
 }
 
@@ -435,7 +425,6 @@ template Move() {
     var SYS_BITS = 252;
 
     signal input currentWaterInterval;
-    signal input fromPkHash;
     signal input fromCityId;
     signal input toCityId;
     signal input ontoSelfOrUnowned;
@@ -458,7 +447,6 @@ template Move() {
     signal input uTo[N_TL_ATRS];
     signal input fromUpdatedTroops;
     signal input toUpdatedTroops;
-    signal input privKeyHash;
 
     signal ontoMoreOrEq <== GreaterEqThan(SYS_BITS)([toUpdatedTroops, 
         numTroopsMoved]);
@@ -471,7 +459,7 @@ template Move() {
     pubSignalsCorrect === 1;
 
     signal authCorrect <== CheckAuth(N_TL_ATRS)(hTFrom, hTTo, hUFrom, hUTo,
-        fromPkHash, tFrom, tTo, uFrom, uTo, privKeyHash);
+        tFrom, tTo, uFrom, uTo);
     authCorrect === 1;
 
     signal stepCorrect <== CheckStep(VALID_MOVES, N_VALID_MOVES, N_TL_ATRS, 

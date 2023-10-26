@@ -26,12 +26,14 @@ ResourceId constant _tableId = ResourceId.wrap(
 ResourceId constant ConfigTableId = _tableId;
 
 FieldLayout constant _fieldLayout = FieldLayout.wrap(
-  0x006c050014142004200000000000000000000000000000000000000000000000
+  0x00a0070014141420200420000000000000000000000000000000000000000000
 );
 
 struct ConfigData {
   address enclave;
-  address verifierContract;
+  address spawnVerifierContract;
+  address moveVerifierContract;
+  uint256 snarkFieldSize;
   uint256 numBlocksInInterval;
   uint32 numStartingTroops;
   uint256 claimedMoveLifeSpan;
@@ -61,12 +63,14 @@ library Config {
    * @return _valueSchema The value schema for the table.
    */
   function getValueSchema() internal pure returns (Schema) {
-    SchemaType[] memory _valueSchema = new SchemaType[](5);
+    SchemaType[] memory _valueSchema = new SchemaType[](7);
     _valueSchema[0] = SchemaType.ADDRESS;
     _valueSchema[1] = SchemaType.ADDRESS;
-    _valueSchema[2] = SchemaType.UINT256;
-    _valueSchema[3] = SchemaType.UINT32;
+    _valueSchema[2] = SchemaType.ADDRESS;
+    _valueSchema[3] = SchemaType.UINT256;
     _valueSchema[4] = SchemaType.UINT256;
+    _valueSchema[5] = SchemaType.UINT32;
+    _valueSchema[6] = SchemaType.UINT256;
 
     return SchemaLib.encode(_valueSchema);
   }
@@ -84,12 +88,14 @@ library Config {
    * @return fieldNames An array of strings with the names of value fields.
    */
   function getFieldNames() internal pure returns (string[] memory fieldNames) {
-    fieldNames = new string[](5);
+    fieldNames = new string[](7);
     fieldNames[0] = "enclave";
-    fieldNames[1] = "verifierContract";
-    fieldNames[2] = "numBlocksInInterval";
-    fieldNames[3] = "numStartingTroops";
-    fieldNames[4] = "claimedMoveLifeSpan";
+    fieldNames[1] = "spawnVerifierContract";
+    fieldNames[2] = "moveVerifierContract";
+    fieldNames[3] = "snarkFieldSize";
+    fieldNames[4] = "numBlocksInInterval";
+    fieldNames[5] = "numStartingTroops";
+    fieldNames[6] = "claimedMoveLifeSpan";
   }
 
   /**
@@ -171,9 +177,9 @@ library Config {
   }
 
   /**
-   * @notice Get verifierContract.
+   * @notice Get spawnVerifierContract.
    */
-  function getVerifierContract() internal view returns (address verifierContract) {
+  function getSpawnVerifierContract() internal view returns (address spawnVerifierContract) {
     bytes32[] memory _keyTuple = new bytes32[](0);
 
     bytes32 _blob = StoreSwitch.getStaticField(_tableId, _keyTuple, 1, _fieldLayout);
@@ -181,9 +187,9 @@ library Config {
   }
 
   /**
-   * @notice Get verifierContract.
+   * @notice Get spawnVerifierContract.
    */
-  function _getVerifierContract() internal view returns (address verifierContract) {
+  function _getSpawnVerifierContract() internal view returns (address spawnVerifierContract) {
     bytes32[] memory _keyTuple = new bytes32[](0);
 
     bytes32 _blob = StoreCore.getStaticField(_tableId, _keyTuple, 1, _fieldLayout);
@@ -191,9 +197,9 @@ library Config {
   }
 
   /**
-   * @notice Get verifierContract (using the specified store).
+   * @notice Get spawnVerifierContract (using the specified store).
    */
-  function getVerifierContract(IStore _store) internal view returns (address verifierContract) {
+  function getSpawnVerifierContract(IStore _store) internal view returns (address spawnVerifierContract) {
     bytes32[] memory _keyTuple = new bytes32[](0);
 
     bytes32 _blob = _store.getStaticField(_tableId, _keyTuple, 1, _fieldLayout);
@@ -201,30 +207,144 @@ library Config {
   }
 
   /**
-   * @notice Set verifierContract.
+   * @notice Set spawnVerifierContract.
    */
-  function setVerifierContract(address verifierContract) internal {
+  function setSpawnVerifierContract(address spawnVerifierContract) internal {
     bytes32[] memory _keyTuple = new bytes32[](0);
 
-    StoreSwitch.setStaticField(_tableId, _keyTuple, 1, abi.encodePacked((verifierContract)), _fieldLayout);
+    StoreSwitch.setStaticField(_tableId, _keyTuple, 1, abi.encodePacked((spawnVerifierContract)), _fieldLayout);
   }
 
   /**
-   * @notice Set verifierContract.
+   * @notice Set spawnVerifierContract.
    */
-  function _setVerifierContract(address verifierContract) internal {
+  function _setSpawnVerifierContract(address spawnVerifierContract) internal {
     bytes32[] memory _keyTuple = new bytes32[](0);
 
-    StoreCore.setStaticField(_tableId, _keyTuple, 1, abi.encodePacked((verifierContract)), _fieldLayout);
+    StoreCore.setStaticField(_tableId, _keyTuple, 1, abi.encodePacked((spawnVerifierContract)), _fieldLayout);
   }
 
   /**
-   * @notice Set verifierContract (using the specified store).
+   * @notice Set spawnVerifierContract (using the specified store).
    */
-  function setVerifierContract(IStore _store, address verifierContract) internal {
+  function setSpawnVerifierContract(IStore _store, address spawnVerifierContract) internal {
     bytes32[] memory _keyTuple = new bytes32[](0);
 
-    _store.setStaticField(_tableId, _keyTuple, 1, abi.encodePacked((verifierContract)), _fieldLayout);
+    _store.setStaticField(_tableId, _keyTuple, 1, abi.encodePacked((spawnVerifierContract)), _fieldLayout);
+  }
+
+  /**
+   * @notice Get moveVerifierContract.
+   */
+  function getMoveVerifierContract() internal view returns (address moveVerifierContract) {
+    bytes32[] memory _keyTuple = new bytes32[](0);
+
+    bytes32 _blob = StoreSwitch.getStaticField(_tableId, _keyTuple, 2, _fieldLayout);
+    return (address(bytes20(_blob)));
+  }
+
+  /**
+   * @notice Get moveVerifierContract.
+   */
+  function _getMoveVerifierContract() internal view returns (address moveVerifierContract) {
+    bytes32[] memory _keyTuple = new bytes32[](0);
+
+    bytes32 _blob = StoreCore.getStaticField(_tableId, _keyTuple, 2, _fieldLayout);
+    return (address(bytes20(_blob)));
+  }
+
+  /**
+   * @notice Get moveVerifierContract (using the specified store).
+   */
+  function getMoveVerifierContract(IStore _store) internal view returns (address moveVerifierContract) {
+    bytes32[] memory _keyTuple = new bytes32[](0);
+
+    bytes32 _blob = _store.getStaticField(_tableId, _keyTuple, 2, _fieldLayout);
+    return (address(bytes20(_blob)));
+  }
+
+  /**
+   * @notice Set moveVerifierContract.
+   */
+  function setMoveVerifierContract(address moveVerifierContract) internal {
+    bytes32[] memory _keyTuple = new bytes32[](0);
+
+    StoreSwitch.setStaticField(_tableId, _keyTuple, 2, abi.encodePacked((moveVerifierContract)), _fieldLayout);
+  }
+
+  /**
+   * @notice Set moveVerifierContract.
+   */
+  function _setMoveVerifierContract(address moveVerifierContract) internal {
+    bytes32[] memory _keyTuple = new bytes32[](0);
+
+    StoreCore.setStaticField(_tableId, _keyTuple, 2, abi.encodePacked((moveVerifierContract)), _fieldLayout);
+  }
+
+  /**
+   * @notice Set moveVerifierContract (using the specified store).
+   */
+  function setMoveVerifierContract(IStore _store, address moveVerifierContract) internal {
+    bytes32[] memory _keyTuple = new bytes32[](0);
+
+    _store.setStaticField(_tableId, _keyTuple, 2, abi.encodePacked((moveVerifierContract)), _fieldLayout);
+  }
+
+  /**
+   * @notice Get snarkFieldSize.
+   */
+  function getSnarkFieldSize() internal view returns (uint256 snarkFieldSize) {
+    bytes32[] memory _keyTuple = new bytes32[](0);
+
+    bytes32 _blob = StoreSwitch.getStaticField(_tableId, _keyTuple, 3, _fieldLayout);
+    return (uint256(bytes32(_blob)));
+  }
+
+  /**
+   * @notice Get snarkFieldSize.
+   */
+  function _getSnarkFieldSize() internal view returns (uint256 snarkFieldSize) {
+    bytes32[] memory _keyTuple = new bytes32[](0);
+
+    bytes32 _blob = StoreCore.getStaticField(_tableId, _keyTuple, 3, _fieldLayout);
+    return (uint256(bytes32(_blob)));
+  }
+
+  /**
+   * @notice Get snarkFieldSize (using the specified store).
+   */
+  function getSnarkFieldSize(IStore _store) internal view returns (uint256 snarkFieldSize) {
+    bytes32[] memory _keyTuple = new bytes32[](0);
+
+    bytes32 _blob = _store.getStaticField(_tableId, _keyTuple, 3, _fieldLayout);
+    return (uint256(bytes32(_blob)));
+  }
+
+  /**
+   * @notice Set snarkFieldSize.
+   */
+  function setSnarkFieldSize(uint256 snarkFieldSize) internal {
+    bytes32[] memory _keyTuple = new bytes32[](0);
+
+    StoreSwitch.setStaticField(_tableId, _keyTuple, 3, abi.encodePacked((snarkFieldSize)), _fieldLayout);
+  }
+
+  /**
+   * @notice Set snarkFieldSize.
+   */
+  function _setSnarkFieldSize(uint256 snarkFieldSize) internal {
+    bytes32[] memory _keyTuple = new bytes32[](0);
+
+    StoreCore.setStaticField(_tableId, _keyTuple, 3, abi.encodePacked((snarkFieldSize)), _fieldLayout);
+  }
+
+  /**
+   * @notice Set snarkFieldSize (using the specified store).
+   */
+  function setSnarkFieldSize(IStore _store, uint256 snarkFieldSize) internal {
+    bytes32[] memory _keyTuple = new bytes32[](0);
+
+    _store.setStaticField(_tableId, _keyTuple, 3, abi.encodePacked((snarkFieldSize)), _fieldLayout);
   }
 
   /**
@@ -233,7 +353,7 @@ library Config {
   function getNumBlocksInInterval() internal view returns (uint256 numBlocksInInterval) {
     bytes32[] memory _keyTuple = new bytes32[](0);
 
-    bytes32 _blob = StoreSwitch.getStaticField(_tableId, _keyTuple, 2, _fieldLayout);
+    bytes32 _blob = StoreSwitch.getStaticField(_tableId, _keyTuple, 4, _fieldLayout);
     return (uint256(bytes32(_blob)));
   }
 
@@ -243,7 +363,7 @@ library Config {
   function _getNumBlocksInInterval() internal view returns (uint256 numBlocksInInterval) {
     bytes32[] memory _keyTuple = new bytes32[](0);
 
-    bytes32 _blob = StoreCore.getStaticField(_tableId, _keyTuple, 2, _fieldLayout);
+    bytes32 _blob = StoreCore.getStaticField(_tableId, _keyTuple, 4, _fieldLayout);
     return (uint256(bytes32(_blob)));
   }
 
@@ -253,7 +373,7 @@ library Config {
   function getNumBlocksInInterval(IStore _store) internal view returns (uint256 numBlocksInInterval) {
     bytes32[] memory _keyTuple = new bytes32[](0);
 
-    bytes32 _blob = _store.getStaticField(_tableId, _keyTuple, 2, _fieldLayout);
+    bytes32 _blob = _store.getStaticField(_tableId, _keyTuple, 4, _fieldLayout);
     return (uint256(bytes32(_blob)));
   }
 
@@ -263,7 +383,7 @@ library Config {
   function setNumBlocksInInterval(uint256 numBlocksInInterval) internal {
     bytes32[] memory _keyTuple = new bytes32[](0);
 
-    StoreSwitch.setStaticField(_tableId, _keyTuple, 2, abi.encodePacked((numBlocksInInterval)), _fieldLayout);
+    StoreSwitch.setStaticField(_tableId, _keyTuple, 4, abi.encodePacked((numBlocksInInterval)), _fieldLayout);
   }
 
   /**
@@ -272,7 +392,7 @@ library Config {
   function _setNumBlocksInInterval(uint256 numBlocksInInterval) internal {
     bytes32[] memory _keyTuple = new bytes32[](0);
 
-    StoreCore.setStaticField(_tableId, _keyTuple, 2, abi.encodePacked((numBlocksInInterval)), _fieldLayout);
+    StoreCore.setStaticField(_tableId, _keyTuple, 4, abi.encodePacked((numBlocksInInterval)), _fieldLayout);
   }
 
   /**
@@ -281,7 +401,7 @@ library Config {
   function setNumBlocksInInterval(IStore _store, uint256 numBlocksInInterval) internal {
     bytes32[] memory _keyTuple = new bytes32[](0);
 
-    _store.setStaticField(_tableId, _keyTuple, 2, abi.encodePacked((numBlocksInInterval)), _fieldLayout);
+    _store.setStaticField(_tableId, _keyTuple, 4, abi.encodePacked((numBlocksInInterval)), _fieldLayout);
   }
 
   /**
@@ -290,7 +410,7 @@ library Config {
   function getNumStartingTroops() internal view returns (uint32 numStartingTroops) {
     bytes32[] memory _keyTuple = new bytes32[](0);
 
-    bytes32 _blob = StoreSwitch.getStaticField(_tableId, _keyTuple, 3, _fieldLayout);
+    bytes32 _blob = StoreSwitch.getStaticField(_tableId, _keyTuple, 5, _fieldLayout);
     return (uint32(bytes4(_blob)));
   }
 
@@ -300,7 +420,7 @@ library Config {
   function _getNumStartingTroops() internal view returns (uint32 numStartingTroops) {
     bytes32[] memory _keyTuple = new bytes32[](0);
 
-    bytes32 _blob = StoreCore.getStaticField(_tableId, _keyTuple, 3, _fieldLayout);
+    bytes32 _blob = StoreCore.getStaticField(_tableId, _keyTuple, 5, _fieldLayout);
     return (uint32(bytes4(_blob)));
   }
 
@@ -310,7 +430,7 @@ library Config {
   function getNumStartingTroops(IStore _store) internal view returns (uint32 numStartingTroops) {
     bytes32[] memory _keyTuple = new bytes32[](0);
 
-    bytes32 _blob = _store.getStaticField(_tableId, _keyTuple, 3, _fieldLayout);
+    bytes32 _blob = _store.getStaticField(_tableId, _keyTuple, 5, _fieldLayout);
     return (uint32(bytes4(_blob)));
   }
 
@@ -320,7 +440,7 @@ library Config {
   function setNumStartingTroops(uint32 numStartingTroops) internal {
     bytes32[] memory _keyTuple = new bytes32[](0);
 
-    StoreSwitch.setStaticField(_tableId, _keyTuple, 3, abi.encodePacked((numStartingTroops)), _fieldLayout);
+    StoreSwitch.setStaticField(_tableId, _keyTuple, 5, abi.encodePacked((numStartingTroops)), _fieldLayout);
   }
 
   /**
@@ -329,7 +449,7 @@ library Config {
   function _setNumStartingTroops(uint32 numStartingTroops) internal {
     bytes32[] memory _keyTuple = new bytes32[](0);
 
-    StoreCore.setStaticField(_tableId, _keyTuple, 3, abi.encodePacked((numStartingTroops)), _fieldLayout);
+    StoreCore.setStaticField(_tableId, _keyTuple, 5, abi.encodePacked((numStartingTroops)), _fieldLayout);
   }
 
   /**
@@ -338,7 +458,7 @@ library Config {
   function setNumStartingTroops(IStore _store, uint32 numStartingTroops) internal {
     bytes32[] memory _keyTuple = new bytes32[](0);
 
-    _store.setStaticField(_tableId, _keyTuple, 3, abi.encodePacked((numStartingTroops)), _fieldLayout);
+    _store.setStaticField(_tableId, _keyTuple, 5, abi.encodePacked((numStartingTroops)), _fieldLayout);
   }
 
   /**
@@ -347,7 +467,7 @@ library Config {
   function getClaimedMoveLifeSpan() internal view returns (uint256 claimedMoveLifeSpan) {
     bytes32[] memory _keyTuple = new bytes32[](0);
 
-    bytes32 _blob = StoreSwitch.getStaticField(_tableId, _keyTuple, 4, _fieldLayout);
+    bytes32 _blob = StoreSwitch.getStaticField(_tableId, _keyTuple, 6, _fieldLayout);
     return (uint256(bytes32(_blob)));
   }
 
@@ -357,7 +477,7 @@ library Config {
   function _getClaimedMoveLifeSpan() internal view returns (uint256 claimedMoveLifeSpan) {
     bytes32[] memory _keyTuple = new bytes32[](0);
 
-    bytes32 _blob = StoreCore.getStaticField(_tableId, _keyTuple, 4, _fieldLayout);
+    bytes32 _blob = StoreCore.getStaticField(_tableId, _keyTuple, 6, _fieldLayout);
     return (uint256(bytes32(_blob)));
   }
 
@@ -367,7 +487,7 @@ library Config {
   function getClaimedMoveLifeSpan(IStore _store) internal view returns (uint256 claimedMoveLifeSpan) {
     bytes32[] memory _keyTuple = new bytes32[](0);
 
-    bytes32 _blob = _store.getStaticField(_tableId, _keyTuple, 4, _fieldLayout);
+    bytes32 _blob = _store.getStaticField(_tableId, _keyTuple, 6, _fieldLayout);
     return (uint256(bytes32(_blob)));
   }
 
@@ -377,7 +497,7 @@ library Config {
   function setClaimedMoveLifeSpan(uint256 claimedMoveLifeSpan) internal {
     bytes32[] memory _keyTuple = new bytes32[](0);
 
-    StoreSwitch.setStaticField(_tableId, _keyTuple, 4, abi.encodePacked((claimedMoveLifeSpan)), _fieldLayout);
+    StoreSwitch.setStaticField(_tableId, _keyTuple, 6, abi.encodePacked((claimedMoveLifeSpan)), _fieldLayout);
   }
 
   /**
@@ -386,7 +506,7 @@ library Config {
   function _setClaimedMoveLifeSpan(uint256 claimedMoveLifeSpan) internal {
     bytes32[] memory _keyTuple = new bytes32[](0);
 
-    StoreCore.setStaticField(_tableId, _keyTuple, 4, abi.encodePacked((claimedMoveLifeSpan)), _fieldLayout);
+    StoreCore.setStaticField(_tableId, _keyTuple, 6, abi.encodePacked((claimedMoveLifeSpan)), _fieldLayout);
   }
 
   /**
@@ -395,7 +515,7 @@ library Config {
   function setClaimedMoveLifeSpan(IStore _store, uint256 claimedMoveLifeSpan) internal {
     bytes32[] memory _keyTuple = new bytes32[](0);
 
-    _store.setStaticField(_tableId, _keyTuple, 4, abi.encodePacked((claimedMoveLifeSpan)), _fieldLayout);
+    _store.setStaticField(_tableId, _keyTuple, 6, abi.encodePacked((claimedMoveLifeSpan)), _fieldLayout);
   }
 
   /**
@@ -445,14 +565,18 @@ library Config {
    */
   function set(
     address enclave,
-    address verifierContract,
+    address spawnVerifierContract,
+    address moveVerifierContract,
+    uint256 snarkFieldSize,
     uint256 numBlocksInInterval,
     uint32 numStartingTroops,
     uint256 claimedMoveLifeSpan
   ) internal {
     bytes memory _staticData = encodeStatic(
       enclave,
-      verifierContract,
+      spawnVerifierContract,
+      moveVerifierContract,
+      snarkFieldSize,
       numBlocksInInterval,
       numStartingTroops,
       claimedMoveLifeSpan
@@ -471,14 +595,18 @@ library Config {
    */
   function _set(
     address enclave,
-    address verifierContract,
+    address spawnVerifierContract,
+    address moveVerifierContract,
+    uint256 snarkFieldSize,
     uint256 numBlocksInInterval,
     uint32 numStartingTroops,
     uint256 claimedMoveLifeSpan
   ) internal {
     bytes memory _staticData = encodeStatic(
       enclave,
-      verifierContract,
+      spawnVerifierContract,
+      moveVerifierContract,
+      snarkFieldSize,
       numBlocksInInterval,
       numStartingTroops,
       claimedMoveLifeSpan
@@ -498,14 +626,18 @@ library Config {
   function set(
     IStore _store,
     address enclave,
-    address verifierContract,
+    address spawnVerifierContract,
+    address moveVerifierContract,
+    uint256 snarkFieldSize,
     uint256 numBlocksInInterval,
     uint32 numStartingTroops,
     uint256 claimedMoveLifeSpan
   ) internal {
     bytes memory _staticData = encodeStatic(
       enclave,
-      verifierContract,
+      spawnVerifierContract,
+      moveVerifierContract,
+      snarkFieldSize,
       numBlocksInInterval,
       numStartingTroops,
       claimedMoveLifeSpan
@@ -525,7 +657,9 @@ library Config {
   function set(ConfigData memory _table) internal {
     bytes memory _staticData = encodeStatic(
       _table.enclave,
-      _table.verifierContract,
+      _table.spawnVerifierContract,
+      _table.moveVerifierContract,
+      _table.snarkFieldSize,
       _table.numBlocksInInterval,
       _table.numStartingTroops,
       _table.claimedMoveLifeSpan
@@ -545,7 +679,9 @@ library Config {
   function _set(ConfigData memory _table) internal {
     bytes memory _staticData = encodeStatic(
       _table.enclave,
-      _table.verifierContract,
+      _table.spawnVerifierContract,
+      _table.moveVerifierContract,
+      _table.snarkFieldSize,
       _table.numBlocksInInterval,
       _table.numStartingTroops,
       _table.claimedMoveLifeSpan
@@ -565,7 +701,9 @@ library Config {
   function set(IStore _store, ConfigData memory _table) internal {
     bytes memory _staticData = encodeStatic(
       _table.enclave,
-      _table.verifierContract,
+      _table.spawnVerifierContract,
+      _table.moveVerifierContract,
+      _table.snarkFieldSize,
       _table.numBlocksInInterval,
       _table.numStartingTroops,
       _table.claimedMoveLifeSpan
@@ -589,7 +727,9 @@ library Config {
     pure
     returns (
       address enclave,
-      address verifierContract,
+      address spawnVerifierContract,
+      address moveVerifierContract,
+      uint256 snarkFieldSize,
       uint256 numBlocksInInterval,
       uint32 numStartingTroops,
       uint256 claimedMoveLifeSpan
@@ -597,13 +737,17 @@ library Config {
   {
     enclave = (address(Bytes.slice20(_blob, 0)));
 
-    verifierContract = (address(Bytes.slice20(_blob, 20)));
+    spawnVerifierContract = (address(Bytes.slice20(_blob, 20)));
 
-    numBlocksInInterval = (uint256(Bytes.slice32(_blob, 40)));
+    moveVerifierContract = (address(Bytes.slice20(_blob, 40)));
 
-    numStartingTroops = (uint32(Bytes.slice4(_blob, 72)));
+    snarkFieldSize = (uint256(Bytes.slice32(_blob, 60)));
 
-    claimedMoveLifeSpan = (uint256(Bytes.slice32(_blob, 76)));
+    numBlocksInInterval = (uint256(Bytes.slice32(_blob, 92)));
+
+    numStartingTroops = (uint32(Bytes.slice4(_blob, 124)));
+
+    claimedMoveLifeSpan = (uint256(Bytes.slice32(_blob, 128)));
   }
 
   /**
@@ -619,7 +763,9 @@ library Config {
   ) internal pure returns (ConfigData memory _table) {
     (
       _table.enclave,
-      _table.verifierContract,
+      _table.spawnVerifierContract,
+      _table.moveVerifierContract,
+      _table.snarkFieldSize,
       _table.numBlocksInInterval,
       _table.numStartingTroops,
       _table.claimedMoveLifeSpan
@@ -659,12 +805,23 @@ library Config {
    */
   function encodeStatic(
     address enclave,
-    address verifierContract,
+    address spawnVerifierContract,
+    address moveVerifierContract,
+    uint256 snarkFieldSize,
     uint256 numBlocksInInterval,
     uint32 numStartingTroops,
     uint256 claimedMoveLifeSpan
   ) internal pure returns (bytes memory) {
-    return abi.encodePacked(enclave, verifierContract, numBlocksInInterval, numStartingTroops, claimedMoveLifeSpan);
+    return
+      abi.encodePacked(
+        enclave,
+        spawnVerifierContract,
+        moveVerifierContract,
+        snarkFieldSize,
+        numBlocksInInterval,
+        numStartingTroops,
+        claimedMoveLifeSpan
+      );
   }
 
   /**
@@ -675,14 +832,18 @@ library Config {
    */
   function encode(
     address enclave,
-    address verifierContract,
+    address spawnVerifierContract,
+    address moveVerifierContract,
+    uint256 snarkFieldSize,
     uint256 numBlocksInInterval,
     uint32 numStartingTroops,
     uint256 claimedMoveLifeSpan
   ) internal pure returns (bytes memory, PackedCounter, bytes memory) {
     bytes memory _staticData = encodeStatic(
       enclave,
-      verifierContract,
+      spawnVerifierContract,
+      moveVerifierContract,
+      snarkFieldSize,
       numBlocksInInterval,
       numStartingTroops,
       claimedMoveLifeSpan

@@ -10,7 +10,7 @@ import {Signature} from "common/Signature.sol";
 import {IEnclaveEvents} from "common/IEnclaveEvents.sol";
 import {LibCity} from "libraries/LibCity.sol";
 import {LibMove} from "libraries/LibMove.sol";
-import {LibVerify} from "libraries/LibVerify.sol";
+import {LibMoveVerify} from "libraries/LibMoveVerify.sol";
 
 contract MoveSystem is IEnclaveEvents, System {
     function move(
@@ -18,8 +18,8 @@ contract MoveSystem is IEnclaveEvents, System {
         Groth16Proof memory moveProof,
         Signature memory sig
     ) public {
-        LibMove.checkMoveInputs(moveInputs, sig);
-        LibVerify.verifyProof(moveInputs, moveProof);
+        LibMove.checkMoveInputs(_msgSender(), moveInputs, sig);
+        LibMoveVerify.verifyMoveProof(moveInputs, moveProof);
 
         TileCommitment.deleteRecord({id: moveInputs.hTFrom});
         TileCommitment.set({id: moveInputs.hUFrom, value: true});
@@ -27,7 +27,7 @@ contract MoveSystem is IEnclaveEvents, System {
         TileCommitment.set({id: moveInputs.hUTo, value: true});
 
         LibMove.updateCityTroopCounts(moveInputs);
-        LibCity.updateCityOwnership(moveInputs);
+        LibMove.updateCityOwnership(_msgSender(), moveInputs);
 
         // Should be an offchain table since we're in MUD-land, but fine for now
         emit NewMove(moveInputs.hUFrom, moveInputs.hUTo);

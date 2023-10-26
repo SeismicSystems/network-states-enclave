@@ -26,7 +26,7 @@ ResourceId constant _tableId = ResourceId.wrap(
 ResourceId constant CityPlayerTableId = _tableId;
 
 FieldLayout constant _fieldLayout = FieldLayout.wrap(
-  0x0020010020000000000000000000000000000000000000000000000000000000
+  0x0014010014000000000000000000000000000000000000000000000000000000
 );
 
 library CityPlayer {
@@ -55,7 +55,7 @@ library CityPlayer {
    */
   function getValueSchema() internal pure returns (Schema) {
     SchemaType[] memory _valueSchema = new SchemaType[](1);
-    _valueSchema[0] = SchemaType.UINT256;
+    _valueSchema[0] = SchemaType.ADDRESS;
 
     return SchemaLib.encode(_valueSchema);
   }
@@ -102,73 +102,73 @@ library CityPlayer {
   /**
    * @notice Get value.
    */
-  function getValue(uint24 id) internal view returns (uint256 value) {
+  function getValue(uint24 id) internal view returns (address value) {
     bytes32[] memory _keyTuple = new bytes32[](1);
     _keyTuple[0] = bytes32(uint256(id));
 
     bytes32 _blob = StoreSwitch.getStaticField(_tableId, _keyTuple, 0, _fieldLayout);
-    return (uint256(bytes32(_blob)));
+    return (address(bytes20(_blob)));
   }
 
   /**
    * @notice Get value.
    */
-  function _getValue(uint24 id) internal view returns (uint256 value) {
+  function _getValue(uint24 id) internal view returns (address value) {
     bytes32[] memory _keyTuple = new bytes32[](1);
     _keyTuple[0] = bytes32(uint256(id));
 
     bytes32 _blob = StoreCore.getStaticField(_tableId, _keyTuple, 0, _fieldLayout);
-    return (uint256(bytes32(_blob)));
+    return (address(bytes20(_blob)));
   }
 
   /**
    * @notice Get value (using the specified store).
    */
-  function getValue(IStore _store, uint24 id) internal view returns (uint256 value) {
+  function getValue(IStore _store, uint24 id) internal view returns (address value) {
     bytes32[] memory _keyTuple = new bytes32[](1);
     _keyTuple[0] = bytes32(uint256(id));
 
     bytes32 _blob = _store.getStaticField(_tableId, _keyTuple, 0, _fieldLayout);
-    return (uint256(bytes32(_blob)));
+    return (address(bytes20(_blob)));
   }
 
   /**
    * @notice Get value.
    */
-  function get(uint24 id) internal view returns (uint256 value) {
+  function get(uint24 id) internal view returns (address value) {
     bytes32[] memory _keyTuple = new bytes32[](1);
     _keyTuple[0] = bytes32(uint256(id));
 
     bytes32 _blob = StoreSwitch.getStaticField(_tableId, _keyTuple, 0, _fieldLayout);
-    return (uint256(bytes32(_blob)));
+    return (address(bytes20(_blob)));
   }
 
   /**
    * @notice Get value.
    */
-  function _get(uint24 id) internal view returns (uint256 value) {
+  function _get(uint24 id) internal view returns (address value) {
     bytes32[] memory _keyTuple = new bytes32[](1);
     _keyTuple[0] = bytes32(uint256(id));
 
     bytes32 _blob = StoreCore.getStaticField(_tableId, _keyTuple, 0, _fieldLayout);
-    return (uint256(bytes32(_blob)));
+    return (address(bytes20(_blob)));
   }
 
   /**
    * @notice Get value (using the specified store).
    */
-  function get(IStore _store, uint24 id) internal view returns (uint256 value) {
+  function get(IStore _store, uint24 id) internal view returns (address value) {
     bytes32[] memory _keyTuple = new bytes32[](1);
     _keyTuple[0] = bytes32(uint256(id));
 
     bytes32 _blob = _store.getStaticField(_tableId, _keyTuple, 0, _fieldLayout);
-    return (uint256(bytes32(_blob)));
+    return (address(bytes20(_blob)));
   }
 
   /**
    * @notice Set value.
    */
-  function setValue(uint24 id, uint256 value) internal {
+  function setValue(uint24 id, address value) internal {
     bytes32[] memory _keyTuple = new bytes32[](1);
     _keyTuple[0] = bytes32(uint256(id));
 
@@ -178,7 +178,7 @@ library CityPlayer {
   /**
    * @notice Set value.
    */
-  function _setValue(uint24 id, uint256 value) internal {
+  function _setValue(uint24 id, address value) internal {
     bytes32[] memory _keyTuple = new bytes32[](1);
     _keyTuple[0] = bytes32(uint256(id));
 
@@ -188,7 +188,7 @@ library CityPlayer {
   /**
    * @notice Set value (using the specified store).
    */
-  function setValue(IStore _store, uint24 id, uint256 value) internal {
+  function setValue(IStore _store, uint24 id, address value) internal {
     bytes32[] memory _keyTuple = new bytes32[](1);
     _keyTuple[0] = bytes32(uint256(id));
 
@@ -198,7 +198,7 @@ library CityPlayer {
   /**
    * @notice Set value.
    */
-  function set(uint24 id, uint256 value) internal {
+  function set(uint24 id, address value) internal {
     bytes32[] memory _keyTuple = new bytes32[](1);
     _keyTuple[0] = bytes32(uint256(id));
 
@@ -208,7 +208,7 @@ library CityPlayer {
   /**
    * @notice Set value.
    */
-  function _set(uint24 id, uint256 value) internal {
+  function _set(uint24 id, address value) internal {
     bytes32[] memory _keyTuple = new bytes32[](1);
     _keyTuple[0] = bytes32(uint256(id));
 
@@ -218,7 +218,7 @@ library CityPlayer {
   /**
    * @notice Set value (using the specified store).
    */
-  function set(IStore _store, uint24 id, uint256 value) internal {
+  function set(IStore _store, uint24 id, address value) internal {
     bytes32[] memory _keyTuple = new bytes32[](1);
     _keyTuple[0] = bytes32(uint256(id));
 
@@ -259,7 +259,7 @@ library CityPlayer {
    * @notice Tightly pack static (fixed length) data using this table's schema.
    * @return The static data, encoded into a sequence of bytes.
    */
-  function encodeStatic(uint256 value) internal pure returns (bytes memory) {
+  function encodeStatic(address value) internal pure returns (bytes memory) {
     return abi.encodePacked(value);
   }
 
@@ -269,7 +269,7 @@ library CityPlayer {
    * @return The lengths of the dynamic fields (packed into a single bytes32 value).
    * @return The dyanmic (variable length) data, encoded into a sequence of bytes.
    */
-  function encode(uint256 value) internal pure returns (bytes memory, PackedCounter, bytes memory) {
+  function encode(address value) internal pure returns (bytes memory, PackedCounter, bytes memory) {
     bytes memory _staticData = encodeStatic(value);
 
     PackedCounter _encodedLengths;

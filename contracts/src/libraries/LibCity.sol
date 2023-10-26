@@ -8,12 +8,12 @@ import {getKeysWithValue} from "@latticexyz/world-modules/src/modules/keyswithva
 import {PackedCounter} from "@latticexyz/store/src/PackedCounter.sol";
 
 library LibCity {
-    function getCities(uint256 pkHash) internal view returns (uint24[] memory) {
+    function getCities(address player) internal view returns (uint24[] memory) {
         (
             bytes memory staticData,
             PackedCounter encodedLengths,
             bytes memory dynamicData
-        ) = CityPlayer.encode({value: pkHash});
+        ) = CityPlayer.encode({value: player});
         bytes32[] memory citiesRaw = getKeysWithValue({
             tableId: CityPlayerTableId,
             staticData: staticData,
@@ -28,9 +28,12 @@ library LibCity {
         return cities;
     }
 
-    function updateCityOwnership(MoveInputs memory mv) internal {
+    function updateCityOwnership(
+        address player,
+        MoveInputs memory mv
+    ) internal {
         if (mv.takingCity) {
-            CityPlayer.set({id: mv.toCityId, value: mv.fromPkHash});
+            CityPlayer.set({id: mv.toCityId, value: player});
         }
     }
 

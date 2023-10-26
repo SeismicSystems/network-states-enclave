@@ -1,5 +1,5 @@
 import readline from "readline";
-import { ethers, Signature } from "ethers";
+import { BigNumber, ethers, Signature } from "ethers";
 import { io, Socket } from "socket.io-client";
 import dotenv from "dotenv";
 dotenv.config({ path: "../.env" });
@@ -15,20 +15,14 @@ import IWorldAbi from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "
  * Conditions depend on which player is currently active.
  */
 const PLAYER_SYMBOL: string = process.argv[2];
-const PLAYER_START: Location = {
-    r: Number(process.argv[3]),
-    c: Number(process.argv[4]),
-};
-const PLAYER_PRIVKEY: BigInt = BigInt(
-    JSON.parse(<string>process.env.ETH_PRIVKEYS)[PLAYER_SYMBOL]
-);
-const PLAYER = new Player(PLAYER_SYMBOL, PLAYER_PRIVKEY);
+const PLAYER_PRIVKEY = JSON.parse(<string>process.env.ETH_PRIVKEYS)[
+    PLAYER_SYMBOL
+];
 
 /*
  * Misc client parameters.
  */
 const BOARD_SIZE: number = parseInt(<string>process.env.BOARD_SIZE, 10);
-const UPDATE_MLS: number = 1000;
 const MOVE_PROMPT: string = "Next move: ";
 const MOVE_KEYS: Record<string, number[]> = {
     w: [-1, 0],
@@ -41,7 +35,7 @@ const MOVE_KEYS: Record<string, number[]> = {
  * Boot up interface with 1) Network States contract and 2) the CLI.
  */
 const signer = new ethers.Wallet(
-    <string>process.env.DEV_PRIV_KEY,
+    PLAYER_PRIVKEY,
     new ethers.providers.JsonRpcProvider(process.env.RPC_URL)
 );
 const nStates = new ethers.Contract(
@@ -53,7 +47,9 @@ var rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
 });
-let cursor = PLAYER_START;
+let cursor: Location;
+
+const PLAYER = new Player(PLAYER_SYMBOL, signer.address);
 
 /*
  * Client's local belief on game state stored in Board object.
@@ -61,10 +57,25 @@ let cursor = PLAYER_START;
 let b: Board;
 
 /*
+ * Whether player has been spawned in.
+ */
+let isSpawned = false;
+
+/*
  * Last block when player requested an enclave signature. Player's cannot submit
  * more than one move in a block.
  */
-let clientLatestMoveBlock: number;
+let clientLatestMoveBlock: number = 0;
+
+/*
+ * Last block when player commited to spawning.
+ */
+let commitBlockNumber: number;
+
+/*
+ * Block hash of block number 'commitBlockNumber'. Used to get spawn location,
+ */
+let commitBlockHash;
 
 /*
  * Store pending move.
@@ -83,13 +94,58 @@ const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
  * hidden state.
  */
 function updatePlayerView(l: Location) {
-    const sig = PLAYER.genSig(Player.hForDecrypt(l));
+    socket.emit("decrypt", l);
+}
+
+async function commitToSpawn() {
+    PLAYER.sampleSecret();
+
+    // Save block number player commited to spawning
+    commitBlockNumber = await PLAYER.commitToSpawn(nStates);
+    commitBlockHash = await nStates.getBlockHash(commitBlockNumber);
+
+    console.log("Getting spawn sig from enclave");
+
+    const sig = await signer.signMessage(socket.id);
     socket.emit(
-        "decrypt",
-        l,
-        PLAYER.bjjPub.serialize(),
-        Utils.serializeSig(sig)
+        "getSpawnSignature",
+        PLAYER.symbol,
+        PLAYER.address,
+        sig,
+        PLAYER.blind.toString()
     );
+}
+
+/*
+ * Response to getSpawnSignature. No matter if the response contains valid tiles
+ * or null values indicating that location is not spawnable, the player must
+ * send a zkp in order to try again.
+ */
+async function spawnSignatureResponse(sig: string, prev: any, spawn: any) {
+    const prevTile = Tile.fromJSON(prev);
+    const spawnTile = Tile.fromJSON(spawn);
+
+    cursor = spawnTile.loc;
+
+    const [prf, pubSigs] = await PLAYER.constructSpawn(
+        commitBlockHash,
+        prevTile,
+        spawnTile
+    );
+
+    const spawnFormattedProof = await Utils.exportCallDataGroth16(prf, pubSigs);
+    const [spawnInputs, spawnProof, spawnSig] = Utils.unpackSpawnInputs(
+        spawnFormattedProof,
+        sig,
+        commitBlockNumber
+    );
+
+    console.log("Submitting spawn proof to nStates");
+    try {
+        await nStates.spawn(spawnInputs, spawnProof, spawnSig);
+    } catch (error) {
+        console.error(error);
+    }
 }
 
 /*
@@ -112,14 +168,9 @@ async function move(inp: string, currentBlockHeight: number) {
             throw new Error("Cannot move off the board.");
         }
 
-        if (PLAYER.bjjPrivHash === undefined) {
-            throw new Error("Can't move without a Baby Jubjub private key.");
-        }
-
         clientLatestMoveBlock = currentBlockHeight;
 
         const [tFrom, tTo, uFrom, uTo, prf, pubSignals] = await b.constructMove(
-            PLAYER.bjjPrivHash,
             cursor,
             { r: nr, c: nc },
             nStates
@@ -131,7 +182,7 @@ async function move(inp: string, currentBlockHeight: number) {
         cursor = { r: nr, c: nc };
 
         // Alert enclave of intended move
-        socket.emit("getSignature", uFrom.toJSON(), uTo.toJSON());
+        socket.emit("getMoveSignature", uFrom, uTo);
     } catch (error) {
         console.log(error);
     }
@@ -143,8 +194,7 @@ async function move(inp: string, currentBlockHeight: number) {
  */
 async function loginResponse(locs: string[]) {
     updateDisplay(locs);
-
-    await Utils.sleep(UPDATE_MLS);
+    isSpawned = true;
 }
 
 /*
@@ -163,40 +213,12 @@ function decryptResponse(t: any) {
  * Get signature for move proposal. This signature and the queued move will be
  * sent to the chain for approval.
  */
-async function signatureResponse(sig: string, blockNumber: number) {
-    const unpackedSig: Signature = ethers.utils.splitSignature(sig);
-
-    const moveInputs = {
-        fromIsCityCenter: formattedProof.input[7] === "1",
-        toIsCityCenter: formattedProof.input[8] === "1",
-        takingCity: formattedProof.input[9] === "1",
-        takingCapital: formattedProof.input[10] === "1",
-        ontoSelfOrUnowned: formattedProof.input[4] === "1",
-        fromCityId: Number(formattedProof.input[2]),
-        toCityId: Number(formattedProof.input[3]),
-        fromCityTroops: Number(formattedProof.input[11]),
-        toCityTroops: Number(formattedProof.input[12]),
-        numTroopsMoved: Number(formattedProof.input[5]),
-        enemyLoss: Number(formattedProof.input[6]),
-        currentInterval: formattedProof.input[0],
-        fromPkHash: formattedProof.input[1],
-        hTFrom: formattedProof.input[13],
-        hTTo: formattedProof.input[14],
-        hUFrom: formattedProof.input[15],
-        hUTo: formattedProof.input[16],
-    };
-
-    const moveProof = {
-        a: formattedProof.a,
-        b: formattedProof.b,
-        c: formattedProof.c,
-    };
-    const moveSig = {
-        v: unpackedSig.v,
-        r: unpackedSig.r,
-        s: unpackedSig.s,
-        b: blockNumber,
-    };
+async function moveSignatureResponse(sig: string, blockNumber: number) {
+    const [moveInputs, moveProof, moveSig] = Utils.unpackMoveInputs(
+        formattedProof,
+        sig,
+        blockNumber
+    );
 
     await nStates.move(moveInputs, moveProof, moveSig);
 }
@@ -229,20 +251,8 @@ socket.on("connect", async () => {
     // Pass in dummy function to terrain generator because init is false
     await b.seed(BOARD_SIZE, false, nStates);
 
-    // Player can submit moves starting next block
-    clientLatestMoveBlock = 0;
-
-    // Sign socket ID for login
-    const sig = PLAYER.genSig(
-        Player.hForLogin(Utils.asciiIntoBigNumber(socket.id))
-    );
-    socket.emit(
-        "login",
-        PLAYER_START,
-        PLAYER.bjjPub.serialize(),
-        PLAYER_SYMBOL,
-        Utils.serializeSig(sig)
-    );
+    const sig = await signer.signMessage(socket.id);
+    socket.emit("login", PLAYER.address, sig);
 });
 
 /*
@@ -250,7 +260,7 @@ socket.on("connect", async () => {
  */
 process.stdin.on("keypress", async (str) => {
     const currentBlockHeight = await nStates.provider.getBlockNumber();
-    if (clientLatestMoveBlock < currentBlockHeight) {
+    if (clientLatestMoveBlock < currentBlockHeight && isSpawned) {
         await move(str, currentBlockHeight);
     }
 });
@@ -258,8 +268,10 @@ process.stdin.on("keypress", async (str) => {
 /*
  * Attach event handlers.
  */
+socket.on("spawnSignatureResponse", spawnSignatureResponse);
+socket.on("trySpawn", commitToSpawn);
 socket.on("loginResponse", loginResponse);
 socket.on("decryptResponse", decryptResponse);
-socket.on("signatureResponse", signatureResponse);
+socket.on("moveSignatureResponse", moveSignatureResponse);
 socket.on("errorResponse", errorResponse);
 socket.on("updateDisplay", updateDisplay);

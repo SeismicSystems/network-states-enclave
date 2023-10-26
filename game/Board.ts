@@ -61,7 +61,6 @@ export class Board {
                     }
                     if (nStates) {
                         await nStates.set(tl.hash());
-                        await Utils.sleep(200);
                     }
                     row.push(tl);
                 } else {
@@ -117,9 +116,8 @@ export class Board {
 
         this.setTile(tl);
 
-        const pubkey = pl.bjjPub.serialize();
-        this.playerCapital.set(pubkey, cityId);
-        this.playerCities.set(pubkey, new Set<number>().add(cityId));
+        this.playerCapital.set(pl.address, cityId);
+        this.playerCities.set(pl.address, new Set<number>().add(cityId));
         this.cityTiles.set(
             cityId,
             new Set<string>().add(JSON.stringify({ r, c }))
@@ -127,8 +125,7 @@ export class Board {
 
         // Update the global state on-chain.
         if (nStates) {
-            await nStates.spawn(pl.pubKeyHash(), cityId, this.t[r][c].hash());
-            await Utils.sleep(200);
+            await nStates.spawn(pl.address, cityId, this.t[r][c].hash());
         }
     }
 
@@ -136,7 +133,7 @@ export class Board {
      * Does the player have a capital? Enclave function.
      */
     public isSpawned(pl: Player): boolean {
-        return this.playerCapital.has(pl.bjjPub.serialize());
+        return this.playerCapital.has(pl.address);
     }
 
     /*
@@ -194,26 +191,55 @@ export class Board {
      */
     public setTile(tl: Tile) {
         const oldTile = this.t[tl.loc.r][tl.loc.c];
-        const oldOwner = oldTile.ownerPubKey();
-        const newOwner = tl.ownerPubKey();
+        const oldOwner = oldTile.owner.address;
+        const newOwner = tl.owner.address;
 
-        if (oldOwner !== newOwner) {
-            // Some type of capture happened: must update state
-            if (oldTile.isCapital()) {
-                this.playerCapital.delete(oldOwner);
+        if (!this.isSpawned(tl.owner)) {
+            // Initialize player's data
+            this.playerCapital.set(newOwner, tl.cityId);
+            this.playerCities.set(newOwner, new Set<number>().add(tl.cityId));
+            this.cityTiles.set(
+                tl.cityId,
+                new Set<string>().add(JSON.stringify(tl.loc))
+            );
+        } else {
+            if (oldOwner !== newOwner) {
+                // Some type of capture happened: must update state
+                if (oldTile.isCapital()) {
+                    this.playerCapital.delete(oldOwner);
 
-                for (let cityId of this.playerCities.get(oldOwner)!) {
+                    for (let cityId of this.playerCities.get(oldOwner)!) {
+                        // Change tiles' ownership
+                        for (let locString of this.cityTiles.get(cityId)!) {
+                            const loc = JSON.parse(locString);
+                            if (loc) {
+                                let tile = this.t[loc.r][loc.c];
+                                tile.owner = tl.owner;
+                                this.t[loc.r][loc.c] = tile;
+                            }
+                        }
+
+                        this.playerCities.get(newOwner)?.add(cityId);
+                    }
+                    this.playerCities.delete(oldOwner);
+                } else if (oldTile.isCityCenter()) {
                     // Change tiles' ownership
-                    for (let locString of this.cityTiles.get(cityId)!) {
+                    for (let locString of this.cityTiles.get(oldTile.cityId)!) {
                         const loc = JSON.parse(locString);
                         if (loc) {
                             let tile = this.t[loc.r][loc.c];
-                            tile.owner = tl.owner;
+                            tile.owner = oldTile.owner;
                             this.t[loc.r][loc.c] = tile;
                         }
                     }
 
-                    this.playerCities.get(newOwner)?.add(cityId);
+                    this.playerCities.get(oldOwner)?.delete(tl.cityId);
+                    this.playerCities.get(newOwner)?.add(tl.cityId);
+                } else {
+                    // Normal/water tile with a new owner
+                    const locString = JSON.stringify(tl.loc);
+                    this.cityTiles.get(oldTile.cityId)?.delete(locString);
+                    this.cityTiles.get(tl.cityId)?.add(locString);
                 }
                 this.playerCities.delete(oldOwner);
             } else if (oldTile.isCityCenter()) {
@@ -236,7 +262,6 @@ export class Board {
                 this.cityTiles.get(tl.cityId)?.add(locString);
             }
         }
-
         this.t[tl.loc.r][tl.loc.c] = tl;
     }
 
@@ -254,7 +279,7 @@ export class Board {
             if (
                 this.inBounds(nr, nc) &&
                 this.playerCities
-                    .get(reqPlayer.bjjPub.serialize())
+                    .get(reqPlayer.address)
                     ?.has(this.t[nr][nc].cityId)
             ) {
                 foundNeighbor = true;
@@ -315,7 +340,7 @@ export class Board {
             throw Error("Cannot move without mobilizing at least 1 troop.");
         }
         let uTo: Tile;
-        if (tTo.ownerPubKey() === tFrom.ownerPubKey()) {
+        if (tTo.owner.address === tFrom.owner.address) {
             uTo = Tile.genOwned(
                 tTo.owner,
                 tTo.loc,
@@ -363,7 +388,6 @@ export class Board {
      * troops from one tile to another. Moves all but one troop for development.
      */
     public async constructMove(
-        bjjPrivKeyHash: BigInt,
         from: Location,
         to: Location,
         nStates: any
@@ -410,17 +434,16 @@ export class Board {
 
         const enemyLoss = Math.min(toUpdatedTroops, nMobilize);
         const ontoSelfOrUnowned =
-            tTo.ownerPubKey() === tFrom.ownerPubKey() || tTo.isUnowned()
+            tTo.owner.address === tFrom.owner.address || tTo.isUnowned()
                 ? "1"
                 : "0";
-        const capturedTile = uTo.ownerPubKey() != tTo.ownerPubKey();
+        const capturedTile = uTo.owner.address != tTo.owner.address;
         const takingCity = tTo.isCityCenter() && capturedTile ? "1" : "0";
         const takingCapital = tTo.isCapital() && capturedTile ? "1" : "0";
-
+        
         const { proof, publicSignals } = await groth16.fullProve(
             {
                 currentWaterInterval: currentWaterInterval.toString(),
-                fromPkHash: tFrom.owner.pubKeyHash(),
                 fromCityId: tFrom.cityId.toString(),
                 toCityId: tTo.cityId.toString(),
                 ontoSelfOrUnowned,
@@ -443,7 +466,6 @@ export class Board {
                 uTo: uTo.toCircuitInput(),
                 fromUpdatedTroops: fromUpdatedTroops.toString(),
                 toUpdatedTroops: toUpdatedTroops.toString(),
-                privKeyHash: bjjPrivKeyHash.toString(),
             },
             Board.MOVE_WASM,
             Board.MOVE_PROVKEY

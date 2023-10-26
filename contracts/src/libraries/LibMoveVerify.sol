@@ -3,32 +3,31 @@ pragma solidity >=0.8.0;
 
 import {Config} from "codegen/index.sol";
 import {Groth16Proof} from "common/Groth16Proof.sol";
-import {IVerifier} from "common/IVerifier.sol";
+import {IMoveVerifier} from "common/IMoveVerifier.sol";
 import {MoveInputs} from "common/MoveInputs.sol";
 
-library LibVerify {
-    function verifyProof(
+library LibMoveVerify {
+    function verifyMoveProof(
         MoveInputs memory moveInputs,
         Groth16Proof memory moveProof
     ) internal view {
-        IVerifier verifierContract = IVerifier(Config.getVerifierContract());
+        IMoveVerifier moveVerifierContract = IMoveVerifier(Config.getMoveVerifierContract());
         require(
-            verifierContract.verifyProof(
+            moveVerifierContract.verifyProof(
                 moveProof.a,
                 moveProof.b,
                 moveProof.c,
-                _toArray(moveInputs)
+                _moveInputsToArray(moveInputs)
             ),
             "Invalid move proof"
         );
     }
 
-    function _toArray(
+    function _moveInputsToArray(
         MoveInputs memory moveInputs
-    ) internal pure returns (uint256[17] memory) {
+    ) internal pure returns (uint256[16] memory) {
         return [
             moveInputs.currentInterval,
-            moveInputs.fromPkHash,
             moveInputs.fromCityId,
             moveInputs.toCityId,
             moveInputs.ontoSelfOrUnowned ? 1 : 0,

@@ -20,6 +20,10 @@ import { Utils } from "../game/Utils.js";
 import worlds from "../contracts/worlds.json" assert { type: "json" };
 import IWorld from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "json" };
 import IEnclaveEvents from "../contracts/out/IEnclaveEvents.sol/IEnclaveEvents.json" assert { type: "json" };
+/*
+ * poseidonPerm is a modified version of iden3's poseidonPerm.js.
+ */
+import poseidonPerm from "../game/poseidonPerm.js";
 
 /*
  * Whether the enclave's global state should be blank or pull from DA.
@@ -60,12 +64,17 @@ const io = new Server<
  * Boot up interface with Network States contract.
  */
 const signer = new ethers.Wallet(
-    <string>process.env.DEV_PRIV_KEY,
+    <string>process.env.PRIVATE_KEY,
     new ethers.providers.JsonRpcProvider(process.env.RPC_URL)
 );
 
 const abi = IWorld.abi.concat(IEnclaveEvents.abi);
 const nStates = new ethers.Contract(worlds[31337].address, abi, signer);
+
+type ClaimedSpawn = {
+    prevTile: Tile;
+    spawnTile: Tile;
+};
 
 type ClaimedMove = {
     uFrom: Tile;
@@ -77,7 +86,7 @@ type ClaimedMove = {
 
 type EncryptedTile = {
     symbol: string;
-    pubkey: string;
+    address: string;
     ciphertext: string;
     iv: string;
     tag: string;
@@ -99,14 +108,20 @@ let cityId: number = 1;
 /*
  * Bijection between player's public keys and their socket IDs.
  */
-let idToPubKey = new Map<string, string>();
-let pubKeyToId = new Map<string, string>();
+let idToAddress = new Map<string, string>();
+let addressToId = new Map<string, string>();
 
 /*
  * Moves claimed by players. A move is finalized whenever NewMove event is
  * emitted.
  */
 let claimedMoves = new Map<string, ClaimedMove>();
+
+/*
+ * Spawn attempts players successfully commit. Player is spawned in whenever a
+ * Spawn event is emitted.
+ */
+let claimedSpawns = new Map<string, ClaimedSpawn>();
 
 /*
  * Current block height. Storing the value in a variable saves from
@@ -140,45 +155,47 @@ let queuedTilesDA = new Queue<EncryptedTile>();
 let recoveryModeIndex = 0;
 
 /*
- * Dev function for spawning a player on the map or logging back in.
- *
- * [TODO]: the enclave should not be calling the contract's spawn
- * function on behalf of the player. In prod, client will sample cityId.
+ * If player is already spawned, return visible tiles for decryption. If not,
+ * tell player to initiate spawning.
  */
-async function login(
-    socket: Socket,
-    l: Location,
-    reqPlayer: Player,
-    sigStr: string
-) {
+function login(socket: Socket, address: string, sigStr: string) {
     if (inRecoveryMode) {
         socket.disconnect();
         return;
     }
 
-    const h = Player.hForLogin(Utils.asciiIntoBigNumber(socket.id));
-    const sig = Utils.unserializeSig(sigStr);
-    if (sig && reqPlayer.verifySig(h, sig)) {
-        const pubkey = reqPlayer.bjjPub.serialize();
+    if (addressToId.has(address)) {
+        console.log("Address already logged on");
+        socket.disconnect();
+        return;
+    }
 
-        // Spawn if player is connected for the first time
-        if (!b.isSpawned(reqPlayer)) {
-            await b.spawn(l, reqPlayer, START_RESOURCES, cityId, nStates);
-            cityId++;
+    let sender: string | undefined;
+    try {
+        sender = ethers.utils.verifyMessage(socket.id, sigStr);
+    } catch (error) {
+        console.log("Malignant signature", sigStr);
+        socket.disconnect();
+        return;
+    }
 
-            // Attempt to push encrypted tiles to DA
-            enqueueTile(b.getTile(l));
-            dequeueTileIfDAConnected();
-        }
+    if (!sender || address != sender) {
+        console.log("Incorrect address given or bad signature");
+        socket.disconnect();
+        return;
+    }
 
-        // Pair the public key and the socket ID
-        idToPubKey.set(socket.id, pubkey);
-        pubKeyToId.set(pubkey, socket.id);
+    idToAddress.set(socket.id, address);
+    addressToId.set(address, socket.id);
 
-        playerLatestBlock.set(pubkey, 0);
+    if (b.isSpawned(new Player("", address))) {
+        idToAddress.set(socket.id, address);
+        addressToId.set(address, socket.id);
+
+        playerLatestBlock.set(address, 0);
 
         let visibleTiles = new Set<string>();
-        b.playerCities.get(pubkey)?.forEach((cityId: number) => {
+        b.playerCities.get(address)?.forEach((cityId: number) => {
             b.cityTiles.get(cityId)?.forEach((locString: string) => {
                 const tl = JSON.parse(locString);
                 if (tl) {
@@ -189,7 +206,325 @@ async function login(
             });
         });
         socket.emit("loginResponse", Array.from(visibleTiles));
+    } else {
+        socket.emit("trySpawn");
     }
+}
+
+/*
+ * Propose to spawn at location l. Returns a signature of the old and new tiles
+ * at location for contract to verify, or null value if player cannot spawn at
+ * this location.
+ */
+async function getSpawnSignature(
+    socket: Socket,
+    symbol: string,
+    address: string,
+    sigStr: string,
+    playerSecret: string
+) {
+    const sender = idToAddress.get(socket.id);
+    if (inRecoveryMode || !sender) {
+        socket.disconnect();
+        return;
+    }
+
+    if (claimedSpawns.has(sender)) {
+        console.log("Already committed to spawn");
+        socket.disconnect();
+        return;
+    }
+
+    if (claimedSpawns.has(address)) {
+        console.log("Already committed to spawn");
+        socket.disconnect();
+        return;
+    }
+
+    let playerChallenge: BigInt | undefined;
+    try {
+        playerChallenge = BigInt(playerSecret);
+    } catch (error) {
+        console.log("Malignant secret: ", sigStr);
+        socket.disconnect();
+        return;
+    }
+
+    // Check if player has committed to spawning onchain
+    const latestBlockCommited = Number(
+        await nStates.getSpawnCommitment(address)
+    );
+    const hBlind = await nStates.getSpawnblindHash(address);
+
+    if (
+        latestBlockCommited == 0 ||
+        hBlind != poseidonPerm([BigInt(0), playerChallenge])[0]
+    ) {
+        console.log(
+            "Player already has enclave sig, or hBlind is inconsistent"
+        );
+        socket.disconnect();
+        return;
+    }
+
+    // Pair the public key and the socket ID
+    idToAddress.set(socket.id, sender);
+    addressToId.set(sender, socket.id);
+
+    // Compute location
+    const commitBlockHash = await nStates.getBlockHash(latestBlockCommited);
+
+    // [TODO]: determine formula for row/col
+    const rawRow = poseidonPerm([0, playerChallenge, commitBlockHash, 0])[0];
+    const rawCol = poseidonPerm([0, playerChallenge, commitBlockHash, 1])[0];
+    const r = Number(rawRow % BigInt(b.t.length));
+    const c = Number(rawCol % BigInt(b.t.length));
+    const l = { r, c };
+
+    const prevTile = b.getTile(l);
+    const hPrevTile = prevTile.hash();
+    const spawnTile = Tile.spawn(
+        new Player(symbol, address),
+        l,
+        START_RESOURCES,
+        cityId
+    );
+    cityId++;
+    const hSpawnTile = spawnTile.hash();
+
+    claimedSpawns.set(address, { prevTile, spawnTile });
+
+    // Is this right???
+    const digest = utils.solidityKeccak256(
+        ["uint256", "uint256", "uint256"],
+        [latestBlockCommited, hPrevTile, hSpawnTile]
+    );
+    const sig = await signer.signMessage(utils.arrayify(digest));
+
+    socket.emit(
+        "spawnSignatureResponse",
+        sig,
+        prevTile.toJSON(),
+        spawnTile.toJSON()
+    );
+}
+
+/*
+ * Propose move to enclave. In order for the move to be solidified, the enclave
+ * must respond to a leaf event.
+ */
+async function getMoveSignature(socket: Socket, uFrom: any, uTo: any) {
+    const sender = idToAddress.get(socket.id);
+    if (inRecoveryMode || !sender) {
+        // Cut the connection
+        socket.disconnect();
+        return;
+    }
+
+    // Players cannot make more than one move per block
+    const latestBlock = playerLatestBlock.get(sender);
+    if (
+        latestBlock != undefined &&
+        latestBlock < currentBlockHeight &&
+        uFrom.address == sender
+    ) {
+        const uFromAsTile = Tile.fromJSON(uFrom);
+        const hUFrom = uFromAsTile.hash();
+        const uToAsTile = Tile.fromJSON(uTo);
+        const hUTo = uToAsTile.hash();
+
+        // Push to DA
+        const uFromEnc = enqueueTile(uFromAsTile);
+        const uToEnc = enqueueTile(uToAsTile);
+
+        claimedMoves.set(hUFrom.concat(hUTo), {
+            uFrom: uFromAsTile,
+            uTo: uToAsTile,
+            blockSubmitted: currentBlockHeight,
+            uFromEnc,
+            uToEnc,
+        });
+
+        const digest = utils.solidityKeccak256(
+            ["uint256", "uint256", "uint256"],
+            [currentBlockHeight, hUFrom, hUTo]
+        );
+        const sig = await signer.signMessage(utils.arrayify(digest));
+
+        socket.emit("moveSignatureResponse", sig, currentBlockHeight);
+        playerLatestBlock.set(sender, currentBlockHeight);
+
+        // Clear queue if DA node is online
+        dequeueTileIfDAConnected();
+    } else {
+        // Cut the connection
+        socket.disconnect();
+    }
+}
+
+/*
+ * Exposes secrets at location l if a requesting player proves ownership of
+ * neighboring tile.
+ */
+function decrypt(socket: Socket, l: Location) {
+    if (inRecoveryMode || !idToAddress.has(socket.id)) {
+        socket.disconnect();
+        return;
+    }
+
+    const owner = new Player("", idToAddress.get(socket.id)!);
+    if (b.noFog(l, owner)) {
+        socket.emit("decryptResponse", b.getTile(l).toJSON());
+    } else {
+        socket.emit("decryptResponse", Tile.mystery(l).toJSON());
+    }
+}
+
+/*
+ * When a player disconnects, we remove the relation between their socket ID and
+ * their public key. This is so that no other player gains that ID and can play
+ * on their behalf.
+ */
+function disconnect(socket: Socket) {
+    const address = idToAddress.get(socket.id);
+    if (address) {
+        addressToId.delete(address);
+        idToAddress.delete(socket.id);
+    }
+    if (socketIdDA == socket.id) {
+        socketIdDA = undefined;
+    }
+    console.log("Disconnected:", socket.id);
+}
+
+/*
+ * Callback function for when a NewSpawnAttempt event is emitted. Event is
+ * emitted when a player tries to spawn in, whether or not they can. After
+ * doing so, they should be allowed to try to spawn again.
+ */
+function onSpawnAttempt(player: string, success: boolean) {
+    if (inRecoveryMode) {
+        return;
+    }
+
+    const spawn = claimedSpawns.get(player);
+    claimedSpawns.delete(player);
+    const socketId = addressToId.get(player);
+
+    if (success && spawn && socketId) {
+        // Spawn in player
+        b.setTile(spawn.spawnTile);
+
+        playerLatestBlock.set(player, 0);
+
+        enqueueTile(spawn.spawnTile);
+        dequeueTileIfDAConnected();
+
+        const visibleLocs = b
+            .getNearbyLocations(spawn.spawnTile.loc)
+            .map((loc) => JSON.stringify(loc));
+
+        io.to(socketId).emit("loginResponse", visibleLocs);
+    } else if (!success) {
+        io.to(socketId).emit("trySpawn");
+    } else if (socketId) {
+        console.error(`Player ${player} spawned without a signature.`);
+    }
+}
+
+/*
+ * Callback function for when a NewMove event is emitted. Reads claimed move
+ * into enclave's internal beliefs, and alerts players in range to decrypt.
+ */
+function onMoveFinalize(hUFrom: string, hUTo: string) {
+    if (inRecoveryMode) {
+        return;
+    }
+    const moveHash = hUFrom.concat(hUTo);
+    const move = claimedMoves.get(moveHash);
+    if (move) {
+        // Move is no longer pending
+        claimedMoves.delete(moveHash);
+
+        // Before state is updated, we need the previous 'to' tile owner
+        const tTo = b.getTile(move.uTo.loc);
+        const newOwner = move.uTo.owner.address;
+        const prevOwner = tTo.owner.address;
+        const ownershipChanged = prevOwner !== newOwner;
+
+        // Alert all nearby players that an updateDisplay is needed
+        let updatedLocs = [move.uFrom.loc];
+        if (ownershipChanged && tTo.isCapital()) {
+            b.playerCities.get(prevOwner)?.forEach((cityId: number) => {
+                b.cityTiles.get(cityId)?.forEach((locString: string) => {
+                    const loc = JSON.parse(locString);
+                    if (loc) {
+                        updatedLocs.push(loc);
+                    }
+                });
+            });
+        } else if (ownershipChanged && tTo.isCityCenter()) {
+            b.cityTiles.get(tTo.cityId)?.forEach((locString: string) => {
+                const loc = JSON.parse(locString);
+                if (loc) {
+                    updatedLocs.push(loc);
+                }
+            });
+        } else {
+            updatedLocs.push(move.uTo.loc);
+        }
+
+        // Update state
+        b.setTile(move.uFrom);
+        b.setTile(move.uTo);
+
+        // Add finalized states and try to send to DA
+        enqueueTile(move.uFrom);
+        enqueueTile(move.uTo);
+        dequeueTileIfDAConnected();
+
+        alertPlayers(newOwner, prevOwner, updatedLocs);
+    } else {
+        console.error(
+            `Move: (${hUFrom}, ${hUTo}) was finalized without a signature.`
+        );
+    }
+}
+
+/*
+ * Helper function for onMoveFinalize. Pings players when locations should be
+ * decrypted. For each location in updatedLocs, the previous and new owner
+ * decrypt all tiles in the 3x3 region, and nearby players decrypt the tile in
+ * updatedLocs.
+ */
+function alertPlayers(
+    newOwner: string,
+    prevOwner: string,
+    updatedLocs: Location[]
+) {
+    let alertPlayerMap = new Map<string, Set<string>>();
+
+    for (let loc of updatedLocs) {
+        const locString = JSON.stringify(loc);
+        for (let l of b.getNearbyLocations(loc)) {
+            const tileOwner = b.getTile(l).owner.address;
+            const lString = JSON.stringify(l);
+
+            if (!alertPlayerMap.has(tileOwner)) {
+                alertPlayerMap.set(tileOwner, new Set<string>());
+            }
+            alertPlayerMap.get(tileOwner)?.add(locString);
+            alertPlayerMap.get(newOwner)?.add(lString);
+            alertPlayerMap.get(prevOwner)?.add(lString);
+        }
+    }
+
+    alertPlayerMap.forEach((tiles: Set<string>, pubkey: string) => {
+        const socketId = addressToId.get(pubkey);
+        if (socketId) {
+            io.to(socketId).emit("updateDisplay", Array.from(tiles));
+        }
+    });
 }
 
 /*
@@ -291,7 +626,7 @@ function enqueueTile(tile: Tile): EncryptedTile {
     const { ciphertext, iv, tag } = Utils.encryptTile(tileEncryptionKey, tile);
     const enc = {
         symbol: tile.owner.symbol,
-        pubkey: tile.ownerPubKey(),
+        address: tile.owner.address,
         ciphertext,
         iv,
         tag,
@@ -308,191 +643,6 @@ function dequeueTileIfDAConnected() {
         let encTile = queuedTilesDA.dequeue();
         io.to(socketIdDA).emit("saveToDatabase", encTile);
     }
-}
-
-/*
- * Propose move to enclave. In order for the move to be solidified, the enclave
- * must respond to a leaf event.
- */
-async function getSignature(socket: Socket, uFrom: any, uTo: any) {
-    const pubkey = idToPubKey.get(socket.id);
-    if (!pubkey || inRecoveryMode) {
-        // Cut the connection
-        socket.disconnect();
-        return;
-    }
-
-    // Players cannot make more than one move per block
-    const latestBlock = playerLatestBlock.get(pubkey);
-    if (latestBlock != undefined && latestBlock < currentBlockHeight) {
-        const uFromAsTile = Tile.fromJSON(uFrom);
-        const hUFrom = uFromAsTile.hash();
-        const uToAsTile = Tile.fromJSON(uTo);
-        const hUTo = uToAsTile.hash();
-
-        // Push to DA
-        const uFromEnc = enqueueTile(uFromAsTile);
-        const uToEnc = enqueueTile(uToAsTile);
-
-        claimedMoves.set(hUFrom.concat(hUTo), {
-            uFrom: uFromAsTile,
-            uTo: uToAsTile,
-            blockSubmitted: currentBlockHeight,
-            uFromEnc,
-            uToEnc,
-        });
-
-        const digest = utils.solidityKeccak256(
-            ["uint256", "uint256", "uint256"],
-            [currentBlockHeight, hUFrom, hUTo]
-        );
-        const sig = await signer.signMessage(utils.arrayify(digest));
-
-        socket.emit("signatureResponse", sig, currentBlockHeight);
-        playerLatestBlock.set(pubkey, currentBlockHeight);
-
-        // Clear queue if DA node is online
-        dequeueTileIfDAConnected();
-    } else {
-        // Cut the connection
-        socket.disconnect();
-    }
-}
-
-/*
- * Exposes secrets at location l if a requesting player proves ownership of
- * neighboring tile.
- */
-function decrypt(
-    socket: Socket,
-    l: Location,
-    reqPlayer: Player,
-    sigStr: string
-) {
-    if (inRecoveryMode) {
-        socket.disconnect();
-        return;
-    }
-
-    const h = Player.hForDecrypt(l);
-    const sig = Utils.unserializeSig(sigStr);
-    if (sig && reqPlayer.verifySig(h, sig) && b.noFog(l, reqPlayer)) {
-        socket.emit("decryptResponse", b.getTile(l).toJSON());
-        return;
-    }
-    socket.emit("decryptResponse", Tile.mystery(l).toJSON());
-}
-
-/*
- * When a player disconnects, we remove the relation between their socket ID and
- * their public key. This is so that no other player gains that ID and can play
- * on their behalf.
- */
-function disconnect(socket: Socket) {
-    const pubKey = idToPubKey.get(socket.id);
-    if (pubKey) {
-        pubKeyToId.delete(pubKey);
-        idToPubKey.delete(socket.id);
-    }
-    if (socketIdDA == socket.id) {
-        socketIdDA = undefined;
-    }
-    console.log("Disconnected:", socket.id);
-}
-
-/*
- * Callback function for when a NewMove event is emitted. Reads claimed move
- * into enclave's internal beliefs, and alerts players in range to decrypt.
- */
-function onMoveFinalize(hUFrom: string, hUTo: string) {
-    if (inRecoveryMode) {
-        return;
-    }
-    const moveHash = hUFrom.concat(hUTo);
-    const move = claimedMoves.get(moveHash);
-    if (move) {
-        // Move is no longer pending
-        claimedMoves.delete(moveHash);
-
-        // Before state is updated, we need the previous 'to' tile owner
-        const tTo = b.getTile(move.uTo.loc);
-        const newOwner = move.uTo.ownerPubKey();
-        const prevOwner = tTo.ownerPubKey();
-        const ownershipChanged = prevOwner !== newOwner;
-
-        // Alert all nearby players that an updateDisplay is needed
-        let updatedLocs = [move.uFrom.loc];
-        if (ownershipChanged && tTo.isCapital()) {
-            b.playerCities.get(prevOwner)?.forEach((cityId: number) => {
-                b.cityTiles.get(cityId)?.forEach((locString: string) => {
-                    const loc = JSON.parse(locString);
-                    if (loc) {
-                        updatedLocs.push(loc);
-                    }
-                });
-            });
-        } else if (ownershipChanged && tTo.isCityCenter()) {
-            b.cityTiles.get(tTo.cityId)?.forEach((locString: string) => {
-                const loc = JSON.parse(locString);
-                if (loc) {
-                    updatedLocs.push(loc);
-                }
-            });
-        } else {
-            updatedLocs.push(move.uTo.loc);
-        }
-
-        // Update state
-        b.setTile(move.uFrom);
-        b.setTile(move.uTo);
-
-        // Add finalized states and try to send to DA
-        enqueueTile(move.uFrom);
-        enqueueTile(move.uTo);
-        dequeueTileIfDAConnected();
-
-        alertPlayers(newOwner, prevOwner, updatedLocs);
-    } else {
-        console.error(
-            `Move: (${hUFrom}, ${hUTo}) was finalized without a signature.`
-        );
-    }
-}
-
-/*
- * Helper function for onMoveFinalize. Pings players when locations should be
- * decrypted. For each location in updatedLocs, the previous and new owner
- * decrypt all tiles in the 3x3 region, and nearby players decrypt the tile in
- * updatedLocs.
- */
-function alertPlayers(
-    newOwner: string,
-    prevOwner: string,
-    updatedLocs: Location[]
-) {
-    let alertPlayerMap = new Map<string, Set<string>>();
-
-    for (let loc of updatedLocs) {
-        const locString = JSON.stringify(loc);
-        for (let l of b.getNearbyLocations(loc)) {
-            const tileOwner = b.getTile(l).ownerPubKey();
-            const lString = JSON.stringify(l);
-
-            if (!alertPlayerMap.has(tileOwner)) {
-                alertPlayerMap.set(tileOwner, new Set<string>());
-            }
-            alertPlayerMap.get(tileOwner)?.add(locString);
-            alertPlayerMap.get(newOwner)?.add(lString);
-            alertPlayerMap.get(prevOwner)?.add(lString);
-        }
-    }
-
-    alertPlayerMap.forEach((tiles: Set<string>, pubkey: string) => {
-        const socketId = pubKeyToId.get(pubkey);
-        if (socketId) {
-            io.to(socketId).emit("updateDisplay", Array.from(tiles));
-        }
-    });
 }
 
 /*
@@ -513,17 +663,23 @@ function upkeepClaimedMoves() {
 io.on("connection", (socket: Socket) => {
     console.log("Connected: ", socket.id);
 
-    socket.on("login", (l: Location, p: string, s: string, sig: string) => {
-        login(socket, l, Player.fromPubString(s, p), sig);
+    socket.on("login", (address: string, sig: string) => {
+        login(socket, address, sig);
     });
+    socket.on(
+        "getSpawnSignature",
+        async (symb: string, address: string, sig: string, s: string) => {
+            getSpawnSignature(socket, symb, address, sig, s);
+        }
+    );
     socket.on("handshakeDA", () => {
         handshakeDA(socket);
     });
-    socket.on("getSignature", (uFrom: any, uTo: any) => {
-        getSignature(socket, uFrom, uTo);
+    socket.on("getMoveSignature", async (uFrom: any, uTo: any) => {
+        getMoveSignature(socket, uFrom, uTo);
     });
-    socket.on("decrypt", (l: Location, pubkey: string, sig: string) => {
-        decrypt(socket, l, Player.fromPubString("", pubkey), sig);
+    socket.on("decrypt", (l: Location) => {
+        decrypt(socket, l);
     });
     socket.on("sendRecoveredTileResponse", (encTile: any) => {
         sendRecoveredTileResponse(socket, encTile);
@@ -537,6 +693,10 @@ io.on("connection", (socket: Socket) => {
     socket.on("disconnecting", () => {
         disconnect(socket);
     });
+});
+
+nStates.on(nStates.filters.NewSpawnAttempt(), (player, success) => {
+    onSpawnAttempt(player, success);
 });
 
 /*

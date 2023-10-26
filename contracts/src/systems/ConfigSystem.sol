@@ -6,8 +6,16 @@ import {System} from "@latticexyz/world/src/System.sol";
 import {Config} from "codegen/index.sol";
 
 contract ConfigSystem is System {
+    function setSpawnVerifier(address spawnVerifier) public {
+        Config.setSpawnVerifierContract({spawnVerifierContract: spawnVerifier});
+    }
+
     function setMoveVerifier(address moveVerifier) public {
-        Config.setVerifierContract({verifierContract: moveVerifier});
+        Config.setMoveVerifierContract({moveVerifierContract: moveVerifier});
+    }
+
+    function setSnarkFieldSize(uint256 fieldSize) public {
+        Config.setSnarkFieldSize({snarkFieldSize: fieldSize});
     }
 
     function setNumStartingTroops(uint32 numStartingTroops) public {

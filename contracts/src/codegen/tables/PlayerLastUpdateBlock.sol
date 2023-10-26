@@ -44,7 +44,7 @@ library PlayerLastUpdateBlock {
    */
   function getKeySchema() internal pure returns (Schema) {
     SchemaType[] memory _keySchema = new SchemaType[](1);
-    _keySchema[0] = SchemaType.UINT256;
+    _keySchema[0] = SchemaType.ADDRESS;
 
     return SchemaLib.encode(_keySchema);
   }
@@ -66,7 +66,7 @@ library PlayerLastUpdateBlock {
    */
   function getKeyNames() internal pure returns (string[] memory keyNames) {
     keyNames = new string[](1);
-    keyNames[0] = "pkHash";
+    keyNames[0] = "id";
   }
 
   /**
@@ -102,9 +102,9 @@ library PlayerLastUpdateBlock {
   /**
    * @notice Get value.
    */
-  function getValue(uint256 pkHash) internal view returns (uint256 value) {
+  function getValue(address id) internal view returns (uint256 value) {
     bytes32[] memory _keyTuple = new bytes32[](1);
-    _keyTuple[0] = bytes32(uint256(pkHash));
+    _keyTuple[0] = bytes32(uint256(uint160(id)));
 
     bytes32 _blob = StoreSwitch.getStaticField(_tableId, _keyTuple, 0, _fieldLayout);
     return (uint256(bytes32(_blob)));
@@ -113,9 +113,9 @@ library PlayerLastUpdateBlock {
   /**
    * @notice Get value.
    */
-  function _getValue(uint256 pkHash) internal view returns (uint256 value) {
+  function _getValue(address id) internal view returns (uint256 value) {
     bytes32[] memory _keyTuple = new bytes32[](1);
-    _keyTuple[0] = bytes32(uint256(pkHash));
+    _keyTuple[0] = bytes32(uint256(uint160(id)));
 
     bytes32 _blob = StoreCore.getStaticField(_tableId, _keyTuple, 0, _fieldLayout);
     return (uint256(bytes32(_blob)));
@@ -124,9 +124,9 @@ library PlayerLastUpdateBlock {
   /**
    * @notice Get value (using the specified store).
    */
-  function getValue(IStore _store, uint256 pkHash) internal view returns (uint256 value) {
+  function getValue(IStore _store, address id) internal view returns (uint256 value) {
     bytes32[] memory _keyTuple = new bytes32[](1);
-    _keyTuple[0] = bytes32(uint256(pkHash));
+    _keyTuple[0] = bytes32(uint256(uint160(id)));
 
     bytes32 _blob = _store.getStaticField(_tableId, _keyTuple, 0, _fieldLayout);
     return (uint256(bytes32(_blob)));
@@ -135,9 +135,9 @@ library PlayerLastUpdateBlock {
   /**
    * @notice Get value.
    */
-  function get(uint256 pkHash) internal view returns (uint256 value) {
+  function get(address id) internal view returns (uint256 value) {
     bytes32[] memory _keyTuple = new bytes32[](1);
-    _keyTuple[0] = bytes32(uint256(pkHash));
+    _keyTuple[0] = bytes32(uint256(uint160(id)));
 
     bytes32 _blob = StoreSwitch.getStaticField(_tableId, _keyTuple, 0, _fieldLayout);
     return (uint256(bytes32(_blob)));
@@ -146,9 +146,9 @@ library PlayerLastUpdateBlock {
   /**
    * @notice Get value.
    */
-  function _get(uint256 pkHash) internal view returns (uint256 value) {
+  function _get(address id) internal view returns (uint256 value) {
     bytes32[] memory _keyTuple = new bytes32[](1);
-    _keyTuple[0] = bytes32(uint256(pkHash));
+    _keyTuple[0] = bytes32(uint256(uint160(id)));
 
     bytes32 _blob = StoreCore.getStaticField(_tableId, _keyTuple, 0, _fieldLayout);
     return (uint256(bytes32(_blob)));
@@ -157,9 +157,9 @@ library PlayerLastUpdateBlock {
   /**
    * @notice Get value (using the specified store).
    */
-  function get(IStore _store, uint256 pkHash) internal view returns (uint256 value) {
+  function get(IStore _store, address id) internal view returns (uint256 value) {
     bytes32[] memory _keyTuple = new bytes32[](1);
-    _keyTuple[0] = bytes32(uint256(pkHash));
+    _keyTuple[0] = bytes32(uint256(uint160(id)));
 
     bytes32 _blob = _store.getStaticField(_tableId, _keyTuple, 0, _fieldLayout);
     return (uint256(bytes32(_blob)));
@@ -168,9 +168,9 @@ library PlayerLastUpdateBlock {
   /**
    * @notice Set value.
    */
-  function setValue(uint256 pkHash, uint256 value) internal {
+  function setValue(address id, uint256 value) internal {
     bytes32[] memory _keyTuple = new bytes32[](1);
-    _keyTuple[0] = bytes32(uint256(pkHash));
+    _keyTuple[0] = bytes32(uint256(uint160(id)));
 
     StoreSwitch.setStaticField(_tableId, _keyTuple, 0, abi.encodePacked((value)), _fieldLayout);
   }
@@ -178,9 +178,9 @@ library PlayerLastUpdateBlock {
   /**
    * @notice Set value.
    */
-  function _setValue(uint256 pkHash, uint256 value) internal {
+  function _setValue(address id, uint256 value) internal {
     bytes32[] memory _keyTuple = new bytes32[](1);
-    _keyTuple[0] = bytes32(uint256(pkHash));
+    _keyTuple[0] = bytes32(uint256(uint160(id)));
 
     StoreCore.setStaticField(_tableId, _keyTuple, 0, abi.encodePacked((value)), _fieldLayout);
   }
@@ -188,9 +188,9 @@ library PlayerLastUpdateBlock {
   /**
    * @notice Set value (using the specified store).
    */
-  function setValue(IStore _store, uint256 pkHash, uint256 value) internal {
+  function setValue(IStore _store, address id, uint256 value) internal {
     bytes32[] memory _keyTuple = new bytes32[](1);
-    _keyTuple[0] = bytes32(uint256(pkHash));
+    _keyTuple[0] = bytes32(uint256(uint160(id)));
 
     _store.setStaticField(_tableId, _keyTuple, 0, abi.encodePacked((value)), _fieldLayout);
   }
@@ -198,9 +198,9 @@ library PlayerLastUpdateBlock {
   /**
    * @notice Set value.
    */
-  function set(uint256 pkHash, uint256 value) internal {
+  function set(address id, uint256 value) internal {
     bytes32[] memory _keyTuple = new bytes32[](1);
-    _keyTuple[0] = bytes32(uint256(pkHash));
+    _keyTuple[0] = bytes32(uint256(uint160(id)));
 
     StoreSwitch.setStaticField(_tableId, _keyTuple, 0, abi.encodePacked((value)), _fieldLayout);
   }
@@ -208,9 +208,9 @@ library PlayerLastUpdateBlock {
   /**
    * @notice Set value.
    */
-  function _set(uint256 pkHash, uint256 value) internal {
+  function _set(address id, uint256 value) internal {
     bytes32[] memory _keyTuple = new bytes32[](1);
-    _keyTuple[0] = bytes32(uint256(pkHash));
+    _keyTuple[0] = bytes32(uint256(uint160(id)));
 
     StoreCore.setStaticField(_tableId, _keyTuple, 0, abi.encodePacked((value)), _fieldLayout);
   }
@@ -218,9 +218,9 @@ library PlayerLastUpdateBlock {
   /**
    * @notice Set value (using the specified store).
    */
-  function set(IStore _store, uint256 pkHash, uint256 value) internal {
+  function set(IStore _store, address id, uint256 value) internal {
     bytes32[] memory _keyTuple = new bytes32[](1);
-    _keyTuple[0] = bytes32(uint256(pkHash));
+    _keyTuple[0] = bytes32(uint256(uint160(id)));
 
     _store.setStaticField(_tableId, _keyTuple, 0, abi.encodePacked((value)), _fieldLayout);
   }
@@ -228,9 +228,9 @@ library PlayerLastUpdateBlock {
   /**
    * @notice Delete all data for given keys.
    */
-  function deleteRecord(uint256 pkHash) internal {
+  function deleteRecord(address id) internal {
     bytes32[] memory _keyTuple = new bytes32[](1);
-    _keyTuple[0] = bytes32(uint256(pkHash));
+    _keyTuple[0] = bytes32(uint256(uint160(id)));
 
     StoreSwitch.deleteRecord(_tableId, _keyTuple);
   }
@@ -238,9 +238,9 @@ library PlayerLastUpdateBlock {
   /**
    * @notice Delete all data for given keys.
    */
-  function _deleteRecord(uint256 pkHash) internal {
+  function _deleteRecord(address id) internal {
     bytes32[] memory _keyTuple = new bytes32[](1);
-    _keyTuple[0] = bytes32(uint256(pkHash));
+    _keyTuple[0] = bytes32(uint256(uint160(id)));
 
     StoreCore.deleteRecord(_tableId, _keyTuple, _fieldLayout);
   }
@@ -248,9 +248,9 @@ library PlayerLastUpdateBlock {
   /**
    * @notice Delete all data for given keys (using the specified store).
    */
-  function deleteRecord(IStore _store, uint256 pkHash) internal {
+  function deleteRecord(IStore _store, address id) internal {
     bytes32[] memory _keyTuple = new bytes32[](1);
-    _keyTuple[0] = bytes32(uint256(pkHash));
+    _keyTuple[0] = bytes32(uint256(uint160(id)));
 
     _store.deleteRecord(_tableId, _keyTuple);
   }
@@ -281,9 +281,9 @@ library PlayerLastUpdateBlock {
   /**
    * @notice Encode keys as a bytes32 array using this table's field layout.
    */
-  function encodeKeyTuple(uint256 pkHash) internal pure returns (bytes32[] memory) {
+  function encodeKeyTuple(address id) internal pure returns (bytes32[] memory) {
     bytes32[] memory _keyTuple = new bytes32[](1);
-    _keyTuple[0] = bytes32(uint256(pkHash));
+    _keyTuple[0] = bytes32(uint256(uint160(id)));
 
     return _keyTuple;
   }

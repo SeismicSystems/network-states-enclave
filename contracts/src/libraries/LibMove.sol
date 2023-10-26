@@ -9,6 +9,7 @@ import {LibCity} from "libraries/LibCity.sol";
 library LibMove {
     /// @notice Runs various checks for the move
     function checkMoveInputs(
+        address player,
         MoveInputs memory moveInputs,
         Signature memory sig
     ) internal view {
@@ -26,12 +27,11 @@ library LibMove {
             "Move too far"
         );
         require(
-            moveInputs.fromPkHash ==
-                CityPlayer.getValue({id: moveInputs.fromCityId}),
-            "Must move owned city"
+            CityPlayer.get(moveInputs.fromCityId) == player,
+            "Must own tile player moves from"
         );
         require(
-            _checkOntoSelfOrUnowned({mv: moveInputs}),
+            _checkOntoSelfOrUnowned({player: player, mv: moveInputs}),
             "Incorrect ontoSelfOrUnowned"
         );
         require(
@@ -123,8 +123,53 @@ library LibMove {
         }
     }
 
-    function _troopUpdate(uint256 pkHash) internal {
-        uint24[] memory cities = LibCity.getCities({pkHash: pkHash});
+    function updateCityOwnership(
+        address player,
+        MoveInputs memory mv
+    ) internal {
+        if (mv.takingCity) {
+            CityPlayer.set({id: mv.toCityId, value: player});
+        }
+    }
+
+    function _incrementCityTroops(
+        uint24 cityId,
+        uint32 increment,
+        bool isCityCenter
+    ) internal {
+        City.setTroopCount({
+            id: cityId,
+            troopCount: City.getTroopCount({id: cityId}) + increment
+        });
+        if (isCityCenter) {
+            City.setCenterTroopCount({
+                id: cityId,
+                centerTroopCount: City.getCenterTroopCount({id: cityId}) +
+                    increment
+            });
+        }
+    }
+
+    function _decrementCityTroops(
+        uint24 cityId,
+        uint32 decrement,
+        bool isCityCenter
+    ) internal {
+        City.setTroopCount({
+            id: cityId,
+            troopCount: City.getTroopCount({id: cityId}) - decrement
+        });
+        if (isCityCenter) {
+            City.setCenterTroopCount({
+                id: cityId,
+                centerTroopCount: City.getCenterTroopCount({id: cityId}) -
+                    decrement
+            });
+        }
+    }
+
+    function _troopUpdate(address player) internal {
+        uint24[] memory cities = LibCity.getCities({player: player});
         uint256 numCities = cities.length;
         uint32 totalArea = 0;
         uint32 totalTroopCount = 0;
@@ -146,7 +191,7 @@ library LibMove {
                 isCityCenter: true
             });
         }
-        PlayerLastUpdateBlock.set({pkHash: pkHash, value: block.number});
+        PlayerLastUpdateBlock.set({id: player, value: block.number});
     }
 
     function _getCurrentInterval() internal view returns (uint256) {
@@ -154,10 +199,11 @@ library LibMove {
     }
 
     function _checkOntoSelfOrUnowned(
+        address player,
         MoveInputs memory mv
     ) internal view returns (bool) {
-        uint256 toCityOwner = CityPlayer.get({id: mv.toCityId});
-        if (toCityOwner == mv.fromPkHash || toCityOwner == 0) {
+        address toCityOwner = CityPlayer.get({id: mv.toCityId});
+        if (toCityOwner == player || toCityOwner == address(0)) {
             return mv.ontoSelfOrUnowned;
         }
         return !mv.ontoSelfOrUnowned;
@@ -166,21 +212,19 @@ library LibMove {
     function _checkCityTroops(
         MoveInputs memory mv
     ) internal view returns (bool) {
-        bool fromCorrect = true;
-        bool toCorrect = true;
         if (
             mv.fromIsCityCenter &&
             mv.fromCityTroops != City.getCenterTroopCount({id: mv.fromCityId})
         ) {
-            fromCorrect = false;
+            return false;
         }
         if (
             mv.toIsCityCenter &&
             mv.toCityTroops != City.getCenterTroopCount({id: mv.toCityId})
         ) {
-            toCorrect = false;
+            return false;
         }
-        return fromCorrect && toCorrect;
+        return true;
     }
 
     function _getSigner(

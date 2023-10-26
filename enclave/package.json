@@ -10,11 +10,12 @@
         "express": "^4.18.2",
         "queue-typescript": "^1.0.1",
         "socket.io": "^4.7.1",
+        "tsx": "^3.14.0",
         "watch": "^1.0.2"
     },
     "scripts": {
-        "dev": "ts-node --esm server.ts 0",
-        "dev:recover": "ts-node --esm server.ts 1"
+        "dev": "yarn tsx server.ts 0",
+        "dev:recover": "yarn tsx server.ts 1"
     },
     "devDependencies": {
         "ts-node": "^10.9.1",

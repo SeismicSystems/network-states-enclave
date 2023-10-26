@@ -1,9 +1,10 @@
 // @ts-ignore
+import { ethers } from "ethers";
 import { groth16 } from "snarkjs";
 import { Signature } from "maci-crypto";
 import crypto from "crypto";
 import { BigNumber } from "ethers";
-import { Location, Tile } from "./Tile.js";
+import { Tile, Location } from "./Tile";
 
 export type Groth16Proof = {
     pi_a: [string, string, string];
@@ -117,6 +118,74 @@ export class Utils {
             c: argv.slice(6, 8) as [string, string],
             input: argv.slice(8),
         };
+    }
+
+    static unpackMoveInputs(
+        formattedProof: Groth16ProofCalldata,
+        sig: string,
+        b: number
+    ) {
+        const moveInputs = {
+            fromIsCityCenter: formattedProof.input[6] === "1",
+            toIsCityCenter: formattedProof.input[7] === "1",
+            takingCity: formattedProof.input[8] === "1",
+            takingCapital: formattedProof.input[9] === "1",
+            ontoSelfOrUnowned: formattedProof.input[3] === "1",
+            fromCityId: Number(formattedProof.input[1]),
+            toCityId: Number(formattedProof.input[2]),
+            fromCityTroops: Number(formattedProof.input[10]),
+            toCityTroops: Number(formattedProof.input[11]),
+            numTroopsMoved: Number(formattedProof.input[4]),
+            enemyLoss: Number(formattedProof.input[5]),
+            currentInterval: formattedProof.input[0],
+            hTFrom: formattedProof.input[12],
+            hTTo: formattedProof.input[13],
+            hUFrom: formattedProof.input[14],
+            hUTo: formattedProof.input[15],
+        };
+        const moveProof = {
+            a: formattedProof.a,
+            b: formattedProof.b,
+            c: formattedProof.c,
+        };
+        const unpackedSig = ethers.utils.splitSignature(sig);
+        const moveSig = {
+            v: unpackedSig.v,
+            r: unpackedSig.r,
+            s: unpackedSig.s,
+            b,
+        };
+
+        return [moveInputs, moveProof, moveSig];
+    }
+
+    static unpackSpawnInputs(
+        formattedProof: Groth16ProofCalldata,
+        sig: string,
+        b: number
+    ) {
+        const spawnInputs = {
+            canSpawn: formattedProof.input[0] === "1",
+            spawnCityId: Number(formattedProof.input[1]),
+            commitBlockHash: formattedProof.input[2],
+            hPrevTile: formattedProof.input[3],
+            hSpawnTile: formattedProof.input[4],
+            hBlind: formattedProof.input[5],
+        };
+        const spawnProof = {
+            a: formattedProof.a,
+            b: formattedProof.b,
+            c: formattedProof.c,
+        };
+        const unpackedSig = ethers.utils.splitSignature(sig);
+        const spawnSig = {
+            v: unpackedSig.v,
+            r: unpackedSig.r,
+            s: unpackedSig.s,
+            b,
+        };
+
+        return [spawnInputs, spawnProof, spawnSig];
     }
 
     /*
