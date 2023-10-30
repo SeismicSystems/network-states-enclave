@@ -2,12 +2,14 @@
 pragma solidity >=0.8.0;
 
 import {Config, ConsumedCommitment} from "codegen/index.sol";
+import {MoveInputs} from "common/MoveInputs.sol";
 import {VirtualInputs} from "common/VirtualInputs.sol";
 import {Groth16Proof} from "common/Groth16Proof.sol";
 import {LibVirtualVerify} from "libraries/LibVirtualVerify.sol";
 
 library LibVirtual {
     function checkInputsOntoUnowned(
+        MoveInputs memory moveInputs,
         VirtualInputs memory virtualInputs,
         Groth16Proof memory virtualProof
     ) internal view {
@@ -19,6 +21,10 @@ library LibVirtual {
         require(
             !ConsumedCommitment.get(virtualInputs.hVirt),
             "Virt commitment already consumed"
+        );
+        require(
+            moveInputs.hTTo == virtualInputs.hVirt,
+            "hTTo != hVirt"
         );
         LibVirtualVerify.verifyVirtualProof(virtualInputs, virtualProof);
     }

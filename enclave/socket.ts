@@ -28,7 +28,7 @@ interface ClientToServerEvents {
     login: (address: string, sig: string) => void;
     handshakeDA: () => void;
     decrypt: (l: string) => void;
-    getSpawnSignature: (symb: string, blind: string) => void;
+    getSpawnSignature: (symb: string, l: string, blind: string) => void;
     getMoveSignature: (uFrom: any, uTo: any, blind: string) => void;
     sendRecoveredTileResponse: (enc: any) => void;
     recoveryFinished: () => void;

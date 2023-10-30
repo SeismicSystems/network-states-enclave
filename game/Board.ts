@@ -17,14 +17,12 @@ export class Board {
     );
 
     t: Map<string, Tile>;
-    length: bigint;
 
     playerCities: Map<string, Set<number>>;
     cityTiles: Map<number, Set<string>>;
 
     public constructor() {
         this.t = new Map<string, Tile>();
-        this.length = 5n;
 
         this.playerCities = new Map<string, Set<number>>();
         this.cityTiles = new Map<number, Set<string>>();

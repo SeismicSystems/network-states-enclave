@@ -18,7 +18,6 @@ template Virtual() {
     signal input hVirt;
 
     signal input rand;
-    signal input blind;
     signal input virt[N_TL_ATRS];
 
     signal circuitHRand <== Poseidon(1)([rand]);

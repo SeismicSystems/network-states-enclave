@@ -17,15 +17,11 @@ import {LibVirtualVerify} from "libraries/LibVirtualVerify.sol";
 contract SpawnSystem is IEnclaveEvents, System {
     function commitToSpawn(uint256 h) public {
         require(
-            SpawnCommitment.getBlockNumber(_msgSender()) == 0,
+            SpawnCommitment.get(_msgSender()) == 0,
             "Already commited to spawn"
         );
-
-        SpawnCommitment.set({
-            id: _msgSender(),
-            blockNumber: block.number,
-            blindHash: h
-        });
+        
+        SpawnCommitment.set({id: _msgSender(), value: h});
     }
 
     function spawn(
@@ -61,17 +57,6 @@ contract SpawnSystem is IEnclaveEvents, System {
     }
 
     function getSpawnCommitment(address player) public view returns (uint256) {
-        return SpawnCommitment.getBlockNumber(player);
-    }
-
-    function getSpawnblindHash(
-        address player
-    ) public view returns (uint256) {
-        return SpawnCommitment.getBlindHash(player);
-    }
-
-    function getBlockHash(uint256 blockCommited) public view returns (uint256) {
-        uint256 snarkFieldSize = Config.getSnarkFieldSize();
-        return uint256(blockhash(blockCommited)) % snarkFieldSize;
+        return SpawnCommitment.getValue(player);
     }
 }

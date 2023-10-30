@@ -12,7 +12,7 @@ library LibSpawn {
         SpawnInputs memory spawnInputs,
         Signature memory sig
     ) internal view {
-        require(SpawnCommitment.getBlockNumber(player) != 0, "Commit to spawn first");
+        require(SpawnCommitment.get(player) != 0, "Commit to spawn first");
         require(spawnInputs.spawnCityId != 0, "City ID must be non-zero");
         require(
             CityPlayer.getValue(spawnInputs.spawnCityId) == address(0),
@@ -24,18 +24,8 @@ library LibSpawn {
             "Enclave spawn sig incorrect"
         );
         require(
-            SpawnCommitment.getBlindHash(player) == spawnInputs.hBlind,
-            "Incorrect player secret hash"
-        );
-        checkBlockHash(player, spawnInputs.commitBlockHash);
-    }
-
-    function checkBlockHash(address player, uint256 blockHash) internal view {
-        uint256 blockCommited = SpawnCommitment.getBlockNumber(player);
-        uint256 snarkFieldSize = Config.getSnarkFieldSize();
-        require(
-            uint256(blockhash(blockCommited)) % snarkFieldSize == blockHash,
-            "Incorrect commitBlockHash"
+            SpawnCommitment.get(player) == spawnInputs.hBlindLoc,
+            "Incorrect H(b, r, c)"
         );
     }
 
@@ -64,7 +54,7 @@ library LibSpawn {
         uint256 hSpawnTile,
         Signature memory sig
     ) public pure returns (address) {
-        bytes32 hash = keccak256(abi.encode(sig.b, hSpawnTile));
+        bytes32 hash = keccak256(abi.encode(hSpawnTile));
         bytes32 prefixedHash = keccak256(
             abi.encodePacked("\x19Ethereum Signed Message:\n32", hash)
         );

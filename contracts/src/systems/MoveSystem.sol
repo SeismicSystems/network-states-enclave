@@ -27,7 +27,11 @@ contract MoveSystem is IEnclaveEvents, System {
 
         bool ontoUnowned = moveInputs.toCityId == 0;
         if (ontoUnowned) {
-            LibVirtual.checkInputsOntoUnowned(virtualInputs, virtualProof);
+            LibVirtual.checkInputsOntoUnowned(
+                moveInputs,
+                virtualInputs,
+                virtualProof
+            );
 
             // If moving onto unowned tile, consume virtual commitment
             ConsumedCommitment.set(virtualInputs.hVirt, true);

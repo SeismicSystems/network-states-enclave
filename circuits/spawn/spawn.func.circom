@@ -72,10 +72,9 @@ template Spawn() {
 
     signal input canSpawn;
     signal input spawnCityId;
-    signal input commitBlockHash;
     signal input hPrevTile;
     signal input hSpawnTile;
-    signal input hBlind;
+    signal input hBlindLoc;
 
     signal input prevTile[N_TL_ATRS];
     signal input spawnTile[N_TL_ATRS];
@@ -98,10 +97,11 @@ template Spawn() {
         CITY_TYPE, WATER_TYPE, HILL_TYPE)(canSpawn, prevTile);
     canSpawnCorrect === 1;
 
-    // blind should hash to hBlind
-    signal circuithBlind <== Poseidon(1)([blind]);
-    signal hBlindCorrect <== IsEqual()([circuithBlind, hBlind]);
-    hBlindCorrect === 1;
+    // hBlindLoc should be the hash of blind, row, col
+    signal circuithBlindLoc <== Poseidon(3)([blind, spawnTile[ROW_IDX], 
+        spawnTile[COL_IDX]]);
+    signal hBlindLocCorrect <== IsEqual()([circuithBlindLoc, hBlindLoc]);
+    hBlindLocCorrect === 1;
 
     // [TODO] Constrain location
 }

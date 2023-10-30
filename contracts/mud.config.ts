@@ -20,9 +20,8 @@ export default mudConfig({
         SpawnCommitment: {
             keySchema: { id: "address" },
             valueSchema: {
-                blockNumber: "uint256",
-                blindHash: "uint256"
-            }
+                value: "uint256",
+            },
         },
         TileCommitment: {
             keySchema: { id: "uint256" },

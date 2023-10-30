@@ -26,13 +26,8 @@ ResourceId constant _tableId = ResourceId.wrap(
 ResourceId constant SpawnCommitmentTableId = _tableId;
 
 FieldLayout constant _fieldLayout = FieldLayout.wrap(
-  0x0040020020200000000000000000000000000000000000000000000000000000
+  0x0020010020000000000000000000000000000000000000000000000000000000
 );
-
-struct SpawnCommitmentData {
-  uint256 blockNumber;
-  uint256 blindHash;
-}
 
 library SpawnCommitment {
   /**
@@ -59,9 +54,8 @@ library SpawnCommitment {
    * @return _valueSchema The value schema for the table.
    */
   function getValueSchema() internal pure returns (Schema) {
-    SchemaType[] memory _valueSchema = new SchemaType[](2);
+    SchemaType[] memory _valueSchema = new SchemaType[](1);
     _valueSchema[0] = SchemaType.UINT256;
-    _valueSchema[1] = SchemaType.UINT256;
 
     return SchemaLib.encode(_valueSchema);
   }
@@ -80,9 +74,8 @@ library SpawnCommitment {
    * @return fieldNames An array of strings with the names of value fields.
    */
   function getFieldNames() internal pure returns (string[] memory fieldNames) {
-    fieldNames = new string[](2);
-    fieldNames[0] = "blockNumber";
-    fieldNames[1] = "blindHash";
+    fieldNames = new string[](1);
+    fieldNames[0] = "value";
   }
 
   /**
@@ -107,9 +100,9 @@ library SpawnCommitment {
   }
 
   /**
-   * @notice Get blockNumber.
+   * @notice Get value.
    */
-  function getBlockNumber(address id) internal view returns (uint256 blockNumber) {
+  function getValue(address id) internal view returns (uint256 value) {
     bytes32[] memory _keyTuple = new bytes32[](1);
     _keyTuple[0] = bytes32(uint256(uint160(id)));
 
@@ -118,9 +111,9 @@ library SpawnCommitment {
   }
 
   /**
-   * @notice Get blockNumber.
+   * @notice Get value.
    */
-  function _getBlockNumber(address id) internal view returns (uint256 blockNumber) {
+  function _getValue(address id) internal view returns (uint256 value) {
     bytes32[] memory _keyTuple = new bytes32[](1);
     _keyTuple[0] = bytes32(uint256(uint160(id)));
 
@@ -129,9 +122,9 @@ library SpawnCommitment {
   }
 
   /**
-   * @notice Get blockNumber (using the specified store).
+   * @notice Get value (using the specified store).
    */
-  function getBlockNumber(IStore _store, address id) internal view returns (uint256 blockNumber) {
+  function getValue(IStore _store, address id) internal view returns (uint256 value) {
     bytes32[] memory _keyTuple = new bytes32[](1);
     _keyTuple[0] = bytes32(uint256(uint160(id)));
 
@@ -140,254 +133,96 @@ library SpawnCommitment {
   }
 
   /**
-   * @notice Set blockNumber.
+   * @notice Get value.
    */
-  function setBlockNumber(address id, uint256 blockNumber) internal {
+  function get(address id) internal view returns (uint256 value) {
     bytes32[] memory _keyTuple = new bytes32[](1);
     _keyTuple[0] = bytes32(uint256(uint160(id)));
 
-    StoreSwitch.setStaticField(_tableId, _keyTuple, 0, abi.encodePacked((blockNumber)), _fieldLayout);
-  }
-
-  /**
-   * @notice Set blockNumber.
-   */
-  function _setBlockNumber(address id, uint256 blockNumber) internal {
-    bytes32[] memory _keyTuple = new bytes32[](1);
-    _keyTuple[0] = bytes32(uint256(uint160(id)));
-
-    StoreCore.setStaticField(_tableId, _keyTuple, 0, abi.encodePacked((blockNumber)), _fieldLayout);
-  }
-
-  /**
-   * @notice Set blockNumber (using the specified store).
-   */
-  function setBlockNumber(IStore _store, address id, uint256 blockNumber) internal {
-    bytes32[] memory _keyTuple = new bytes32[](1);
-    _keyTuple[0] = bytes32(uint256(uint160(id)));
-
-    _store.setStaticField(_tableId, _keyTuple, 0, abi.encodePacked((blockNumber)), _fieldLayout);
-  }
-
-  /**
-   * @notice Get blindHash.
-   */
-  function getBlindHash(address id) internal view returns (uint256 blindHash) {
-    bytes32[] memory _keyTuple = new bytes32[](1);
-    _keyTuple[0] = bytes32(uint256(uint160(id)));
-
-    bytes32 _blob = StoreSwitch.getStaticField(_tableId, _keyTuple, 1, _fieldLayout);
+    bytes32 _blob = StoreSwitch.getStaticField(_tableId, _keyTuple, 0, _fieldLayout);
     return (uint256(bytes32(_blob)));
   }
 
   /**
-   * @notice Get blindHash.
+   * @notice Get value.
    */
-  function _getBlindHash(address id) internal view returns (uint256 blindHash) {
+  function _get(address id) internal view returns (uint256 value) {
     bytes32[] memory _keyTuple = new bytes32[](1);
     _keyTuple[0] = bytes32(uint256(uint160(id)));
 
-    bytes32 _blob = StoreCore.getStaticField(_tableId, _keyTuple, 1, _fieldLayout);
+    bytes32 _blob = StoreCore.getStaticField(_tableId, _keyTuple, 0, _fieldLayout);
     return (uint256(bytes32(_blob)));
   }
 
   /**
-   * @notice Get blindHash (using the specified store).
+   * @notice Get value (using the specified store).
    */
-  function getBlindHash(IStore _store, address id) internal view returns (uint256 blindHash) {
+  function get(IStore _store, address id) internal view returns (uint256 value) {
     bytes32[] memory _keyTuple = new bytes32[](1);
     _keyTuple[0] = bytes32(uint256(uint160(id)));
 
-    bytes32 _blob = _store.getStaticField(_tableId, _keyTuple, 1, _fieldLayout);
+    bytes32 _blob = _store.getStaticField(_tableId, _keyTuple, 0, _fieldLayout);
     return (uint256(bytes32(_blob)));
   }
 
   /**
-   * @notice Set blindHash.
+   * @notice Set value.
    */
-  function setBlindHash(address id, uint256 blindHash) internal {
+  function setValue(address id, uint256 value) internal {
     bytes32[] memory _keyTuple = new bytes32[](1);
     _keyTuple[0] = bytes32(uint256(uint160(id)));
 
-    StoreSwitch.setStaticField(_tableId, _keyTuple, 1, abi.encodePacked((blindHash)), _fieldLayout);
+    StoreSwitch.setStaticField(_tableId, _keyTuple, 0, abi.encodePacked((value)), _fieldLayout);
   }
 
   /**
-   * @notice Set blindHash.
+   * @notice Set value.
    */
-  function _setBlindHash(address id, uint256 blindHash) internal {
+  function _setValue(address id, uint256 value) internal {
     bytes32[] memory _keyTuple = new bytes32[](1);
     _keyTuple[0] = bytes32(uint256(uint160(id)));
 
-    StoreCore.setStaticField(_tableId, _keyTuple, 1, abi.encodePacked((blindHash)), _fieldLayout);
+    StoreCore.setStaticField(_tableId, _keyTuple, 0, abi.encodePacked((value)), _fieldLayout);
   }
 
   /**
-   * @notice Set blindHash (using the specified store).
+   * @notice Set value (using the specified store).
    */
-  function setBlindHash(IStore _store, address id, uint256 blindHash) internal {
+  function setValue(IStore _store, address id, uint256 value) internal {
     bytes32[] memory _keyTuple = new bytes32[](1);
     _keyTuple[0] = bytes32(uint256(uint160(id)));
 
-    _store.setStaticField(_tableId, _keyTuple, 1, abi.encodePacked((blindHash)), _fieldLayout);
+    _store.setStaticField(_tableId, _keyTuple, 0, abi.encodePacked((value)), _fieldLayout);
   }
 
   /**
-   * @notice Get the full data.
+   * @notice Set value.
    */
-  function get(address id) internal view returns (SpawnCommitmentData memory _table) {
+  function set(address id, uint256 value) internal {
     bytes32[] memory _keyTuple = new bytes32[](1);
     _keyTuple[0] = bytes32(uint256(uint160(id)));
 
-    (bytes memory _staticData, PackedCounter _encodedLengths, bytes memory _dynamicData) = StoreSwitch.getRecord(
-      _tableId,
-      _keyTuple,
-      _fieldLayout
-    );
-    return decode(_staticData, _encodedLengths, _dynamicData);
+    StoreSwitch.setStaticField(_tableId, _keyTuple, 0, abi.encodePacked((value)), _fieldLayout);
   }
 
   /**
-   * @notice Get the full data.
+   * @notice Set value.
    */
-  function _get(address id) internal view returns (SpawnCommitmentData memory _table) {
+  function _set(address id, uint256 value) internal {
     bytes32[] memory _keyTuple = new bytes32[](1);
     _keyTuple[0] = bytes32(uint256(uint160(id)));
 
-    (bytes memory _staticData, PackedCounter _encodedLengths, bytes memory _dynamicData) = StoreCore.getRecord(
-      _tableId,
-      _keyTuple,
-      _fieldLayout
-    );
-    return decode(_staticData, _encodedLengths, _dynamicData);
+    StoreCore.setStaticField(_tableId, _keyTuple, 0, abi.encodePacked((value)), _fieldLayout);
   }
 
   /**
-   * @notice Get the full data (using the specified store).
+   * @notice Set value (using the specified store).
    */
-  function get(IStore _store, address id) internal view returns (SpawnCommitmentData memory _table) {
+  function set(IStore _store, address id, uint256 value) internal {
     bytes32[] memory _keyTuple = new bytes32[](1);
     _keyTuple[0] = bytes32(uint256(uint160(id)));
 
-    (bytes memory _staticData, PackedCounter _encodedLengths, bytes memory _dynamicData) = _store.getRecord(
-      _tableId,
-      _keyTuple,
-      _fieldLayout
-    );
-    return decode(_staticData, _encodedLengths, _dynamicData);
-  }
-
-  /**
-   * @notice Set the full data using individual values.
-   */
-  function set(address id, uint256 blockNumber, uint256 blindHash) internal {
-    bytes memory _staticData = encodeStatic(blockNumber, blindHash);
-
-    PackedCounter _encodedLengths;
-    bytes memory _dynamicData;
-
-    bytes32[] memory _keyTuple = new bytes32[](1);
-    _keyTuple[0] = bytes32(uint256(uint160(id)));
-
-    StoreSwitch.setRecord(_tableId, _keyTuple, _staticData, _encodedLengths, _dynamicData);
-  }
-
-  /**
-   * @notice Set the full data using individual values.
-   */
-  function _set(address id, uint256 blockNumber, uint256 blindHash) internal {
-    bytes memory _staticData = encodeStatic(blockNumber, blindHash);
-
-    PackedCounter _encodedLengths;
-    bytes memory _dynamicData;
-
-    bytes32[] memory _keyTuple = new bytes32[](1);
-    _keyTuple[0] = bytes32(uint256(uint160(id)));
-
-    StoreCore.setRecord(_tableId, _keyTuple, _staticData, _encodedLengths, _dynamicData, _fieldLayout);
-  }
-
-  /**
-   * @notice Set the full data using individual values (using the specified store).
-   */
-  function set(IStore _store, address id, uint256 blockNumber, uint256 blindHash) internal {
-    bytes memory _staticData = encodeStatic(blockNumber, blindHash);
-
-    PackedCounter _encodedLengths;
-    bytes memory _dynamicData;
-
-    bytes32[] memory _keyTuple = new bytes32[](1);
-    _keyTuple[0] = bytes32(uint256(uint160(id)));
-
-    _store.setRecord(_tableId, _keyTuple, _staticData, _encodedLengths, _dynamicData);
-  }
-
-  /**
-   * @notice Set the full data using the data struct.
-   */
-  function set(address id, SpawnCommitmentData memory _table) internal {
-    bytes memory _staticData = encodeStatic(_table.blockNumber, _table.blindHash);
-
-    PackedCounter _encodedLengths;
-    bytes memory _dynamicData;
-
-    bytes32[] memory _keyTuple = new bytes32[](1);
-    _keyTuple[0] = bytes32(uint256(uint160(id)));
-
-    StoreSwitch.setRecord(_tableId, _keyTuple, _staticData, _encodedLengths, _dynamicData);
-  }
-
-  /**
-   * @notice Set the full data using the data struct.
-   */
-  function _set(address id, SpawnCommitmentData memory _table) internal {
-    bytes memory _staticData = encodeStatic(_table.blockNumber, _table.blindHash);
-
-    PackedCounter _encodedLengths;
-    bytes memory _dynamicData;
-
-    bytes32[] memory _keyTuple = new bytes32[](1);
-    _keyTuple[0] = bytes32(uint256(uint160(id)));
-
-    StoreCore.setRecord(_tableId, _keyTuple, _staticData, _encodedLengths, _dynamicData, _fieldLayout);
-  }
-
-  /**
-   * @notice Set the full data using the data struct (using the specified store).
-   */
-  function set(IStore _store, address id, SpawnCommitmentData memory _table) internal {
-    bytes memory _staticData = encodeStatic(_table.blockNumber, _table.blindHash);
-
-    PackedCounter _encodedLengths;
-    bytes memory _dynamicData;
-
-    bytes32[] memory _keyTuple = new bytes32[](1);
-    _keyTuple[0] = bytes32(uint256(uint160(id)));
-
-    _store.setRecord(_tableId, _keyTuple, _staticData, _encodedLengths, _dynamicData);
-  }
-
-  /**
-   * @notice Decode the tightly packed blob of static data using this table's field layout.
-   */
-  function decodeStatic(bytes memory _blob) internal pure returns (uint256 blockNumber, uint256 blindHash) {
-    blockNumber = (uint256(Bytes.slice32(_blob, 0)));
-
-    blindHash = (uint256(Bytes.slice32(_blob, 32)));
-  }
-
-  /**
-   * @notice Decode the tightly packed blobs using this table's field layout.
-   * @param _staticData Tightly packed static fields.
-   *
-   *
-   */
-  function decode(
-    bytes memory _staticData,
-    PackedCounter,
-    bytes memory
-  ) internal pure returns (SpawnCommitmentData memory _table) {
-    (_table.blockNumber, _table.blindHash) = decodeStatic(_staticData);
+    _store.setStaticField(_tableId, _keyTuple, 0, abi.encodePacked((value)), _fieldLayout);
   }
 
   /**
@@ -424,8 +259,8 @@ library SpawnCommitment {
    * @notice Tightly pack static (fixed length) data using this table's schema.
    * @return The static data, encoded into a sequence of bytes.
    */
-  function encodeStatic(uint256 blockNumber, uint256 blindHash) internal pure returns (bytes memory) {
-    return abi.encodePacked(blockNumber, blindHash);
+  function encodeStatic(uint256 value) internal pure returns (bytes memory) {
+    return abi.encodePacked(value);
   }
 
   /**
@@ -434,11 +269,8 @@ library SpawnCommitment {
    * @return The lengths of the dynamic fields (packed into a single bytes32 value).
    * @return The dyanmic (variable length) data, encoded into a sequence of bytes.
    */
-  function encode(
-    uint256 blockNumber,
-    uint256 blindHash
-  ) internal pure returns (bytes memory, PackedCounter, bytes memory) {
-    bytes memory _staticData = encodeStatic(blockNumber, blindHash);
+  function encode(uint256 value) internal pure returns (bytes memory, PackedCounter, bytes memory) {
+    bytes memory _staticData = encodeStatic(value);
 
     PackedCounter _encodedLengths;
     bytes memory _dynamicData;

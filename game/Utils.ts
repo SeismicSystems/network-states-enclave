@@ -118,7 +118,7 @@ export class Utils {
     }
 
     /*
-     * Wrapper for poseidonPerm, which is a modified version of iden3's 
+     * Wrapper for poseidonPerm, which is a modified version of iden3's
      * poseidonPerm.js.
      */
     static poseidonExt(inputs: bigint[]) {
@@ -197,12 +197,10 @@ export class Utils {
         return [moveInputs, moveProof, moveSig];
     }
 
-    static unpackVirtualInputs(
-        formattedProof: Groth16ProofCalldata,
-    ) {
+    static unpackVirtualInputs(formattedProof: Groth16ProofCalldata) {
         const virtualInputs = {
             hRand: formattedProof.input[0],
-            hVirt: formattedProof.input[1]
+            hVirt: formattedProof.input[1],
         };
         const virtualProof = {
             a: formattedProof.a,
@@ -215,16 +213,14 @@ export class Utils {
 
     static unpackSpawnInputs(
         formattedProof: Groth16ProofCalldata,
-        sig: string,
-        b: number
+        sig: string
     ) {
         const spawnInputs = {
             canSpawn: formattedProof.input[0] === "1",
             spawnCityId: Number(formattedProof.input[1]),
-            commitBlockHash: formattedProof.input[2],
-            hPrevTile: formattedProof.input[3],
-            hSpawnTile: formattedProof.input[4],
-            hBlind: formattedProof.input[5],
+            hPrevTile: formattedProof.input[2],
+            hSpawnTile: formattedProof.input[3],
+            hBlindLoc: formattedProof.input[4],
         };
         const spawnProof = {
             a: formattedProof.a,
@@ -236,7 +232,7 @@ export class Utils {
             v: unpackedSig.v,
             r: unpackedSig.r,
             s: unpackedSig.s,
-            b,
+            b: 0,
         };
 
         return [spawnInputs, spawnProof, spawnSig];

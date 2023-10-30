@@ -18,6 +18,10 @@ const PLAYER_SYMBOL: string = process.argv[2];
 const PLAYER_PRIVKEY = JSON.parse(<string>process.env.ETH_PRIVKEYS)[
     PLAYER_SYMBOL
 ];
+const PLAYER_SPAWN: Location = {
+    r: BigInt(process.argv[3]),
+    c: BigInt(process.argv[4]),
+};
 
 /*
  * Misc client parameters.
@@ -69,16 +73,6 @@ let isSpawned = false;
 let clientLatestMoveBlock: number = 0;
 
 /*
- * Last block when player commited to spawning.
- */
-let commitBlockNumber: number;
-
-/*
- * Block hash of block number 'commitBlockNumber'. Used to get spawn location,
- */
-let commitBlockHash;
-
-/*
  * Store pending move.
  */
 let formattedProof: Groth16ProofCalldata;
@@ -102,12 +96,16 @@ async function commitToSpawn() {
     PLAYER.sampleBlind();
 
     // Save block number player commited to spawning
-    commitBlockNumber = await PLAYER.commitToSpawn(nStates);
-    commitBlockHash = await nStates.getBlockHash(commitBlockNumber);
+    await PLAYER.commitToSpawn(PLAYER_SPAWN, nStates);
 
     console.log("Getting spawn sig from enclave");
 
-    socket.emit("getSpawnSignature", PLAYER.symbol, PLAYER.blind.toString());
+    socket.emit(
+        "getSpawnSignature",
+        PLAYER.symbol,
+        Utils.stringifyLocation(PLAYER_SPAWN),
+        PLAYER.blind.toString()
+    );
 }
 
 /*
@@ -132,17 +130,12 @@ async function spawnSignatureResponse(
     const [virtInputs, virtProof] =
         Utils.unpackVirtualInputs(virtFormattedProof);
 
-    const [prf, pubSigs] = await PLAYER.constructSpawn(
-        commitBlockHash,
-        virtTile,
-        spawnTile
-    );
+    const [prf, pubSigs] = await PLAYER.constructSpawn(virtTile, spawnTile);
 
     const spawnFormattedProof = await Utils.exportCallDataGroth16(prf, pubSigs);
     const [spawnInputs, spawnProof, spawnSig] = Utils.unpackSpawnInputs(
         spawnFormattedProof,
-        sig,
-        commitBlockNumber
+        sig
     );
 
     console.log("Submitting spawn proof to nStates");

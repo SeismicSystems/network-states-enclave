@@ -222,6 +222,7 @@ function login(socket: Socket, address: string, sigStr: string) {
 async function sendSpawnSignature(
     socket: Socket,
     symbol: string,
+    l: string,
     blind: string
 ) {
     const sender = idToAddress.get(socket.id);
@@ -245,19 +246,20 @@ async function sendSpawnSignature(
         return;
     }
 
-    // Check if player has committed to spawning onchain
-    const latestBlockCommited = Number(
-        await nStates.getSpawnCommitment(sender)
-    );
-    const hBlind = await nStates.getSpawnblindHash(sender);
+    let loc: Location;
+    try {
+        loc = Utils.unstringifyLocation(l);
+    } catch (error) {
+        console.log("Malignant location string: ", l);
+        socket.disconnect();
+        return;
+    }
 
-    if (
-        latestBlockCommited == 0 ||
-        hBlind != Utils.poseidonExt([playerChallenge])
-    ) {
-        console.log(
-            "Player already has enclave sig, or hBlind is inconsistent"
-        );
+    // Check if player has committed to spawning onchain
+    const hBlindLoc = BigInt(await nStates.getSpawnCommitment(sender));
+
+    if (hBlindLoc != Utils.poseidonExt([playerChallenge, loc.r, loc.c])) {
+        console.log("hBlindLoc is inconsistent");
         socket.disconnect();
         return;
     }
@@ -266,20 +268,10 @@ async function sendSpawnSignature(
     idToAddress.set(socket.id, sender);
     addressToId.set(sender, socket.id);
 
-    // Compute location
-    const commitBlockHash = await nStates.getBlockHash(latestBlockCommited);
-
-    // [TODO]: determine formula for row/col
-    const rawRow = Utils.poseidonExt([playerChallenge, commitBlockHash, 0]);
-    const rawCol = Utils.poseidonExt([playerChallenge, commitBlockHash, 1]);
-    const r = rawRow % b.length;
-    const c = rawCol % b.length;
-    const l = { r, c };
-
-    const virtTile = Tile.genVirtual(l, r);
+    const virtTile = Tile.genVirtual(loc, rand);
     const spawnTile = Tile.spawn(
         new Player(symbol, sender),
-        l,
+        loc,
         START_RESOURCES,
         cityId
     );
@@ -287,18 +279,10 @@ async function sendSpawnSignature(
     const hSpawnTile = spawnTile.hash();
 
     // Generate ZKP that attests to valid virtual tile commitment
-    const [prf, pubSignals] = await Tile.virtualZKP(
-        l,
-        rand,
-        hRand,
-        playerChallenge
-    );
+    const [prf, pubSignals] = await Tile.virtualZKP(loc, rand, hRand);
 
     // Acknowledge reception of intended move
-    const digest = utils.solidityKeccak256(
-        ["uint256", "uint256"],
-        [latestBlockCommited, hSpawnTile]
-    );
+    const digest = utils.solidityKeccak256(["uint256"], [hSpawnTile]);
     const sig = await signer.signMessage(utils.arrayify(digest));
 
     socket.emit(
@@ -355,8 +339,7 @@ async function sendMoveSignature(
         const [prf, pubSignals] = await Tile.virtualZKP(
             uToAsTile.loc,
             rand,
-            hRand,
-            playerChallenge
+            hRand
         );
 
         const digest = utils.solidityKeccak256(
@@ -684,9 +667,12 @@ io.on("connection", (socket: Socket) => {
     socket.on("login", (address: string, sig: string) => {
         login(socket, address, sig);
     });
-    socket.on("getSpawnSignature", async (symb: string, blind: string) => {
-        sendSpawnSignature(socket, symb, blind);
-    });
+    socket.on(
+        "getSpawnSignature",
+        async (symb: string, l: string, blind: string) => {
+            sendSpawnSignature(socket, symb, l, blind);
+        }
+    );
     socket.on("handshakeDA", () => {
         handshakeDA(socket);
     });

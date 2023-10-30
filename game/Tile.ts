@@ -157,8 +157,7 @@ export class Tile {
     static async virtualZKP(
         loc: Location,
         rand: bigint,
-        hRand: bigint,
-        blind: bigint
+        hRand: bigint
     ): Promise<[Groth16Proof, any]> {
         const v: Tile = Tile.genVirtual(loc, rand);
         const { proof, publicSignals } = await groth16.fullProve(
@@ -166,7 +165,6 @@ export class Tile {
                 hRand: hRand.toString(),
                 hVirt: v.hash(),
                 rand: rand.toString(),
-                blind: blind.toString(),
                 virt: v.toCircuitInput(),
             },
             Tile.VIRT_WASM,
