@@ -314,7 +314,7 @@ export class Board {
      * Generates state transition, nullifier combo, and ZKP needed to move
      * troops from one tile to another. Moves all but one troop for development.
      */
-    public async constructMove(
+    public async moveZKP(
         from: Location,
         to: Location,
         nStates: any

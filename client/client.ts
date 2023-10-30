@@ -130,7 +130,7 @@ async function spawnSignatureResponse(
     const [virtInputs, virtProof] =
         Utils.unpackVirtualInputs(virtFormattedProof);
 
-    const [prf, pubSigs] = await PLAYER.constructSpawn(virtTile, spawnTile);
+    const [prf, pubSigs] = await PLAYER.spawnZKP(virtTile, spawnTile);
 
     const spawnFormattedProof = await Utils.exportCallDataGroth16(prf, pubSigs);
     const [spawnInputs, spawnProof, spawnSig] = Utils.unpackSpawnInputs(
@@ -175,7 +175,7 @@ async function move(inp: string, currentBlockHeight: number) {
 
         clientLatestMoveBlock = currentBlockHeight;
 
-        const [tFrom, tTo, uFrom, uTo, prf, pubSignals] = await b.constructMove(
+        const [tFrom, tTo, uFrom, uTo, prf, pubSignals] = await b.moveZKP(
             cursor,
             { r: nr, c: nc },
             nStates

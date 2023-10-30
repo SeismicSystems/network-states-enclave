@@ -35,6 +35,12 @@ contract MoveSystem is IEnclaveEvents, System {
 
             // If moving onto unowned tile, consume virtual commitment
             ConsumedCommitment.set(virtualInputs.hVirt, true);
+        } else {
+            // Must check that hTTo is a valid tile
+            require(
+                TileCommitment.getValue({id: moveInputs.hTTo}),
+                "hTTo does not exist"
+            );
         }
 
         // Execute whether or not player moves onto unowned tile

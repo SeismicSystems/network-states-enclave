@@ -38,7 +38,7 @@ export class Player {
         await tx.wait();
     }
 
-    public async constructSpawn(
+    public async spawnZKP(
         prevTile: Tile,
         spawnTile: Tile
     ) {
