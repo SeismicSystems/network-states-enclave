@@ -6,6 +6,12 @@ import {System} from "@latticexyz/world/src/System.sol";
 import {Config} from "codegen/index.sol";
 
 contract ConfigSystem is System {
+    function setVirtualVerifier(address virtualVerifier) public {
+        Config.setVirtualVerifierContract({
+            virtualVerifierContract: virtualVerifier
+        });
+    }
+
     function setSpawnVerifier(address spawnVerifier) public {
         Config.setSpawnVerifierContract({spawnVerifierContract: spawnVerifier});
     }

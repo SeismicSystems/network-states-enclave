@@ -5,6 +5,7 @@ pragma solidity >=0.8.21;
 
 import { MoveInputs } from "common/MoveInputs.sol";
 import { Groth16Proof } from "common/Groth16Proof.sol";
+import { VirtualInputs } from "common/VirtualInputs.sol";
 import { Signature } from "common/Signature.sol";
 
 /**
@@ -12,7 +13,13 @@ import { Signature } from "common/Signature.sol";
  * @dev This interface is automatically generated from the corresponding system contract. Do not edit manually.
  */
 interface IMoveSystem {
-  function move(MoveInputs memory moveInputs, Groth16Proof memory moveProof, Signature memory sig) external;
+  function move(
+    MoveInputs memory moveInputs,
+    Groth16Proof memory moveProof,
+    VirtualInputs memory virtualInputs,
+    Groth16Proof memory virtualProof,
+    Signature memory sig
+  ) external;
 
   function getCurrentInterval() external view returns (uint256);
 

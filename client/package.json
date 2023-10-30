@@ -5,9 +5,9 @@
     "main": "client.ts",
     "license": "BSD-4-Clause",
     "scripts": {
-        "devA": "yarn tsx client.ts A",
-        "devB": "yarn tsx client.ts B",
-        "devC": "yarn tsx client.ts C"
+        "devA": "yarn tsx client.ts A 0 0",
+        "devB": "yarn tsx client.ts B 0 4",
+        "devC": "yarn tsx client.ts C 4 0"
     },
     "dependencies": {
         "dotenv": "^16.3.1",

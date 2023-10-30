@@ -46,6 +46,33 @@ export const dummyTerrainGenerator = (location: Location) => {
 
 export class Utils {
     /*
+     * Stringify a location object. Converts BigInt values to strings.
+     */
+    static stringifyLocation(location: Location): string {
+        return JSON.stringify({
+            r: location.r.toString(),
+            c: location.c.toString(),
+        });
+    }
+
+    /*
+     * Unstringify a location object. Converts string values back to BigInt.
+     * Returns undefined if the input is not valid.
+     */
+    static unstringifyLocation(locationString: string): Location | undefined {
+        try {
+            const location = JSON.parse(locationString);
+            return {
+                r: BigInt(location.r),
+                c: BigInt(location.c),
+            };
+        } catch (error) {
+            console.error("Error while unstringifying location:", error);
+            return undefined;
+        }
+    }
+
+    /*
      * Call `await` on the return value of this function to block.
      */
     static sleep(milliseconds: number) {
@@ -82,7 +109,7 @@ export class Utils {
      * Converts an ASCII string into its BigInt representation. Used to sign
      * the client's socket ID.
      */
-    static asciiIntoBigNumber(msg: string): BigInt {
+    static asciiIntoBigNumber(msg: string): bigint {
         let result = BigInt(0);
         for (let i = 0; i < msg.length; i++) {
             result = (result << BigInt(8)) + BigInt(msg.charCodeAt(i));
@@ -91,11 +118,11 @@ export class Utils {
     }
 
     /*
-     * Wrapper for poseidonPerm, which is a modified version of iden3's 
+     * Wrapper for poseidonPerm, which is a modified version of iden3's
      * poseidonPerm.js.
      */
-    static poseidonExt(inputs: BigInt[]) {
-        return poseidonPerm([BigInt(0), ...inputs])[0];
+    static poseidonExt(inputs: bigint[]) {
+        return poseidonPerm([0n, ...inputs])[0];
     }
 
     /*
@@ -170,18 +197,30 @@ export class Utils {
         return [moveInputs, moveProof, moveSig];
     }
 
+    static unpackVirtualInputs(formattedProof: Groth16ProofCalldata) {
+        const virtualInputs = {
+            hRand: formattedProof.input[0],
+            hVirt: formattedProof.input[1],
+        };
+        const virtualProof = {
+            a: formattedProof.a,
+            b: formattedProof.b,
+            c: formattedProof.c,
+        };
+
+        return [virtualInputs, virtualProof];
+    }
+
     static unpackSpawnInputs(
         formattedProof: Groth16ProofCalldata,
-        sig: string,
-        b: number
+        sig: string
     ) {
         const spawnInputs = {
             canSpawn: formattedProof.input[0] === "1",
             spawnCityId: Number(formattedProof.input[1]),
-            commitBlockHash: formattedProof.input[2],
-            hPrevTile: formattedProof.input[3],
-            hSpawnTile: formattedProof.input[4],
-            hBlind: formattedProof.input[5],
+            hPrevTile: formattedProof.input[2],
+            hSpawnTile: formattedProof.input[3],
+            hBlindLoc: formattedProof.input[4],
         };
         const spawnProof = {
             a: formattedProof.a,
@@ -193,7 +232,7 @@ export class Utils {
             v: unpackedSig.v,
             r: unpackedSig.r,
             s: unpackedSig.s,
-            b,
+            b: 0,
         };
 
         return [spawnInputs, spawnProof, spawnSig];

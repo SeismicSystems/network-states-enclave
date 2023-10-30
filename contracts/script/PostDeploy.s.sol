@@ -6,6 +6,7 @@ import {console} from "forge-std/console.sol";
 import {IWorld} from "../src/codegen/world/IWorld.sol";
 import {Groth16Verifier as MoveVerifier} from "../src/MoveVerifier.sol";
 import {Groth16Verifier as SpawnVerifier} from "../src/SpawnVerifier.sol";
+import {Groth16Verifier as VirtualVerifier} from "../src/VirtualVerifier.sol";
 
 contract PostDeploy is Script {
     function run(address worldAddress) external {
@@ -14,6 +15,10 @@ contract PostDeploy is Script {
 
         // Start broadcasting transactions from the deployer account
         vm.startBroadcast(deployerPrivateKey);
+
+        VirtualVerifier virtualVerifier = new VirtualVerifier();
+        IWorld(worldAddress).setVirtualVerifier(address(virtualVerifier));
+
 
         // Deploy the Spawn Verifier contract
         SpawnVerifier spawnVerifier = new SpawnVerifier();

@@ -71,10 +71,11 @@ const nStates = new ethers.Contract(worlds[31337].address, abi, signer);
  * Enclave randomness that it commits to in contract. Used for virtual tile
  * commitments.
  */
-let r: BigInt;
+let rand: bigint;
+let hRand: bigint;
 
 type ClaimedSpawn = {
-    prevTile: Tile;
+    virtTile: Tile;
     spawnTile: Tile;
 };
 
@@ -199,10 +200,10 @@ function login(socket: Socket, address: string, sigStr: string) {
         let visibleTiles = new Set<string>();
         b.playerCities.get(address)?.forEach((cityId: number) => {
             b.cityTiles.get(cityId)?.forEach((locString: string) => {
-                const tl = JSON.parse(locString);
-                if (tl) {
-                    for (let loc of b.getNearbyLocations(tl)) {
-                        visibleTiles.add(JSON.stringify(loc));
+                const loc = Utils.unstringifyLocation(locString);
+                if (loc) {
+                    for (let l of b.getNearbyLocations(loc)) {
+                        visibleTiles.add(Utils.stringifyLocation(l));
                     }
                 }
             });
@@ -218,12 +219,11 @@ function login(socket: Socket, address: string, sigStr: string) {
  * at location for contract to verify, or null value if player cannot spawn at
  * this location.
  */
-async function getSpawnSignature(
+async function sendSpawnSignature(
     socket: Socket,
     symbol: string,
-    address: string,
-    sigStr: string,
-    playerSecret: string
+    l: string,
+    blind: string
 ) {
     const sender = idToAddress.get(socket.id);
     if (inRecoveryMode || !sender) {
@@ -237,34 +237,29 @@ async function getSpawnSignature(
         return;
     }
 
-    if (claimedSpawns.has(address)) {
-        console.log("Already committed to spawn");
+    let playerChallenge: bigint;
+    try {
+        playerChallenge = BigInt(blind);
+    } catch (error) {
+        console.log("Malignant secret: ", blind);
         socket.disconnect();
         return;
     }
 
-    let playerChallenge: BigInt | undefined;
+    let loc: Location;
     try {
-        playerChallenge = BigInt(playerSecret);
+        loc = Utils.unstringifyLocation(l);
     } catch (error) {
-        console.log("Malignant secret: ", sigStr);
+        console.log("Malignant location string: ", l);
         socket.disconnect();
         return;
     }
 
     // Check if player has committed to spawning onchain
-    const latestBlockCommited = Number(
-        await nStates.getSpawnCommitment(address)
-    );
-    const hBlind = await nStates.getSpawnblindHash(address);
+    const hBlindLoc = BigInt(await nStates.getSpawnCommitment(sender));
 
-    if (
-        latestBlockCommited == 0 ||
-        hBlind != Utils.poseidonExt([playerChallenge])
-    ) {
-        console.log(
-            "Player already has enclave sig, or hBlind is inconsistent"
-        );
+    if (hBlindLoc != Utils.poseidonExt([playerChallenge, loc.r, loc.c])) {
+        console.log("hBlindLoc is inconsistent");
         socket.disconnect();
         return;
     }
@@ -273,52 +268,57 @@ async function getSpawnSignature(
     idToAddress.set(socket.id, sender);
     addressToId.set(sender, socket.id);
 
-    // Compute location
-    const commitBlockHash = await nStates.getBlockHash(latestBlockCommited);
-
-    // [TODO]: determine formula for row/col
-    const rawRow = Utils.poseidonExt([playerChallenge, commitBlockHash, 0]);
-    const rawCol = Utils.poseidonExt([playerChallenge, commitBlockHash, 1]);
-    const r = BigInt(rawRow % b.t.length);
-    const c = BigInt(rawCol % b.t.length);
-    const l = { r, c };
-
-    const prevTile = b.getTile(l);
-    const hPrevTile = prevTile.hash();
+    const virtTile = Tile.genVirtual(loc, rand);
     const spawnTile = Tile.spawn(
-        new Player(symbol, address),
-        l,
+        new Player(symbol, sender),
+        loc,
         START_RESOURCES,
         cityId
     );
     cityId++;
     const hSpawnTile = spawnTile.hash();
 
-    claimedSpawns.set(address, { prevTile, spawnTile });
+    // Generate ZKP that attests to valid virtual tile commitment
+    const [prf, pubSignals] = await Tile.virtualZKP(loc, rand, hRand);
 
-    // Is this right???
-    const digest = utils.solidityKeccak256(
-        ["uint256", "uint256", "uint256"],
-        [latestBlockCommited, hPrevTile, hSpawnTile]
-    );
+    // Acknowledge reception of intended move
+    const digest = utils.solidityKeccak256(["uint256"], [hSpawnTile]);
     const sig = await signer.signMessage(utils.arrayify(digest));
 
     socket.emit(
         "spawnSignatureResponse",
+        virtTile,
+        spawnTile,
         sig,
-        prevTile.toJSON(),
-        spawnTile.toJSON()
+        prf,
+        pubSignals
     );
+
+    claimedSpawns.set(sender, { virtTile, spawnTile });
 }
 
 /*
  * Propose move to enclave. In order for the move to be solidified, the enclave
  * must respond to a leaf event.
  */
-async function getMoveSignature(socket: Socket, uFrom: any, uTo: any) {
+async function sendMoveSignature(
+    socket: Socket,
+    uFrom: any,
+    uTo: any,
+    blind: string
+) {
     const sender = idToAddress.get(socket.id);
     if (inRecoveryMode || !sender) {
         // Cut the connection
+        socket.disconnect();
+        return;
+    }
+
+    let playerChallenge: bigint;
+    try {
+        playerChallenge = BigInt(blind);
+    } catch (error) {
+        console.log("Malignant secret: ", blind);
         socket.disconnect();
         return;
     }
@@ -335,6 +335,29 @@ async function getMoveSignature(socket: Socket, uFrom: any, uTo: any) {
         const uToAsTile = Tile.fromJSON(uTo);
         const hUTo = uToAsTile.hash();
 
+        // Generate ZKP that attests to valid virtual tile commitment
+        const [prf, pubSignals] = await Tile.virtualZKP(
+            uToAsTile.loc,
+            rand,
+            hRand
+        );
+
+        const digest = utils.solidityKeccak256(
+            ["uint256", "uint256", "uint256"],
+            [currentBlockHeight, hUFrom, hUTo]
+        );
+        const sig = await signer.signMessage(utils.arrayify(digest));
+
+        socket.emit(
+            "moveSignatureResponse",
+            sig,
+            currentBlockHeight,
+            prf,
+            pubSignals
+        );
+
+        playerLatestBlock.set(sender, currentBlockHeight);
+
         // Push to DA
         const uFromEnc = enqueueTile(uFromAsTile);
         const uToEnc = enqueueTile(uToAsTile);
@@ -346,15 +369,6 @@ async function getMoveSignature(socket: Socket, uFrom: any, uTo: any) {
             uFromEnc,
             uToEnc,
         });
-
-        const digest = utils.solidityKeccak256(
-            ["uint256", "uint256", "uint256"],
-            [currentBlockHeight, hUFrom, hUTo]
-        );
-        const sig = await signer.signMessage(utils.arrayify(digest));
-
-        socket.emit("moveSignatureResponse", sig, currentBlockHeight);
-        playerLatestBlock.set(sender, currentBlockHeight);
 
         // Clear queue if DA node is online
         dequeueTileIfDAConnected();
@@ -375,10 +389,10 @@ function decrypt(socket: Socket, l: Location) {
     }
 
     const owner = new Player("", idToAddress.get(socket.id)!);
-    if (b.noFog(l, owner)) {
-        socket.emit("decryptResponse", b.getTile(l).toJSON());
+    if (b.noFog(l, owner, rand)) {
+        socket.emit("decryptResponse", b.getTile(l, rand));
     } else {
-        socket.emit("decryptResponse", Tile.mystery(l).toJSON());
+        socket.emit("decryptResponse", Tile.mystery(l));
     }
 }
 
@@ -424,7 +438,7 @@ function onSpawnAttempt(player: string, success: boolean) {
 
         const visibleLocs = b
             .getNearbyLocations(spawn.spawnTile.loc)
-            .map((loc) => JSON.stringify(loc));
+            .map((loc) => Utils.stringifyLocation(loc));
 
         io.to(socketId).emit("loginResponse", visibleLocs);
     } else if (!success) {
@@ -449,7 +463,7 @@ function onMoveFinalize(hUFrom: string, hUTo: string) {
         claimedMoves.delete(moveHash);
 
         // Before state is updated, we need the previous 'to' tile owner
-        const tTo = b.getTile(move.uTo.loc);
+        const tTo = b.getTile(move.uTo.loc, rand);
         const newOwner = move.uTo.owner.address;
         const prevOwner = tTo.owner.address;
         const ownershipChanged = prevOwner !== newOwner;
@@ -458,7 +472,7 @@ function onMoveFinalize(hUFrom: string, hUTo: string) {
         let updatedLocs = [move.uFrom.loc];
         if (ownershipChanged && tTo.isCityCenter()) {
             b.cityTiles.get(tTo.cityId)?.forEach((locString: string) => {
-                const loc = JSON.parse(locString);
+                const loc = Utils.unstringifyLocation(locString);
                 if (loc) {
                     updatedLocs.push(loc);
                 }
@@ -498,10 +512,10 @@ function alertPlayers(
     let alertPlayerMap = new Map<string, Set<string>>();
 
     for (let loc of updatedLocs) {
-        const locString = JSON.stringify(loc);
+        const locString = Utils.stringifyLocation(loc);
         for (let l of b.getNearbyLocations(loc)) {
-            const tileOwner = b.getTile(l).owner.address;
-            const lString = JSON.stringify(l);
+            const tileOwner = b.getTile(l, rand).owner.address;
+            const lString = Utils.stringifyLocation(l);
 
             if (!alertPlayerMap.has(tileOwner)) {
                 alertPlayerMap.set(tileOwner, new Set<string>());
@@ -564,13 +578,7 @@ async function sendRecoveredTileResponse(socket: Socket, encTile: any) {
 
     if (tile && hashHistory.has(tile.hash())) {
         if (!b.isSpawned(tile.owner)) {
-            b.spawn(
-                tile.loc,
-                tile.owner,
-                START_RESOURCES,
-                tile.cityId,
-                undefined
-            );
+            b.spawn(tile.loc, tile.owner, START_RESOURCES, tile.cityId);
             cityId++;
         } else {
             b.setTile(tile);
@@ -661,18 +669,21 @@ io.on("connection", (socket: Socket) => {
     });
     socket.on(
         "getSpawnSignature",
-        async (symb: string, address: string, sig: string, s: string) => {
-            getSpawnSignature(socket, symb, address, sig, s);
+        async (symb: string, l: string, blind: string) => {
+            sendSpawnSignature(socket, symb, l, blind);
         }
     );
     socket.on("handshakeDA", () => {
         handshakeDA(socket);
     });
-    socket.on("getMoveSignature", async (uFrom: any, uTo: any) => {
-        getMoveSignature(socket, uFrom, uTo);
-    });
-    socket.on("decrypt", (l: Location) => {
-        decrypt(socket, l);
+    socket.on(
+        "getMoveSignature",
+        async (uFrom: any, uTo: any, blind: string) => {
+            sendMoveSignature(socket, uFrom, uTo, blind);
+        }
+    );
+    socket.on("decrypt", (l: string) => {
+        decrypt(socket, Utils.unstringifyLocation(l));
     });
     socket.on("sendRecoveredTileResponse", (encTile: any) => {
         sendRecoveredTileResponse(socket, encTile);
@@ -726,9 +737,6 @@ server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
             "hex"
         );
 
-        // Seed board, but do not update global state
-        await b.seed(BOARD_SIZE, true, undefined, terrainUtils.getTerrainAtLoc);
-
         // Cannot recover until DA node connects
         console.log("In recovery mode, waiting for DA node to connect");
     } else {
@@ -743,12 +751,11 @@ server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
         );
 
         // Commit to enclave randomness, derived from AES key for DA
-        r = Utils.poseidonExt([
+        rand = Utils.poseidonExt([
             BigInt("0x" + tileEncryptionKey.toString("hex")),
         ]);
-        await nStates.setEnclaveRandCommitment(
-            Utils.poseidonExt([r]).toString()
-        );
+        hRand = Utils.poseidonExt([rand]);
+        await nStates.setEnclaveRandCommitment(hRand.toString());
     }
 
     console.log(

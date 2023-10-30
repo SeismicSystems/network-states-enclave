@@ -8,6 +8,8 @@ pragma solidity >=0.8.21;
  * @dev This interface is automatically generated from the corresponding system contract. Do not edit manually.
  */
 interface IConfigSystem {
+  function setVirtualVerifier(address virtualVerifier) external;
+
   function setSpawnVerifier(address spawnVerifier) external;
 
   function setMoveVerifier(address moveVerifier) external;
