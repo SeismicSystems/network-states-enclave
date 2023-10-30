@@ -143,8 +143,6 @@ export class Board {
     }
 
     public getNearbyLocations(l: Location): Location[] {
-        console.log('r', typeof l.r);
-        console.log('c', typeof l.c);
         let locs: Location[] = [];
         for (let r = l.r - 1n; r <= l.r + 1n; r++) {
             for (let c = l.c - 1n; c <= l.c + 1n; c++) {
