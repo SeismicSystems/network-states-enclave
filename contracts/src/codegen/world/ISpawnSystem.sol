@@ -5,6 +5,7 @@ pragma solidity >=0.8.21;
 
 import { SpawnInputs } from "common/SpawnInputs.sol";
 import { Groth16Proof } from "common/Groth16Proof.sol";
+import { VirtualInputs } from "common/VirtualInputs.sol";
 import { Signature } from "common/Signature.sol";
 
 /**
@@ -14,7 +15,13 @@ import { Signature } from "common/Signature.sol";
 interface ISpawnSystem {
   function commitToSpawn(uint256 h) external;
 
-  function spawn(SpawnInputs memory spawnInputs, Groth16Proof memory spawnProof, Signature memory sig) external;
+  function spawn(
+    SpawnInputs memory spawnInputs,
+    Groth16Proof memory spawnProof,
+    VirtualInputs memory virtualInputs,
+    Groth16Proof memory virtualProof,
+    Signature memory sig
+  ) external;
 
   function set(uint256 h) external;
 

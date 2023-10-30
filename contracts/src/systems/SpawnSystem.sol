@@ -7,10 +7,12 @@ import {IEnclaveEvents} from "common/IEnclaveEvents.sol";
 import {Config, SpawnCommitment, TileCommitment} from "codegen/index.sol";
 import {Groth16Proof} from "common/Groth16Proof.sol";
 import {SpawnInputs} from "common/SpawnInputs.sol";
+import {VirtualInputs} from "common/VirtualInputs.sol";
 import {Signature} from "common/Signature.sol";
 import {IEnclaveEvents} from "common/IEnclaveEvents.sol";
 import {LibSpawn} from "libraries/LibSpawn.sol";
 import {LibSpawnVerify} from "libraries/LibSpawnVerify.sol";
+import {LibVirtualVerify} from "libraries/LibVirtualVerify.sol";
 
 contract SpawnSystem is IEnclaveEvents, System {
     function commitToSpawn(uint256 h) public {
@@ -29,10 +31,13 @@ contract SpawnSystem is IEnclaveEvents, System {
     function spawn(
         SpawnInputs memory spawnInputs,
         Groth16Proof memory spawnProof,
+        VirtualInputs memory virtualInputs,
+        Groth16Proof memory virtualProof,
         Signature memory sig
     ) public {
         LibSpawn.checkSpawnInputs(_msgSender(), spawnInputs, sig);
         LibSpawnVerify.verifySpawnProof(spawnInputs, spawnProof);
+        LibVirtualVerify.verifyVirtualProof(virtualInputs, virtualProof);
 
         if (spawnInputs.canSpawn) {
             LibSpawn.spawnPlayer(_msgSender(), spawnInputs);

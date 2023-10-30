@@ -8,6 +8,7 @@ export default mudConfig({
             valueSchema: {
                 enclave: "address",
                 enclaveRandCommitment: "uint256",
+                virtualVerifierContract: "address",
                 spawnVerifierContract: "address",
                 moveVerifierContract: "address",
                 snarkFieldSize: "uint256",
@@ -24,6 +25,12 @@ export default mudConfig({
             }
         },
         TileCommitment: {
+            keySchema: { id: "uint256" },
+            valueSchema: {
+                value: "bool",
+            },
+        },
+        ConsumedCommitment: {
             keySchema: { id: "uint256" },
             valueSchema: {
                 value: "bool",

@@ -1,12 +1,23 @@
-import { Location } from "../game";
+import { Groth16Proof, Location } from "../game";
 
 interface ServerToClientEvents {
     loginResponse: (locs: string[]) => void;
     trySpawn: () => void;
     handshakeDAResponse: (inRecoveryMode: boolean) => void;
     decryptResponse: (t: any) => void;
-    spawnSignatureResponse: (sig: string, prev: any, spawn: any) => void;
-    moveSignatureResponse: (sig: string, b: number) => void;
+    spawnSignatureResponse: (
+        virt: any,
+        spawn: any,
+        sig: string,
+        prf: any,
+        pubsigs: any
+    ) => void;
+    moveSignatureResponse: (
+        sig: string,
+        b: number,
+        prf: any,
+        pubsigs: any
+    ) => void;
     errorResponse: (msg: string) => void;
     updateDisplay: (locs: string[]) => void;
     sendRecoveredTile: (index: number) => void;
@@ -16,14 +27,9 @@ interface ServerToClientEvents {
 interface ClientToServerEvents {
     login: (address: string, sig: string) => void;
     handshakeDA: () => void;
-    decrypt: (l: Location) => void;
-    getSpawnSignature: (
-        symb: string,
-        address: string,
-        sig: string,
-        s: string
-    ) => void;
-    getMoveSignature: (uFrom: any, uTo: any) => void;
+    decrypt: (l: string) => void;
+    getSpawnSignature: (symb: string, blind: string) => void;
+    getMoveSignature: (uFrom: any, uTo: any, blind: string) => void;
     sendRecoveredTileResponse: (enc: any) => void;
     recoveryFinished: () => void;
     saveToDatabaseResponse: () => void;

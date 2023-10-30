@@ -102,4 +102,6 @@ template Spawn() {
     signal circuithBlind <== Poseidon(1)([blind]);
     signal hBlindCorrect <== IsEqual()([circuithBlind, hBlind]);
     hBlindCorrect === 1;
+
+    // [TODO] Constrain location
 }

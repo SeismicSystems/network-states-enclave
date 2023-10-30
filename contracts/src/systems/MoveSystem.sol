@@ -3,24 +3,37 @@ pragma solidity >=0.8.0;
 
 import {System} from "@latticexyz/world/src/System.sol";
 
-import {Config, City, TileCommitment} from "codegen/index.sol";
+import {Config, City, TileCommitment, ConsumedCommitment} from "codegen/index.sol";
 import {Groth16Proof} from "common/Groth16Proof.sol";
 import {MoveInputs} from "common/MoveInputs.sol";
+import {VirtualInputs} from "common/VirtualInputs.sol";
 import {Signature} from "common/Signature.sol";
 import {IEnclaveEvents} from "common/IEnclaveEvents.sol";
 import {LibCity} from "libraries/LibCity.sol";
 import {LibMove} from "libraries/LibMove.sol";
+import {LibVirtual} from "libraries/LibVirtual.sol";
 import {LibMoveVerify} from "libraries/LibMoveVerify.sol";
 
 contract MoveSystem is IEnclaveEvents, System {
     function move(
         MoveInputs memory moveInputs,
         Groth16Proof memory moveProof,
+        VirtualInputs memory virtualInputs,
+        Groth16Proof memory virtualProof,
         Signature memory sig
     ) public {
         LibMove.checkMoveInputs(_msgSender(), moveInputs, sig);
         LibMoveVerify.verifyMoveProof(moveInputs, moveProof);
 
+        bool ontoUnowned = moveInputs.toCityId == 0;
+        if (ontoUnowned) {
+            LibVirtual.checkInputsOntoUnowned(virtualInputs, virtualProof);
+
+            // If moving onto unowned tile, consume virtual commitment
+            ConsumedCommitment.set(virtualInputs.hVirt, true);
+        }
+
+        // Execute whether or not player moves onto unowned tile
         TileCommitment.deleteRecord({id: moveInputs.hTFrom});
         TileCommitment.set({id: moveInputs.hUFrom, value: true});
         TileCommitment.deleteRecord({id: moveInputs.hTTo});

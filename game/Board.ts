@@ -3,85 +3,62 @@ import { groth16 } from "snarkjs";
 import { Groth16Proof, Terrain, TerrainGenerator, Utils } from "./Utils.js";
 import { Player } from "./Player.js";
 import { Tile, Location } from "./Tile.js";
+import dotenv from "dotenv";
+dotenv.config({ path: "../.env" });
 
 export class Board {
     static MOVE_WASM: string = "../circuits/move/move.wasm";
     static MOVE_PROVKEY: string = "../circuits/move/move.zkey";
-    static PERIMETER: number[][] = [-1, 0, 1].flatMap((x) =>
-        [-1, 0, 1].map((y) => [x, y])
+    static PERIMETER: bigint[][] = [-1n, 0n, 1n].flatMap((x) =>
+        [-1n, 0n, 1n].map((y) => [x, y])
+    );
+    static SNARK_FIELD_SIZE: bigint = BigInt(
+        <string>process.env.SNARK_FIELD_SIZE
     );
 
-    t: Tile[][];
+    t: Map<string, Tile>;
+    length: bigint;
 
     playerCities: Map<string, Set<number>>;
     cityTiles: Map<number, Set<string>>;
 
     public constructor() {
-        this.t = new Array<Array<Tile>>();
+        this.t = new Map<string, Tile>();
+        this.length = 5n;
 
         this.playerCities = new Map<string, Set<number>>();
         this.cityTiles = new Map<number, Set<string>>();
     }
 
     /*
-     * Seed game board by sampling access key for each tile, updating on-chain
-     * hashes along the way. Doesn't do any sampling if isInit flag is off.
-     * With that setting, it only initializes board with mystery tiles.
-     */
-
-    public async seed(
-        sz: number,
-        isInit: boolean,
-        nStates: any,
-        terrainGenerator?: TerrainGenerator
-    ) {
-        if (isInit && !terrainGenerator)
-            throw Error("[Board] Terrain Generator not provided");
-        for (let i = 0; i < sz; i++) {
-            let row: Tile[] = new Array<Tile>();
-            for (let j = 0; j < sz; j++) {
-                if (isInit) {
-                    let tl: Tile;
-                    const location = { r: i, c: j };
-                    const terrain = terrainGenerator(location);
-                    switch (terrain) {
-                        case Terrain.BARE:
-                            tl = Tile.genUnowned(location);
-                            break;
-                        case Terrain.WATER:
-                            tl = Tile.water(location);
-                            break;
-                        case Terrain.HILL:
-                            tl = Tile.hill(location);
-                            break;
-                        default:
-                            throw new Error("Invalid terrain type.");
-                    }
-                    if (nStates) {
-                        await nStates.set(tl.hash());
-                    }
-                    row.push(tl);
-                } else {
-                    row.push(Tile.mystery({ r: i, c: j }));
-                }
-            }
-            this.t.push(row);
-        }
-    }
-
-    /*
      * Check if a location = (row, col) pair is within the bounds of the board.
      */
-    public inBounds(r: number, c: number): boolean {
-        return r < this.t.length && r >= 0 && c < this.t[0].length && c >= 0;
+    public inBounds(r: bigint, c: bigint): boolean {
+        return (
+            r < Board.SNARK_FIELD_SIZE &&
+            r >= 0 &&
+            c < Board.SNARK_FIELD_SIZE &&
+            c >= 0
+        );
     }
 
     /*
      * Throws an error if a presented location isn't in bounds.
      */
-    private assertBounds(l: Location) {
-        if (!this.inBounds(l.r, l.c)) {
-            throw new Error("Tried to edit tile out of bounds.");
+    private assertBounds(l: Location): boolean {
+        return this.inBounds(l.r, l.c);
+    }
+
+    /*
+     * Populates the board with mystery tiles in a 10x10 grid.
+     */
+    public seed() {
+        for (let r = 0n; r < 10n; r++) {
+            for (let c = 0n; c < 10n; c++) {
+                const loc: Location = { r, c };
+                const tile: Tile = Tile.mystery(loc);
+                this.t.set(Utils.stringifyLocation(loc), tile);
+            }
         }
     }
 
@@ -92,38 +69,24 @@ export class Board {
         l: Location,
         pl: Player,
         resource: number,
-        cityId: number,
-        nStates: any
+        cityId: number
     ) {
         this.assertBounds(l);
 
-        let r = l.r,
-            c = l.c;
-        if (!this.t[r][c].isUnowned()) {
-            throw new Error("Tried to spawn player on an owned tile.");
+        if (!this.getTile(l, 0n).isUnowned()) {
+            console.error("Tried to spawn player on an owned tile.");
+            return;
         }
 
-        const tl = Tile.genOwned(
-            pl,
-            { r, c },
-            resource,
-            cityId,
-            0,
-            Tile.CITY_TILE
-        );
+        const tl = Tile.genOwned(pl, l, resource, cityId, 0, Tile.CITY_TILE);
 
         this.setTile(tl);
 
         this.playerCities.set(pl.address, new Set<number>().add(cityId));
         this.cityTiles.set(
             cityId,
-            new Set<string>().add(JSON.stringify({ r, c }))
+            new Set<string>().add(Utils.stringifyLocation(l))
         );
-
-        // Update the global state on-chain.
-        if (nStates) {
-            await nStates.spawn(pl.address, cityId, this.t[r][c].hash());
-        }
     }
 
     /*
@@ -139,9 +102,9 @@ export class Board {
      * the perspective of the client.
      */
     public printView(): void {
-        for (let i = 0; i < this.t.length; i++) {
-            for (let j = 0; j < this.t[0].length; j++) {
-                let tl: Tile = this.getTile({ r: i, c: j });
+        for (let r = 0n; r < 5n; r++) {
+            for (let c = 0n; c < 5n; c++) {
+                let tl: Tile = this.getTile({ r, c }, 0n);
                 let color;
                 const reset = "\x1b[0m";
                 if (tl.tileType === Tile.WATER_TILE) {
@@ -165,17 +128,26 @@ export class Board {
     }
 
     /*
-     * Getter for Tile at a location.
+     * Getter for Tile at a location, or undefined if passed in location is
+     * invalid.
      */
-    public getTile(l: Location): Tile {
-        this.assertBounds(l);
-        return this.t[l.r][l.c];
+    public getTile(l: Location, r: bigint): Tile | undefined {
+        if (this.assertBounds(l)) {
+            let tl = this.t.get(Utils.stringifyLocation(l));
+            if (!tl) {
+                tl = Tile.genVirtual(l, r);
+            }
+            return tl;
+        }
+        return undefined;
     }
 
     public getNearbyLocations(l: Location): Location[] {
+        console.log('r', typeof l.r);
+        console.log('c', typeof l.c);
         let locs: Location[] = [];
-        for (let r = l.r - 1; r <= l.r + 1; r++) {
-            for (let c = l.c - 1; c <= l.c + 1; c++) {
+        for (let r = l.r - 1n; r <= l.r + 1n; r++) {
+            for (let c = l.c - 1n; c <= l.c + 1n; c++) {
                 if (this.inBounds(r, c)) {
                     locs.push({ r, c });
                 }
@@ -188,7 +160,7 @@ export class Board {
      * Set location to new Tile value. Enclave-only func.
      */
     public setTile(tl: Tile) {
-        const oldTile = this.t[tl.loc.r][tl.loc.c];
+        const oldTile = this.getTile(tl.loc, 0n);
         const oldOwner = oldTile.owner.address;
         const newOwner = tl.owner.address;
 
@@ -197,7 +169,7 @@ export class Board {
             this.playerCities.set(newOwner, new Set<number>().add(tl.cityId));
             this.cityTiles.set(
                 tl.cityId,
-                new Set<string>().add(JSON.stringify(tl.loc))
+                new Set<string>().add(Utils.stringifyLocation(tl.loc))
             );
         } else {
             if (oldOwner !== newOwner) {
@@ -207,7 +179,7 @@ export class Board {
                     for (let locString of this.cityTiles.get(oldTile.cityId)!) {
                         const loc = JSON.parse(locString);
                         if (loc) {
-                            this.t[loc.r][loc.c].owner = tl.owner;
+                            this.getTile(loc, 0n).owner = tl.owner;
                         }
                     }
 
@@ -221,7 +193,7 @@ export class Board {
                     }
                 } else {
                     // Normal/water tile with a new owner
-                    const locString = JSON.stringify(tl.loc);
+                    const locString = Utils.stringifyLocation(tl.loc);
                     this.cityTiles.get(oldTile.cityId)?.delete(locString);
                     this.cityTiles.get(tl.cityId)?.add(locString);
                 }
@@ -229,11 +201,10 @@ export class Board {
             } else if (oldTile.isCityCenter()) {
                 // Change tile ownership
                 for (let locString of this.cityTiles.get(oldTile.cityId)!) {
-                    const loc = JSON.parse(locString);
-                    if (loc) {
-                        let tile = this.t[loc.r][loc.c];
+                    const tile = this.t.get(locString);
+                    if (tile) {
                         tile.owner = oldTile.owner;
-                        this.t[loc.r][loc.c] = tile;
+                        this.t.set(locString, tile);
                     }
                 }
 
@@ -241,51 +212,32 @@ export class Board {
                 this.playerCities.get(newOwner)?.add(tl.cityId);
             } else {
                 // Normal/water tile with a new owner
-                const locString = JSON.stringify(tl.loc);
+                const locString = Utils.stringifyLocation(tl.loc);
                 this.cityTiles.get(oldTile.cityId)?.delete(locString);
                 this.cityTiles.get(tl.cityId)?.add(locString);
             }
         }
-        this.t[tl.loc.r][tl.loc.c] = tl;
+        this.t.set(Utils.stringifyLocation(tl.loc), tl);
     }
 
     /*
      * Check if a location is NOT in the FoW for requesting player. Enclave-only
      * func.
      */
-    public noFog(l: Location, reqPlayer: Player): boolean {
-        let r = l.r,
-            c = l.c;
+    public noFog(l: Location, reqPlayer: Player, r: bigint): boolean {
         let foundNeighbor = false;
         Board.PERIMETER.forEach(([dy, dx]) => {
-            let nr = r + dy,
-                nc = c + dx;
+            let nr = l.r + dy,
+                nc = l.c + dx;
+            let tl = this.getTile({ r: nr, c: nc }, r);
             if (
-                this.inBounds(nr, nc) &&
-                this.playerCities
-                    .get(reqPlayer.address)
-                    ?.has(this.t[nr][nc].cityId)
+                tl &&
+                this.playerCities.get(reqPlayer.address)?.has(tl.cityId)
             ) {
                 foundNeighbor = true;
             }
         });
         return foundNeighbor;
-    }
-
-    /*
-     * Returns true if every Tile in this board instance is a Mystery. Only
-     * happens when not player isn't spawned yet.
-     */
-    public noVisibility() {
-        for (let i = 0; i < this.t.length; i++) {
-            for (let j = 0; j < this.t[0].length; j++) {
-                const tl: Tile = this.getTile({ r: i, c: j });
-                if (!tl.isMystery()) {
-                    return false;
-                }
-            }
-        }
-        return true;
     }
 
     /*
@@ -371,8 +323,8 @@ export class Board {
         to: Location,
         nStates: any
     ): Promise<[Tile, Tile, Tile, Tile, Groth16Proof, any]> {
-        const tFrom: Tile = this.getTile(from);
-        const tTo: Tile = this.getTile(to);
+        const tFrom: Tile = this.getTile(from, 0n);
+        const tTo: Tile = this.getTile(to, 0n);
 
         const currentWaterInterval = (
             await nStates.getCurrentInterval()

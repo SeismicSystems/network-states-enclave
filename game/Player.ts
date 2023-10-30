@@ -14,7 +14,7 @@ export class Player {
 
     symbol: string;
     address: string;
-    blind: BigInt;
+    blind: bigint;
     hBlind: string;
 
     constructor(symb: string, address: string, socketId?: string) {
@@ -25,7 +25,7 @@ export class Player {
     }
 
     public sampleBlind() {
-        this.blind = genRandomSalt();
+        this.blind = genRandomSalt() as bigint;
         this.hBlind = poseidonPerm([BigInt(0), this.blind])[0].toString();
     }
 

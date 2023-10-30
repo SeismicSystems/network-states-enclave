@@ -1,15 +1,21 @@
+// @ts-ignore
+import { groth16 } from "snarkjs";
+import { Groth16Proof } from "./Utils.js";
 import { genRandomSalt } from "maci-crypto";
 import { Player } from "./Player.js";
 import { Utils } from "./Utils.js";
 
 export type Location = {
-    r: BigInt;
-    c: BigInt;
+    r: bigint;
+    c: bigint;
 };
 
 export class Tile {
     static UNOWNED: Player = new Player("_", "");
     static MYSTERY: Player = new Player("?", "");
+
+    static VIRT_WASM: string = "../circuits/virtual/virtual.wasm";
+    static VIRT_PROVKEY: string = "../circuits/virtual/virtual.zkey";
 
     // If cityId = 0 then the tile is considered unowned
     static UNOWNED_ID: number = 0;
@@ -23,31 +29,31 @@ export class Tile {
     owner: Player;
     loc: Location;
     resources: number;
-    key: BigInt;
+    key: bigint;
     cityId: number;
     latestUpdateInterval: number;
     tileType: number;
 
     constructor(
-        o_: Player,
-        l_: Location,
-        r_: number,
-        k_: BigInt,
-        c_: number,
-        i_: number,
-        t_: number
+        own_: Player,
+        loc_: Location,
+        rsrc_: number,
+        key_: bigint,
+        cityId_: number,
+        interval_: number,
+        tp_: number
     ) {
-        this.owner = o_;
-        this.loc = l_;
-        this.resources = r_;
-        this.key = k_;
-        this.cityId = c_;
-        this.latestUpdateInterval = i_;
-        this.tileType = t_;
+        this.owner = own_;
+        this.loc = loc_;
+        this.resources = rsrc_;
+        this.key = key_;
+        this.cityId = cityId_;
+        this.latestUpdateInterval = interval_;
+        this.tileType = tp_;
     }
 
     /*
-     * Represent Tile as an array of BigInt values to pass into the circuit.
+     * Represent Tile as an array of bigint values to pass into the circuit.
      */
     toCircuitInput(): string[] {
         return [
@@ -66,9 +72,8 @@ export class Tile {
      */
     hash(): string {
         return Utils.poseidonExt([
-            BigInt(0),
             ...this.toCircuitInput().map((e) => BigInt(e)),
-        ])[0].toString();
+        ]).toString();
     }
 
     /*
@@ -144,6 +149,33 @@ export class Tile {
     }
 
     /*
+     * Generates a ZKP that attests to the faithful computation of a virtual
+     * tile given some committed randomness. Requester of this ZKP also provides
+     * a blinding factor for location so they can use it in their client-side
+     * ZKP.
+     */
+    static async virtualZKP(
+        loc: Location,
+        rand: bigint,
+        hRand: bigint,
+        blind: bigint
+    ): Promise<[Groth16Proof, any]> {
+        const v: Tile = Tile.genVirtual(loc, rand);
+        const { proof, publicSignals } = await groth16.fullProve(
+            {
+                hRand: hRand.toString(),
+                hVirt: v.hash(),
+                rand: rand.toString(),
+                blind: blind.toString(),
+                virt: v.toCircuitInput(),
+            },
+            Tile.VIRT_WASM,
+            Tile.VIRT_PROVKEY
+        );
+        return [proof, publicSignals];
+    }
+
+    /*
      * Convert JSON object to Tile.
      */
     static fromJSON(obj: any): Tile {
@@ -168,12 +200,12 @@ export class Tile {
     /*
      * Hill tile. Players cannot move onto a hill tile.
      */
-    static hill(l: Location): Tile {
+    static hill(l: Location, r: bigint): Tile {
         return new Tile(
             Tile.UNOWNED,
             l,
             0,
-            genRandomSalt(),
+            Tile.proceduralSalt(l, r),
             0,
             0,
             this.HILL_TILE
@@ -181,14 +213,14 @@ export class Tile {
     }
 
     /*
-     * New unowned tile with random salt as the access key.
+     * New virtual / unowned tile.
      */
-    static genUnowned(l: Location): Tile {
+    static genVirtual(l: Location, r: bigint): Tile {
         return new Tile(
             Tile.UNOWNED,
             l,
             0,
-            genRandomSalt(),
+            Tile.proceduralSalt(l, r),
             0,
             0,
             this.NORMAL_TILE
@@ -196,28 +228,44 @@ export class Tile {
     }
 
     /*
+     * Compute procedural access key at a given location for a given committed
+     * random value.
+     */
+    static proceduralSalt(l: Location, r: bigint): bigint {
+        return Utils.poseidonExt([r, l.r, l.c]);
+    }
+
+    /*
      * New owned tile with random salt as the access key.
      */
     static genOwned(
-        o_: Player,
-        l_: Location,
-        r_: number,
-        c_: number,
-        i_: number,
-        t_: number
+        owner: Player,
+        loc: Location,
+        rsrc: number,
+        cityId: number,
+        interval: number,
+        tp: number
     ): Tile {
-        return new Tile(o_, l_, r_, genRandomSalt(), c_, i_, t_);
+        return new Tile(
+            owner,
+            loc,
+            rsrc,
+            genRandomSalt() as bigint,
+            cityId,
+            interval,
+            tp
+        );
     }
 
     /*
      * Unowned water tile. Players can move troops onto water tiles
      */
-    static water(l_: Location): Tile {
+    static water(l: Location, r: bigint): Tile {
         return new Tile(
             Tile.UNOWNED,
-            l_,
+            l,
             0,
-            genRandomSalt(),
+            this.proceduralSalt(l, r),
             0,
             0,
             this.WATER_TILE

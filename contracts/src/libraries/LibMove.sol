@@ -14,8 +14,7 @@ library LibMove {
         Signature memory sig
     ) internal view {
         require(
-            TileCommitment.getValue({id: moveInputs.hTFrom}) &&
-                TileCommitment.getValue({id: moveInputs.hTTo}),
+            TileCommitment.getValue({id: moveInputs.hTFrom}),
             "Old tile states must be valid"
         );
         require(

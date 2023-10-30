@@ -7,7 +7,7 @@ import { ServerToClientEvents, ClientToServerEvents } from "../enclave/socket";
 import { Tile, Location } from "../game/Tile.js";
 import { Player } from "../game/Player.js";
 import { Board } from "../game/Board.js";
-import { Utils, Groth16ProofCalldata } from "../game/Utils.js";
+import { Utils, Groth16ProofCalldata, Groth16Proof } from "../game/Utils.js";
 import worlds from "../contracts/worlds.json" assert { type: "json" };
 import IWorldAbi from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "json" };
 
@@ -24,11 +24,12 @@ const PLAYER_PRIVKEY = JSON.parse(<string>process.env.ETH_PRIVKEYS)[
  */
 const BOARD_SIZE: number = parseInt(<string>process.env.BOARD_SIZE, 10);
 const MOVE_PROMPT: string = "Next move: ";
-const MOVE_KEYS: Record<string, number[]> = {
-    w: [-1, 0],
-    a: [0, -1],
-    s: [1, 0],
-    d: [0, 1],
+
+const MOVE_KEYS: Record<string, bigint[]> = {
+    w: [BigInt(-1), BigInt(0)],
+    a: [BigInt(0), BigInt(-1)],
+    s: [BigInt(1), BigInt(0)],
+    d: [BigInt(0), BigInt(1)],
 };
 
 /*
@@ -94,7 +95,7 @@ const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
  * hidden state.
  */
 function updatePlayerView(l: Location) {
-    socket.emit("decrypt", l);
+    socket.emit("decrypt", Utils.stringifyLocation(l));
 }
 
 async function commitToSpawn() {
@@ -106,14 +107,7 @@ async function commitToSpawn() {
 
     console.log("Getting spawn sig from enclave");
 
-    const sig = await signer.signMessage(socket.id);
-    socket.emit(
-        "getSpawnSignature",
-        PLAYER.symbol,
-        PLAYER.address,
-        sig,
-        PLAYER.blind.toString()
-    );
+    socket.emit("getSpawnSignature", PLAYER.symbol, PLAYER.blind.toString());
 }
 
 /*
@@ -121,15 +115,26 @@ async function commitToSpawn() {
  * or null values indicating that location is not spawnable, the player must
  * send a zkp in order to try again.
  */
-async function spawnSignatureResponse(sig: string, prev: any, spawn: any) {
-    const prevTile = Tile.fromJSON(prev);
+async function spawnSignatureResponse(
+    virt: any,
+    spawn: any,
+    sig: string,
+    virtPrf: any,
+    virtPubSigs: any
+) {
+    const virtTile = Tile.fromJSON(virt);
     const spawnTile = Tile.fromJSON(spawn);
 
-    cursor = spawnTile.loc;
+    const virtFormattedProof = await Utils.exportCallDataGroth16(
+        virtPrf,
+        virtPubSigs
+    );
+    const [virtInputs, virtProof] =
+        Utils.unpackVirtualInputs(virtFormattedProof);
 
     const [prf, pubSigs] = await PLAYER.constructSpawn(
         commitBlockHash,
-        prevTile,
+        virtTile,
         spawnTile
     );
 
@@ -142,7 +147,14 @@ async function spawnSignatureResponse(sig: string, prev: any, spawn: any) {
 
     console.log("Submitting spawn proof to nStates");
     try {
-        await nStates.spawn(spawnInputs, spawnProof, spawnSig);
+        await nStates.spawn(
+            spawnInputs,
+            spawnProof,
+            virtInputs,
+            virtProof,
+            spawnSig
+        );
+        cursor = spawnTile.loc;
     } catch (error) {
         console.error(error);
     }
@@ -182,7 +194,7 @@ async function move(inp: string, currentBlockHeight: number) {
         cursor = { r: nr, c: nc };
 
         // Alert enclave of intended move
-        socket.emit("getMoveSignature", uFrom, uTo);
+        socket.emit("getMoveSignature", uFrom, uTo, PLAYER.blind.toString());
     } catch (error) {
         console.log(error);
     }
@@ -202,12 +214,8 @@ async function loginResponse(locs: string[]) {
  */
 function decryptResponse(t: any) {
     const tl = Tile.fromJSON(t);
-    b.t[tl.loc.r][tl.loc.c] = tl;
 
-    // Set cursor if not already set
-    if (!cursor && tl.isCityCenter()) {
-        cursor = tl.loc;
-    }
+    b.t.set(Utils.stringifyLocation(tl.loc), tl);
 
     console.clear();
     b.printView();
@@ -218,14 +226,25 @@ function decryptResponse(t: any) {
  * Get signature for move proposal. This signature and the queued move will be
  * sent to the chain for approval.
  */
-async function moveSignatureResponse(sig: string, blockNumber: number) {
+async function moveSignatureResponse(
+    sig: string,
+    blockNumber: number,
+    virtPrf: any,
+    virtPubSigs: any
+) {
     const [moveInputs, moveProof, moveSig] = Utils.unpackMoveInputs(
         formattedProof,
         sig,
         blockNumber
     );
+    const virtFormattedProof = await Utils.exportCallDataGroth16(
+        virtPrf,
+        virtPubSigs
+    );
+    const [virtInputs, virtProof] =
+        Utils.unpackVirtualInputs(virtFormattedProof);
 
-    await nStates.move(moveInputs, moveProof, moveSig);
+    await nStates.move(moveInputs, moveProof, virtInputs, virtProof, moveSig);
 }
 
 /*
@@ -233,10 +252,15 @@ async function moveSignatureResponse(sig: string, blockNumber: number) {
  * a relevant move was made.
  */
 async function updateDisplay(locs: string[]) {
-    for (let l of locs) {
-        const unstringified = JSON.parse(l);
-        if (unstringified) {
-            updatePlayerView(unstringified);
+    for (let i = 0; i < locs.length; i++) {
+        const l = Utils.unstringifyLocation(locs[i]);
+        if (l) {
+            updatePlayerView(l);
+
+            // Set cursor if not previously set
+            if (i == 0 && !cursor) {
+                cursor = l;
+            }
         }
     }
 }
@@ -254,7 +278,7 @@ socket.on("connect", async () => {
     b = new Board();
 
     // Pass in dummy function to terrain generator because init is false
-    await b.seed(BOARD_SIZE, false, nStates);
+    await b.seed();
 
     const sig = await signer.signMessage(socket.id);
     socket.emit("login", PLAYER.address, sig);
