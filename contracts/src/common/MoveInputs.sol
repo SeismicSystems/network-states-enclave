@@ -4,6 +4,8 @@ pragma solidity >=0.8.0;
 struct MoveInputs {
     bool fromIsCityCenter;
     bool toIsCityCenter;
+    bool fromIsWaterTile;
+    bool toIsWaterTile;
     bool takingCity;
     bool ontoSelfOrUnowned;
     uint24 fromCityId;

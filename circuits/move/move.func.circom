@@ -285,14 +285,16 @@ template CheckCityIdCases(N_TL_ATRS, CITY_IDX, TYPE_IDX, CITY_TYPE) {
  * correctly.
  */
 template CheckPublicSignals(N_TL_ATRS, RSRC_IDX, CITY_IDX, UNOWNED_ID, TYPE_IDX, 
-    CITY_TYPE) {
+    CITY_TYPE, WATER_TYPE) {
     signal input fromCityId;
     signal input toCityId;
     signal input ontoSelfOrUnowned;
     signal input numTroopsMoved;
     signal input enemyLoss;
-    signal input fromIsCityTile;
-    signal input toIsCityTile;
+    signal input fromIsCityCenter;
+    signal input toIsCityCenter;
+    signal input fromIsWaterTile;
+    signal input toIsWaterTile;
     signal input takingCity;
 
     signal input ontoMoreOrEq;
@@ -339,13 +341,21 @@ template CheckPublicSignals(N_TL_ATRS, RSRC_IDX, CITY_IDX, UNOWNED_ID, TYPE_IDX,
     signal takingCityCorrect <== IsEqual()([takingCity, circuitTakingCity]);
     signal takingCityIncorrect <== NOT()(takingCityCorrect);
 
-    signal fromIsCityTileCorrect <== IsEqual()([fromIsCityTile, fromCity]);
-    signal toIsCityTileCorrect <== IsEqual()([toIsCityTile, ontoCity]);
-    signal isCityCorrect <== AND()(fromIsCityTileCorrect, toIsCityTileCorrect);
+    signal fromIsCityCenterCorrect <== IsEqual()([fromIsCityCenter, fromCity]);
+    signal toIsCityCenterCorrect <== IsEqual()([toIsCityCenter, ontoCity]);
+    signal isCityCorrect <== AND()(fromIsCityCenterCorrect, toIsCityCenterCorrect);
     signal isCityIncorrect <== NOT()(isCityCorrect);
 
-    out <== BatchIsZero(5)([cityIdIncorrect, numTroopsMovedIncorrect, 
-        enemyLossIncorrect, takingCityIncorrect, isCityIncorrect]);
+    signal circuitFromWater <== IsEqual()([tFrom[TYPE_IDX], WATER_TYPE]);
+    signal fromWaterCorrect <== IsEqual()([circuitFromWater, fromIsWaterTile]);
+    signal circuitToWater <== IsEqual()([tTo[TYPE_IDX], WATER_TYPE]);
+    signal toWaterCorrect <== IsEqual()([circuitToWater, toIsWaterTile]);
+    signal waterCorrect <== AND()(fromWaterCorrect, toWaterCorrect);
+    signal waterIncorrect <== NOT()(waterCorrect);
+
+    out <== BatchIsZero(6)([cityIdIncorrect, numTroopsMovedIncorrect, 
+        enemyLossIncorrect, takingCityIncorrect, isCityIncorrect, 
+        waterIncorrect]);
 }
 
 /*
@@ -382,8 +392,10 @@ template Move() {
     signal input ontoSelfOrUnowned;
     signal input numTroopsMoved;
     signal input enemyLoss;
-    signal input fromIsCityTile;
-    signal input toIsCityTile;
+    signal input fromIsCityCenter;
+    signal input toIsCityCenter;
+    signal input fromIsWaterTile;
+    signal input toIsWaterTile;
     signal input takingCity;
     signal input fromCityTroops;
     signal input toCityTroops;
@@ -403,10 +415,11 @@ template Move() {
         numTroopsMoved]);
 
     signal pubSignalsCorrect <== CheckPublicSignals(N_TL_ATRS, RSRC_IDX, 
-        CITY_IDX, UNOWNED_ID, TYPE_IDX, CITY_TYPE)(fromCityId, toCityId, 
-        ontoSelfOrUnowned, numTroopsMoved, enemyLoss, fromIsCityTile, 
-        toIsCityTile, takingCity, ontoMoreOrEq, tFrom, tTo, uFrom, uTo, 
-        fromUpdatedTroops, toUpdatedTroops);
+        CITY_IDX, UNOWNED_ID, TYPE_IDX, CITY_TYPE, WATER_TYPE)(fromCityId, 
+        toCityId, ontoSelfOrUnowned, numTroopsMoved, enemyLoss, 
+        fromIsCityCenter, toIsCityCenter, fromIsWaterTile, toIsWaterTile, 
+        takingCity, ontoMoreOrEq, tFrom, tTo, uFrom, uTo, fromUpdatedTroops, 
+        toUpdatedTroops);
     pubSignalsCorrect === 1;
 
     signal authCorrect <== CheckAuth(N_TL_ATRS)(hTFrom, hTTo, hUFrom, hUTo,
