@@ -6,8 +6,8 @@ import { Player } from "./Player.js";
 import { Utils } from "./Utils.js";
 
 export type Location = {
-    r: bigint;
-    c: bigint;
+    r: number;
+    c: number;
 };
 
 export class Tile {
@@ -179,7 +179,7 @@ export class Tile {
     static fromJSON(obj: any): Tile {
         return new Tile(
             new Player(obj.symbol, obj.address),
-            { r: BigInt(obj.r), c: BigInt(obj.c) },
+            { r: Number(obj.r), c: Number(obj.c) },
             parseInt(obj.resources, 10),
             BigInt(obj.key),
             parseInt(obj.cityId, 10),
@@ -230,7 +230,7 @@ export class Tile {
      * random value.
      */
     static proceduralSalt(l: Location, r: bigint): bigint {
-        return Utils.poseidonExt([r, l.r, l.c]);
+        return Utils.poseidonExt([r, BigInt(l.r), BigInt(l.c)]);
     }
 
     /*

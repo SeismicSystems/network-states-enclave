@@ -2,6 +2,25 @@
 # yarn lockfile v1
 
 
+"@darkforest_eth/hashing@^6.7.29":
+  version "6.7.29"
+  resolved "https://registry.yarnpkg.com/@darkforest_eth/hashing/-/hashing-6.7.29.tgz#61ec24956dab29cdf102fc7509293ab08f87b185"
+  integrity sha512-oiaAnFJif73/vWX0AK0w0hHL2PCZXwG9QSqphqQkJjKDIwAGvBLq8p/VsvlHvkQ3NCOlyHtuAd07zQDd7tP/wA==
+  dependencies:
+    "@darkforest_eth/types" "6.7.29"
+    big-integer "^1.6.48"
+
+"@darkforest_eth/types@6.7.29":
+  version "6.7.29"
+  resolved "https://registry.yarnpkg.com/@darkforest_eth/types/-/types-6.7.29.tgz#e97d0857ee8a1b134a28d9bf5e193872fd981dca"
+  integrity sha512-D8HT7fTeqsI4kzpbDiqs61mSCsH3LnAtC6uvzrfVkzclmQ+EHe7CtmXEbJGlT2Bi2jZ45aZIbghjavLd59z9Yw==
+  dependencies:
+    "@types/gl-matrix" "^3.2.0"
+    big-integer "^1.6.48"
+    ethers "^5.5.1"
+    gl-matrix "^3.3.0"
+    type-fest "^2.12.1"
+
 "@ethereumjs/common@2.5.0":
   version "2.5.0"
   resolved "https://registry.yarnpkg.com/@ethereumjs/common/-/common-2.5.0.tgz#ec61551b31bef7a69d1dc634d8932468866a4268"
@@ -478,6 +497,13 @@
   version "0.1.2"
   resolved "https://registry.yarnpkg.com/@types/circomlibjs/-/circomlibjs-0.1.2.tgz#2d6021ea0680973f4b522dbb4f82401c81872f1f"
   integrity sha512-frsB+ZOIRA3I76hcoOIdkKO9kO+ZE9hNVT/Z27Cw6/gv6X3dGzWnSbRZkwCQ9NwGUzFtQugL4AfBBWKU3Uv0bg==
+
+"@types/gl-matrix@^3.2.0":
+  version "3.2.0"
+  resolved "https://registry.yarnpkg.com/@types/gl-matrix/-/gl-matrix-3.2.0.tgz#a62e0f26be4ab6fa55284a29eec631c8641438a1"
+  integrity sha512-CY4JAtSOGQX7rVgqVuOk7ZfaLv8VeadDMPj3smMOy8Hp/YiHONa3Mr0mEUgbo0eEwV7+Owpf6BwspcA7hv4NXg==
+  dependencies:
+    gl-matrix "*"
 
 "@types/http-cache-semantics@*":
   version "4.0.1"
@@ -1893,6 +1919,11 @@ getpass@^0.1.1:
   integrity sha512-0fzj9JxOLfJ+XGLhR8ze3unN0KZCgZwiSSDz168VERjK8Wl8kVSdcu2kspd4s4wtAa1y/qrVRiAA0WclVsu0ng==
   dependencies:
     assert-plus "^1.0.0"
+
+gl-matrix@*, gl-matrix@^3.3.0:
+  version "3.4.3"
+  resolved "https://registry.yarnpkg.com/gl-matrix/-/gl-matrix-3.4.3.tgz#fc1191e8320009fd4d20e9339595c6041ddc22c9"
+  integrity sha512-wcCp8vu8FT22BnvKVPjXa/ICBWRq/zjFfdofZy1WSpQZpphblv12/bOQLBC1rMM7SGOFS9ltVmKOHil5+Ml7gA==
 
 glob-parent@~5.1.0:
   version "5.1.2"
@@ -3371,6 +3402,11 @@ type-detect@^4.0.0, type-detect@^4.0.5:
   version "4.0.8"
   resolved "https://registry.yarnpkg.com/type-detect/-/type-detect-4.0.8.tgz#7646fb5f18871cfbb7749e69bd39a6388eb7450c"
   integrity sha512-0fr/mIH1dlO+x7TlcMy+bIDqKPsw/70tVyeHW787goQjhmqaZe10uwLujubK9q9Lg6Fiho1KUKDYz0Z7k7g5/g==
+
+type-fest@^2.12.1:
+  version "2.19.0"
+  resolved "https://registry.yarnpkg.com/type-fest/-/type-fest-2.19.0.tgz#88068015bb33036a598b952e55e9311a60fd3a9b"
+  integrity sha512-RAH822pAdBgcNMAfWnCBU3CFZcfZ/i1eZjwFU/dsLKumyuuP3niueg2UAukXYF0E2AAoc82ZSSf9J0WQBinzHA==
 
 type-is@~1.6.18:
   version "1.6.18"

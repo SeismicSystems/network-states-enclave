@@ -1,21 +1,14 @@
-import { createPerlin } from "@latticexyz/noise";
+import { perlin } from "@darkforest_eth/hashing";
 import { Terrain } from "./Utils.js";
 import { Location } from "./Tile.js";
 
 export class TerrainUtils {
-    perlin: any;
     terrainMemo: Map<string, Terrain>;
-    perlinDenom = Number(process.env.PERLIN_DENOM);
-    perlinDigits = Number(process.env.PERLIN_DIGITS);
     perlinThresholdHill = Number(process.env.PERLIN_THRESHOLD_HILL);
     perlinThresholdWater = Number(process.env.PERLIN_THRESHOLD_WATER);
 
     constructor() {
         this.terrainMemo = new Map<string, Terrain>();
-    }
-
-    async setup() {
-        this.perlin = await createPerlin();
     }
 
     static getKey(loc: Location) {
@@ -28,10 +21,18 @@ export class TerrainUtils {
         if (cached !== undefined) {
             return cached;
         }
-        const perlinValue = Math.floor(
-            this.perlin(loc.r, loc.c, 0, this.perlinDenom) *
-                10 ** this.perlinDigits
+        const perlinValue = perlin(
+                { x: Number(loc.r), y: Number(loc.c) },
+                {
+                    key: 2,
+                    scale: 2,
+                    mirrorX: false,
+                    mirrorY: false,
+                    floor: true,
+                }
         );
+
+        return perlinValue;
 
         let terrain: Terrain;
         if (perlinValue >= this.perlinThresholdHill) {

@@ -5,6 +5,7 @@
     "main": "index.ts",
     "license": "BSD-4-Clause",
     "dependencies": {
+        "@darkforest_eth/hashing": "^6.7.29",
         "@latticexyz/noise": "^2.0.0-next.12",
         "@types/circomlibjs": "^0.1.2",
         "circomlibjs": "^0.1.7",

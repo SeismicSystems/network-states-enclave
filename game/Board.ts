@@ -9,12 +9,13 @@ dotenv.config({ path: "../.env" });
 export class Board {
     static MOVE_WASM: string = "../circuits/move/move.wasm";
     static MOVE_PROVKEY: string = "../circuits/move/move.zkey";
-    static PERIMETER: bigint[][] = [-1n, 0n, 1n].flatMap((x) =>
-        [-1n, 0n, 1n].map((y) => [x, y])
+    static PERIMETER: number[][] = [-1, 0, 1].flatMap((x) =>
+        [-1, 0, 1].map((y) => [x, y])
     );
-    static SNARK_FIELD_SIZE: bigint = BigInt(
+    static SNARK_FIELD_SIZE: number = Number(
         <string>process.env.SNARK_FIELD_SIZE
     );
+    static COORDINATE_MAX_VALUE: number = 2 ** 31;
 
     t: Map<string, Tile>;
 
@@ -31,11 +32,11 @@ export class Board {
     /*
      * Check if a location = (row, col) pair is within the bounds of the board.
      */
-    public inBounds(r: bigint, c: bigint): boolean {
+    public inBounds(r: number, c: number): boolean {
         return (
-            r < Board.SNARK_FIELD_SIZE &&
+            r <= Board.COORDINATE_MAX_VALUE &&
             r >= 0 &&
-            c < Board.SNARK_FIELD_SIZE &&
+            c <= Board.COORDINATE_MAX_VALUE &&
             c >= 0
         );
     }
@@ -51,8 +52,8 @@ export class Board {
      * Populates the board with mystery tiles in a 10x10 grid.
      */
     public seed() {
-        for (let r = 0n; r < 10n; r++) {
-            for (let c = 0n; c < 10n; c++) {
+        for (let r = 0; r < 10; r++) {
+            for (let c = 0; c < 10; c++) {
                 const loc: Location = { r, c };
                 const tile: Tile = Tile.mystery(loc);
                 this.t.set(Utils.stringifyLocation(loc), tile);
@@ -100,8 +101,8 @@ export class Board {
      * the perspective of the client.
      */
     public printView(): void {
-        for (let r = 0n; r < 5n; r++) {
-            for (let c = 0n; c < 5n; c++) {
+        for (let r = 0; r < 5; r++) {
+            for (let c = 0; c < 5; c++) {
                 let tl: Tile = this.getTile({ r, c }, 0n);
                 let color;
                 const reset = "\x1b[0m";
@@ -142,8 +143,8 @@ export class Board {
 
     public getNearbyLocations(l: Location): Location[] {
         let locs: Location[] = [];
-        for (let r = l.r - 1n; r <= l.r + 1n; r++) {
-            for (let c = l.c - 1n; c <= l.c + 1n; c++) {
+        for (let r = l.r - 1; r <= l.r + 1; r++) {
+            for (let c = l.c - 1; c <= l.c + 1; c++) {
                 if (this.inBounds(r, c)) {
                     locs.push({ r, c });
                 }

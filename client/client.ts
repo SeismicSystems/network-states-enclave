@@ -1,5 +1,5 @@
 import readline from "readline";
-import { BigNumber, ethers, Signature } from "ethers";
+import { ethers } from "ethers";
 import { io, Socket } from "socket.io-client";
 import dotenv from "dotenv";
 dotenv.config({ path: "../.env" });
@@ -19,21 +19,16 @@ const PLAYER_PRIVKEY = JSON.parse(<string>process.env.ETH_PRIVKEYS)[
     PLAYER_SYMBOL
 ];
 const PLAYER_SPAWN: Location = {
-    r: BigInt(process.argv[3]),
-    c: BigInt(process.argv[4]),
+    r: Number(process.argv[3]),
+    c: Number(process.argv[4]),
 };
 
-/*
- * Misc client parameters.
- */
-const BOARD_SIZE: number = parseInt(<string>process.env.BOARD_SIZE, 10);
 const MOVE_PROMPT: string = "Next move: ";
-
-const MOVE_KEYS: Record<string, bigint[]> = {
-    w: [BigInt(-1), BigInt(0)],
-    a: [BigInt(0), BigInt(-1)],
-    s: [BigInt(1), BigInt(0)],
-    d: [BigInt(0), BigInt(1)],
+const MOVE_KEYS: Record<string, number[]> = {
+    w: [-1, 0],
+    a: [0, -1],
+    s: [1, 0],
+    d: [0, 1],
 };
 
 /*

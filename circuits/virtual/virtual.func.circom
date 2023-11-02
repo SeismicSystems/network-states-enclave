@@ -13,7 +13,6 @@ template CheckVirtType(N_TL_ATRS, ROW_IDX, COL_IDX, TYPE_IDX, PERLIN_KEY,
     // Perlin noise at location (r, c)
     signal perlin <== MultiScalePerlin()(
         [virt[ROW_IDX], virt[COL_IDX]], PERLIN_KEY, PERLIN_SCALE, 0, 0);
-    log(perlin);
 
     out <== 1;
 }

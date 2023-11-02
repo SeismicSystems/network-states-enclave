@@ -29,7 +29,6 @@ let inRecoveryMode = process.argv[2] == "1";
 /*
  * Set game parameters and create dummy players.
  */
-const BOARD_SIZE: number = parseInt(<string>process.env.BOARD_SIZE, 10);
 const START_RESOURCES: number = parseInt(
     <string>process.env.START_RESOURCES,
     10
@@ -73,6 +72,11 @@ const nStates = new ethers.Contract(worlds[31337].address, abi, signer);
  */
 let rand: bigint;
 let hRand: bigint;
+
+/*
+ * Cache for terrain
+ */
+const terrainUtils = new TerrainUtils();
 
 type ClaimedSpawn = {
     virtTile: Tile;
@@ -258,7 +262,10 @@ async function sendSpawnSignature(
     // Check if player has committed to spawning onchain
     const hBlindLoc = BigInt(await nStates.getSpawnCommitment(sender));
 
-    if (hBlindLoc != Utils.poseidonExt([playerChallenge, loc.r, loc.c])) {
+    if (
+        hBlindLoc !=
+        Utils.poseidonExt([playerChallenge, BigInt(loc.r), BigInt(loc.c)])
+    ) {
         console.log("hBlindLoc is inconsistent");
         socket.disconnect();
         return;
@@ -267,6 +274,10 @@ async function sendSpawnSignature(
     // Pair the public key and the socket ID
     idToAddress.set(socket.id, sender);
     addressToId.set(sender, socket.id);
+
+    // Compute terrain of tile
+    const perlin = terrainUtils.getTerrainAtLoc(loc);
+    console.log('perlin client', perlin);
 
     const virtTile = Tile.genVirtual(loc, rand);
     const spawnTile = Tile.spawn(
@@ -724,9 +735,6 @@ nStates.provider.on("block", async (n) => {
  */
 server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
     b = new Board();
-
-    const terrainUtils = new TerrainUtils();
-    await terrainUtils.setup();
 
     if (inRecoveryMode) {
         // Get previous encryption key
