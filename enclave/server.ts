@@ -261,6 +261,7 @@ async function sendSpawnSignature(
 
     // Check that location and tile can be spawned into
     if (!b.inBounds(loc.r, loc.c)) {
+        console.log("Submitted out of bounds");
         socket.disconnect();
         return;
     }

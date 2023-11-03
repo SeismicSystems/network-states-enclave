@@ -97,7 +97,7 @@ async function commitToSpawn() {
     PLAYER.sampleBlind();
 
     // Save block number player commited to spawning
-    await PLAYER.commitToSpawn(PLAYER_SPAWN, nStates);
+    // await PLAYER.commitToSpawn(PLAYER_SPAWN, nStates);
 
     console.log("Getting spawn sig from enclave");
 
