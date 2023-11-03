@@ -1,9 +1,10 @@
 // @ts-ignore
 import { groth16 } from "snarkjs";
-import { Groth16Proof } from "./Utils.js";
+import { Groth16Proof, Terrain } from "./Utils.js";
 import { genRandomSalt } from "maci-crypto";
 import { Player } from "./Player.js";
 import { Utils } from "./Utils.js";
+import { TerrainUtils } from "./Terrain.js";
 
 export type Location = {
     r: number;
@@ -157,9 +158,10 @@ export class Tile {
     static async virtualZKP(
         loc: Location,
         rand: bigint,
-        hRand: bigint
+        hRand: bigint,
+        terrainUtils: TerrainUtils
     ): Promise<[Groth16Proof, any]> {
-        const v: Tile = Tile.genVirtual(loc, rand);
+        const v: Tile = Tile.genVirtual(loc, rand, terrainUtils);
         const { proof, publicSignals } = await groth16.fullProve(
             {
                 hRand: hRand.toString(),
@@ -213,7 +215,11 @@ export class Tile {
     /*
      * New virtual / unowned tile.
      */
-    static genVirtual(l: Location, r: bigint): Tile {
+    static genVirtual(
+        l: Location,
+        r: bigint,
+        terrainUtils: TerrainUtils
+    ): Tile {
         return new Tile(
             Tile.UNOWNED,
             l,
@@ -221,7 +227,7 @@ export class Tile {
             Tile.proceduralSalt(l, r),
             0,
             0,
-            this.NORMAL_TILE
+            Tile.terrainAt(l, terrainUtils)
         );
     }
 
@@ -231,6 +237,21 @@ export class Tile {
      */
     static proceduralSalt(l: Location, r: bigint): bigint {
         return Utils.poseidonExt([r, BigInt(l.r), BigInt(l.c)]);
+    }
+
+    /*
+     * Return type value corresponding to output of getTerrainAtLoc
+     */
+    static terrainAt(l: Location, terrainUtils: TerrainUtils): number {
+        const terrainValue = terrainUtils.getTerrainAtLoc(l);
+        switch (terrainValue) {
+            case Terrain.WATER:
+                return this.WATER_TILE;
+            case Terrain.HILL:
+                return this.HILL_TILE;
+            default:
+                return this.NORMAL_TILE;
+        }
     }
 
     /*

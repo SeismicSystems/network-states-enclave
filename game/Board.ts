@@ -4,6 +4,7 @@ import { Groth16Proof, Terrain, TerrainGenerator, Utils } from "./Utils.js";
 import { Player } from "./Player.js";
 import { Tile, Location } from "./Tile.js";
 import dotenv from "dotenv";
+import { TerrainUtils } from "./Terrain.js";
 dotenv.config({ path: "../.env" });
 
 export class Board {
@@ -18,12 +19,14 @@ export class Board {
     static COORDINATE_MAX_VALUE: number = 2 ** 31;
 
     t: Map<string, Tile>;
+    terrainUtils: TerrainUtils;
 
     playerCities: Map<string, Set<number>>;
     cityTiles: Map<number, Set<string>>;
 
-    public constructor() {
+    public constructor(terrainUtils: TerrainUtils) {
         this.t = new Map<string, Tile>();
+        this.terrainUtils = terrainUtils;
 
         this.playerCities = new Map<string, Set<number>>();
         this.cityTiles = new Map<number, Set<string>>();
@@ -126,6 +129,29 @@ export class Board {
         process.stdout.write("---\n");
     }
 
+    public printTerrain(): void {
+        for (let r = 0; r < 50; r++) {
+            for (let c = 0; c < 50; c++) {
+                let tl = this.getTile({r, c}, 0n);
+                switch (tl.tileType) {
+                    case Tile.NORMAL_TILE:
+                        process.stdout.write("[_]");
+                        break;
+                    case Tile.WATER_TILE:
+                        process.stdout.write("[~]");
+                        break;
+                    case Tile.HILL_TILE:
+                        process.stdout.write("[^]");
+                        break;
+                    default:
+                        break;
+                }
+            }
+            process.stdout.write("\n");
+        }
+        process.stdout.write("---\n");
+    }
+
     /*
      * Getter for Tile at a location, or undefined if passed in location is
      * invalid.
@@ -134,7 +160,7 @@ export class Board {
         if (this.assertBounds(l)) {
             let tl = this.t.get(Utils.stringifyLocation(l));
             if (!tl) {
-                tl = Tile.genVirtual(l, r);
+                tl = Tile.genVirtual(l, r, this.terrainUtils);
             }
             return tl;
         }

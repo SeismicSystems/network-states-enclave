@@ -10,6 +10,7 @@ import { Board } from "../game/Board.js";
 import { Utils, Groth16ProofCalldata, Groth16Proof } from "../game/Utils.js";
 import worlds from "../contracts/worlds.json" assert { type: "json" };
 import IWorldAbi from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "json" };
+import { TerrainUtils } from "../game";
 
 /*
  * Conditions depend on which player is currently active.
@@ -55,6 +56,11 @@ const PLAYER = new Player(PLAYER_SYMBOL, signer.address);
  * Client's local belief on game state stored in Board object.
  */
 let b: Board;
+
+/*
+ * Cache for terrain
+ */
+const terrainUtils = new TerrainUtils();
 
 /*
  * Whether player has been spawned in.
@@ -263,7 +269,7 @@ async function errorResponse(msg: string) {
 socket.on("connect", async () => {
     console.log("Server connection established");
 
-    b = new Board();
+    b = new Board(terrainUtils);
 
     // Pass in dummy function to terrain generator because init is false
     await b.seed();

@@ -275,11 +275,7 @@ async function sendSpawnSignature(
     idToAddress.set(socket.id, sender);
     addressToId.set(sender, socket.id);
 
-    // Compute terrain of tile
-    const perlin = terrainUtils.getTerrainAtLoc(loc);
-    console.log('perlin client', perlin);
-
-    const virtTile = Tile.genVirtual(loc, rand);
+    const virtTile = Tile.genVirtual(loc, rand, terrainUtils);
     const spawnTile = Tile.spawn(
         new Player(symbol, sender),
         loc,
@@ -290,7 +286,12 @@ async function sendSpawnSignature(
     const hSpawnTile = spawnTile.hash();
 
     // Generate ZKP that attests to valid virtual tile commitment
-    const [prf, pubSignals] = await Tile.virtualZKP(loc, rand, hRand);
+    const [prf, pubSignals] = await Tile.virtualZKP(
+        loc,
+        rand,
+        hRand,
+        terrainUtils
+    );
 
     // Acknowledge reception of intended move
     const digest = utils.solidityKeccak256(["uint256"], [hSpawnTile]);
@@ -350,7 +351,8 @@ async function sendMoveSignature(
         const [prf, pubSignals] = await Tile.virtualZKP(
             uToAsTile.loc,
             rand,
-            hRand
+            hRand,
+            terrainUtils
         );
 
         const digest = utils.solidityKeccak256(
@@ -670,6 +672,17 @@ function upkeepClaimedMoves() {
 }
 
 /*
+ * Commit to enclave randomness, derived from AES key for DA.
+ */
+async function setEnclaveRandCommitment(nStates: any) {
+    rand = Utils.poseidonExt([
+        BigInt("0x" + tileEncryptionKey.toString("hex")),
+    ]);
+    hRand = Utils.poseidonExt([rand]);
+    await nStates.setEnclaveRandCommitment(hRand.toString());
+}
+
+/*
  * Attach event handlers to a new connection.
  */
 io.on("connection", (socket: Socket) => {
@@ -734,7 +747,9 @@ nStates.provider.on("block", async (n) => {
  * Start server & initialize game.
  */
 server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
-    b = new Board();
+    b = new Board(terrainUtils);
+
+    b.printTerrain();
 
     if (inRecoveryMode) {
         // Get previous encryption key
@@ -758,12 +773,7 @@ server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
             tileEncryptionKey.toString("hex")
         );
 
-        // Commit to enclave randomness, derived from AES key for DA
-        rand = Utils.poseidonExt([
-            BigInt("0x" + tileEncryptionKey.toString("hex")),
-        ]);
-        hRand = Utils.poseidonExt([rand]);
-        await nStates.setEnclaveRandCommitment(hRand.toString());
+        await setEnclaveRandCommitment(nStates);
     }
 
     console.log(

@@ -32,12 +32,10 @@ export class TerrainUtils {
                 }
         );
 
-        return perlinValue;
-
         let terrain: Terrain;
         if (perlinValue >= this.perlinThresholdHill) {
             terrain = Terrain.HILL;
-        } else if (perlinValue <= this.perlinThresholdWater) {
+        } else if (perlinValue >= this.perlinThresholdWater) {
             terrain = Terrain.WATER;
         } else {
             terrain = Terrain.BARE;
