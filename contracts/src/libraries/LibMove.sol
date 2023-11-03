@@ -48,6 +48,21 @@ library LibMove {
     }
 
     function updateCityTroopCounts(MoveInputs memory mv) internal {
+        if (mv.fromIsWaterTile) {
+            LibCity.incrementCityTroops({
+                cityId: mv.fromCityId,
+                increment: mv.numTroopsMoved,
+                isCityCenter: mv.fromIsCityCenter
+            });
+        }
+        if (mv.toIsWaterTile) {
+            LibCity.decrementCityTroops({
+                cityId: mv.fromCityId,
+                decrement: mv.numTroopsMoved - mv.enemyLoss,
+                isCityCenter: mv.toIsCityCenter
+            });
+        }
+
         if (
             mv.takingCity ||
             (mv.ontoSelfOrUnowned && mv.toCityId != 0)
