@@ -259,15 +259,17 @@ async function sendSpawnSignature(
         return;
     }
 
-    // Check if player has committed to spawning onchain
-    const hBlindLoc = BigInt(await nStates.getSpawnCommitment(sender));
-
-    if (
-        hBlindLoc !=
-        Utils.poseidonExt([playerChallenge, BigInt(loc.r), BigInt(loc.c)])
-    ) {
-        console.log("hBlindLoc is inconsistent");
+    // Check that location and tile can be spawned into
+    if (!b.inBounds(loc.r, loc.c)) {
         socket.disconnect();
+        return;
+    }
+
+    const virtTile = Tile.genVirtual(loc, rand, terrainUtils);
+
+    if (!virtTile.isSpawnable() || !b.getTile(loc, rand).isUnowned()) {
+        console.log("Tile cannot be spawned on");
+        socket.emit("trySpawn");
         return;
     }
 
@@ -275,7 +277,6 @@ async function sendSpawnSignature(
     idToAddress.set(socket.id, sender);
     addressToId.set(sender, socket.id);
 
-    const virtTile = Tile.genVirtual(loc, rand, terrainUtils);
     const spawnTile = Tile.spawn(
         new Player(symbol, sender),
         loc,

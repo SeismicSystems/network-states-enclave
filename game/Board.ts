@@ -130,8 +130,8 @@ export class Board {
     }
 
     public printTerrain(): void {
-        for (let r = 0; r < 50; r++) {
-            for (let c = 0; c < 50; c++) {
+        for (let r = 0; r < 25; r++) {
+            for (let c = 0; c < 25; c++) {
                 let tl = this.getTile({r, c}, 0n);
                 switch (tl.tileType) {
                     case Tile.NORMAL_TILE:
