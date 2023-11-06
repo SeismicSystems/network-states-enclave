@@ -117,6 +117,13 @@ export class Tile {
     }
 
     /*
+     * Return true if this Tile is a bare tile.
+     */
+    isBare(): boolean {
+        return this.tileType === Tile.BARE_TILE;
+    }
+
+    /*
      * Return true if this Tile is a water tile.
      */
     isWater(): boolean {
@@ -141,12 +148,7 @@ export class Tile {
      * Return true if player should be allowed to spawn over this tile.
      */
     isSpawnable(): boolean {
-        return (
-            this.isUnowned() &&
-            !this.isWater() &&
-            !this.isHill() &&
-            !this.isCityCenter()
-        );
+        return this.isUnowned() && this.isBare() && this.resources === 0;
     }
 
     /*
@@ -220,6 +222,30 @@ export class Tile {
         r: bigint,
         terrainUtils: TerrainUtils
     ): Tile {
+        let terrainValue = terrainUtils.getTerrainAtLoc(l);
+        let terrain;
+        switch (terrainValue) {
+            case Terrain.WATER:
+                terrain = Tile.WATER_TILE;
+                break;
+            case Terrain.HILL:
+                terrain = Tile.HILL_TILE;
+                break;
+            case Terrain.BONUS_TROOPS:
+                return new Tile(
+                    Tile.UNOWNED,
+                    l,
+                    5,
+                    Tile.proceduralSalt(l, r),
+                    0,
+                    0,
+                    Tile.BARE_TILE
+                );
+            default:
+                terrain = Tile.BARE_TILE;
+                break;
+        }
+
         return new Tile(
             Tile.UNOWNED,
             l,
@@ -227,7 +253,7 @@ export class Tile {
             Tile.proceduralSalt(l, r),
             0,
             0,
-            Tile.terrainAt(l, terrainUtils)
+            terrain
         );
     }
 

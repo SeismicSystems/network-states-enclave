@@ -2,12 +2,14 @@ pragma circom 2.1.1;
 
 include "../node_modules/maci-circuits/node_modules/circomlib/circuits/poseidon.circom";
 include "../node_modules/maci-circuits/node_modules/circomlib/circuits/comparators.circom";
-include "../node_modules/maci-circuits/node_modules/circomlib/circuits/mux2.circom";
+include "../node_modules/maci-circuits/node_modules/circomlib/circuits/mux3.circom";
+include "../utils/utils.circom";
 include "../perlin/perlin.circom";
 
-template CheckVirtType(N_TL_ATRS, ROW_IDX, COL_IDX, TYPE_IDX, PERLIN_KEY, 
-    PERLIN_SCALE, PERLIN_SYS_BITS, PERLIN_THRESHOLD_HILL, 
-    PERLIN_THRESHOLD_WATER, BARE_TYPE, WATER_TYPE, HILL_TYPE) {
+template CheckVirtType(N_TL_ATRS, ROW_IDX, COL_IDX, RSRC_IDX, TYPE_IDX, 
+    PERLIN_KEY, PERLIN_SCALE, PERLIN_SYS_BITS, PERLIN_THRESHOLD_BONUS_TROOPS,
+    PERLIN_THRESHOLD_HILL, PERLIN_THRESHOLD_WATER, BARE_TYPE, WATER_TYPE, 
+    HILL_TYPE) {
 
     signal input virt[N_TL_ATRS];
 
@@ -21,13 +23,19 @@ template CheckVirtType(N_TL_ATRS, ROW_IDX, COL_IDX, TYPE_IDX, PERLIN_KEY,
     signal isWater <== IsEqual()([virt[TYPE_IDX], WATER_TYPE]);
     signal isHill <== IsEqual()([virt[TYPE_IDX], HILL_TYPE]);
 
+    signal isPlusFive <== IsEqual()([virt[RSRC_IDX], 5]);
+    signal isBonus <== AND()(isBare, isPlusFive);
+
+    signal geqBonusTroopsThreshold <== GreaterEqThan(PERLIN_SYS_BITS)([perlin,
+        PERLIN_THRESHOLD_BONUS_TROOPS]);
     signal geqHillThreshold <== GreaterEqThan(PERLIN_SYS_BITS)([perlin, 
         PERLIN_THRESHOLD_HILL]);
     signal geqWaterThreshold <== GreaterEqThan(PERLIN_SYS_BITS)([perlin, 
         PERLIN_THRESHOLD_WATER]);
 
-    out <== Mux2()([isBare, isWater, isHill, isHill], [geqWaterThreshold, 
-        geqHillThreshold]);
+    out <== Mux3()(
+        [isBare, isWater, isHill, isHill, isBonus, isBonus, isBonus, isBonus], 
+        [geqWaterThreshold, geqHillThreshold, geqBonusTroopsThreshold]);
 }
 
 /*
@@ -40,6 +48,7 @@ template Virtual() {
     var N_TL_ATRS = 7;
     var ROW_IDX = 0;
     var COL_IDX = 1;
+    var RSRC_IDX = 2;
     var KEY_IDX = 3;
     var TYPE_IDX = 6;
 
@@ -51,6 +60,7 @@ template Virtual() {
     var PERLIN_SYS_BITS = 5;
 
     // Threshold values for hill and water type
+    var PERLIN_THRESHOLD_BONUS_TROOPS = 19;
     var PERLIN_THRESHOLD_HILL = 18;
     var PERLIN_THRESHOLD_WATER = 17;
 
@@ -79,8 +89,8 @@ template Virtual() {
     keyCorrect === 1;
 
     signal virtTypeCorrect <== CheckVirtType(N_TL_ATRS, ROW_IDX, COL_IDX,
-        TYPE_IDX, PERLIN_KEY, PERLIN_SCALE, PERLIN_SYS_BITS, 
-        PERLIN_THRESHOLD_HILL, PERLIN_THRESHOLD_WATER, BARE_TYPE, WATER_TYPE, 
-        HILL_TYPE)(virt);
+        RSRC_IDX, TYPE_IDX, PERLIN_KEY, PERLIN_SCALE, PERLIN_SYS_BITS, 
+        PERLIN_THRESHOLD_BONUS_TROOPS, PERLIN_THRESHOLD_HILL, 
+        PERLIN_THRESHOLD_WATER, BARE_TYPE, WATER_TYPE, HILL_TYPE)(virt);
     virtTypeCorrect === 1;
 }
