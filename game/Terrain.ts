@@ -6,6 +6,9 @@ export class TerrainUtils {
     terrainMemo: Map<string, Terrain>;
     perlinKey = Number(process.env.PERLIN_KEY);
     perlinScale = Number(process.env.PERLIN_SCALE);
+    perlinThresholdBonusTroops = Number(
+        process.env.PERLIN_THRESHOLD_BONUS_TROOPS
+    );
     perlinThresholdHill = Number(process.env.PERLIN_THRESHOLD_HILL);
     perlinThresholdWater = Number(process.env.PERLIN_THRESHOLD_WATER);
 
@@ -24,18 +27,20 @@ export class TerrainUtils {
             return cached;
         }
         const perlinValue = perlin(
-                { x: Number(loc.r), y: Number(loc.c) },
-                {
-                    key: this.perlinKey,
-                    scale: this.perlinScale,
-                    mirrorX: false,
-                    mirrorY: false,
-                    floor: true,
-                }
+            { x: Number(loc.r), y: Number(loc.c) },
+            {
+                key: this.perlinKey,
+                scale: this.perlinScale,
+                mirrorX: false,
+                mirrorY: false,
+                floor: true,
+            }
         );
 
         let terrain: Terrain;
-        if (perlinValue >= this.perlinThresholdHill) {
+        if (perlinValue >= this.perlinThresholdBonusTroops) {
+            terrain = Terrain.BONUS_TROOPS;
+        } else if (perlinValue >= this.perlinThresholdHill) {
             terrain = Terrain.HILL;
         } else if (perlinValue >= this.perlinThresholdWater) {
             terrain = Terrain.WATER;

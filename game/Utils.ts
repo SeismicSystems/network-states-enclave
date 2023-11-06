@@ -29,6 +29,7 @@ export enum Terrain {
     BARE,
     WATER,
     HILL,
+    BONUS_TROOPS,
 }
 
 export type TerrainGenerator = (location: Location) => Terrain;

@@ -220,6 +220,30 @@ export class Tile {
         r: bigint,
         terrainUtils: TerrainUtils
     ): Tile {
+        let terrainValue = terrainUtils.getTerrainAtLoc(l);
+        let terrain;
+        switch (terrainValue) {
+            case Terrain.WATER:
+                terrain = Tile.WATER_TILE;
+                break;
+            case Terrain.HILL:
+                terrain = Tile.HILL_TILE;
+                break;
+            case Terrain.BONUS_TROOPS:
+                return new Tile(
+                    Tile.UNOWNED,
+                    l,
+                    5,
+                    Tile.proceduralSalt(l, r),
+                    0,
+                    0,
+                    Tile.BARE_TILE
+                );
+            default:
+                terrain = Tile.BARE_TILE;
+                break;
+        }
+
         return new Tile(
             Tile.UNOWNED,
             l,
@@ -227,7 +251,7 @@ export class Tile {
             Tile.proceduralSalt(l, r),
             0,
             0,
-            Tile.terrainAt(l, terrainUtils)
+            terrain
         );
     }
 
