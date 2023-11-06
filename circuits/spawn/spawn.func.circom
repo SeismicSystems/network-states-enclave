@@ -35,8 +35,7 @@ template CheckTileHashes(N_TL_ATRS) {
     out <== AND()(hPrevTileCorrect, hSpawnTileCorrect);
 }
 
-template CheckCanSpawn(N_TL_ATRS, CITY_IDX, TYPE_IDX, CITY_TYPE, WATER_TYPE, 
-    HILL_TYPE) {
+template CheckCanSpawn(N_TL_ATRS, CITY_IDX, RSRC_IDX, TYPE_IDX, BARE_TYPE) {
     signal input canSpawn;
 
     signal input prevTile[N_TL_ATRS];
@@ -45,12 +44,16 @@ template CheckCanSpawn(N_TL_ATRS, CITY_IDX, TYPE_IDX, CITY_TYPE, WATER_TYPE,
 
     signal isUnowned <== IsEqual()([prevTile[CITY_IDX], 0]);
     signal isOwned <== NOT()(isUnowned);
-    signal isWater <== IsEqual()([prevTile[TYPE_IDX], WATER_TYPE]);
-    signal isHill <== IsEqual()([prevTile[TYPE_IDX], HILL_TYPE]);
-    signal isCity <== IsEqual()([prevTile[TYPE_IDX], CITY_TYPE]);
-    
-    signal circuitCanSpawn <== BatchIsZero(4)([isOwned, isWater, isHill, 
-        isCity]);
+
+    signal isBare <== IsEqual()([prevTile[TYPE_IDX], BARE_TYPE]);
+    signal isNotBare <== NOT()(isBare);
+
+    signal zeroTroops <== IsEqual()([prevTile[RSRC_IDX], 0]);
+    signal nonzeroTroops <== NOT()(zeroTroops);
+
+    signal circuitCanSpawn <== BatchIsZero(3)([isOwned, isNotBare, 
+        nonzeroTroops]);
+        
     out <== IsEqual()([circuitCanSpawn, canSpawn]);
 }
 
@@ -64,6 +67,7 @@ template Spawn() {
     var UPD_IDX = 5;
     var TYPE_IDX = 6;
 
+    var BARE_TYPE = 0;
     var CITY_TYPE = 1;
     var WATER_TYPE = 2;
     var HILL_TYPE = 3;
@@ -93,8 +97,8 @@ template Spawn() {
     tileHashesCorrect === 1;
 
     // Constrain canSpawn
-    signal canSpawnCorrect <== CheckCanSpawn(N_TL_ATRS, CITY_IDX, TYPE_IDX, 
-        CITY_TYPE, WATER_TYPE, HILL_TYPE)(canSpawn, prevTile);
+    signal canSpawnCorrect <== CheckCanSpawn(N_TL_ATRS, CITY_IDX, RSRC_IDX, 
+        TYPE_IDX, BARE_TYPE)(canSpawn, prevTile);
     canSpawnCorrect === 1;
 
     // hBlindLoc should be the hash of blind, row, col

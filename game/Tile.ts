@@ -117,6 +117,13 @@ export class Tile {
     }
 
     /*
+     * Return true if this Tile is a bare tile.
+     */
+    isBare(): boolean {
+        return this.tileType === Tile.BARE_TILE;
+    }
+
+    /*
      * Return true if this Tile is a water tile.
      */
     isWater(): boolean {
@@ -141,12 +148,7 @@ export class Tile {
      * Return true if player should be allowed to spawn over this tile.
      */
     isSpawnable(): boolean {
-        return (
-            this.isUnowned() &&
-            !this.isWater() &&
-            !this.isHill() &&
-            !this.isCityCenter()
-        );
+        return this.isUnowned() && this.isBare() && this.resources === 0;
     }
 
     /*
