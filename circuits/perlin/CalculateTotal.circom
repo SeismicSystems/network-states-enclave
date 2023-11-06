@@ -1,3 +1,10 @@
+/*
+ * Adapted from darkforest-v0.6's implementation of perlin noise. All
+ * credit is due to the Darkforest team for the original source.
+ * Original source: https://github.com/darkforest-eth/darkforest-v0.6. 
+ * Only change is import paths.
+ */
+
 pragma circom 2.0.3;
 
 template CalculateTotal(n) {

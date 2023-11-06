@@ -22,7 +22,7 @@ export class Tile {
     static UNOWNED_ID: number = 0;
 
     // tileType options
-    static NORMAL_TILE: number = 0;
+    static BARE_TILE: number = 0;
     static CITY_TILE: number = 1;
     static WATER_TILE: number = 2;
     static HILL_TILE: number = 3;
@@ -194,7 +194,7 @@ export class Tile {
      * Meant to represent a tile in the fog of war.
      */
     static mystery(l: Location): Tile {
-        return new Tile(Tile.MYSTERY, l, 0, BigInt(0), 0, 0, this.NORMAL_TILE);
+        return new Tile(Tile.MYSTERY, l, 0, BigInt(0), 0, 0, this.BARE_TILE);
     }
 
     /*
@@ -250,7 +250,7 @@ export class Tile {
             case Terrain.HILL:
                 return this.HILL_TILE;
             default:
-                return this.NORMAL_TILE;
+                return this.BARE_TILE;
         }
     }
 

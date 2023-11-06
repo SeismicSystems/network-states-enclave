@@ -4,6 +4,8 @@ import { Location } from "./Tile.js";
 
 export class TerrainUtils {
     terrainMemo: Map<string, Terrain>;
+    perlinKey = Number(process.env.PERLIN_KEY);
+    perlinScale = Number(process.env.PERLIN_SCALE);
     perlinThresholdHill = Number(process.env.PERLIN_THRESHOLD_HILL);
     perlinThresholdWater = Number(process.env.PERLIN_THRESHOLD_WATER);
 
@@ -24,8 +26,8 @@ export class TerrainUtils {
         const perlinValue = perlin(
                 { x: Number(loc.r), y: Number(loc.c) },
                 {
-                    key: 2,
-                    scale: 2,
+                    key: this.perlinKey,
+                    scale: this.perlinScale,
                     mirrorX: false,
                     mirrorY: false,
                     floor: true,

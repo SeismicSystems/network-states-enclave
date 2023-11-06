@@ -134,7 +134,7 @@ export class Board {
             for (let c = 0; c < 25; c++) {
                 let tl = this.getTile({r, c}, 0n);
                 switch (tl.tileType) {
-                    case Tile.NORMAL_TILE:
+                    case Tile.BARE_TILE:
                         process.stdout.write("[_]");
                         break;
                     case Tile.WATER_TILE:
@@ -215,7 +215,7 @@ export class Board {
                         this.playerCities.delete(oldOwner);
                     }
                 } else {
-                    // Normal/water tile with a new owner
+                    // Bare/water tile with a new owner
                     const locString = Utils.stringifyLocation(tl.loc);
                     this.cityTiles.get(oldTile.cityId)?.delete(locString);
                     this.cityTiles.get(tl.cityId)?.add(locString);
@@ -234,7 +234,7 @@ export class Board {
                 this.playerCities.get(oldOwner)?.delete(tl.cityId);
                 this.playerCities.get(newOwner)?.add(tl.cityId);
             } else {
-                // Normal/water tile with a new owner
+                // Bare/water tile with a new owner
                 const locString = Utils.stringifyLocation(tl.loc);
                 this.cityTiles.get(oldTile.cityId)?.delete(locString);
                 this.cityTiles.get(tl.cityId)?.add(locString);
