@@ -1,5 +1,5 @@
 import readline from "readline";
-import { BigNumber, ethers, Signature } from "ethers";
+import { ethers } from "ethers";
 import { io, Socket } from "socket.io-client";
 import dotenv from "dotenv";
 dotenv.config({ path: "../.env" });
@@ -10,6 +10,7 @@ import { Board } from "../game/Board.js";
 import { Utils, Groth16ProofCalldata, Groth16Proof } from "../game/Utils.js";
 import worlds from "../contracts/worlds.json" assert { type: "json" };
 import IWorldAbi from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "json" };
+import { TerrainUtils } from "../game";
 
 /*
  * Conditions depend on which player is currently active.
@@ -19,21 +20,16 @@ const PLAYER_PRIVKEY = JSON.parse(<string>process.env.ETH_PRIVKEYS)[
     PLAYER_SYMBOL
 ];
 const PLAYER_SPAWN: Location = {
-    r: BigInt(process.argv[3]),
-    c: BigInt(process.argv[4]),
+    r: Number(process.argv[3]),
+    c: Number(process.argv[4]),
 };
 
-/*
- * Misc client parameters.
- */
-const BOARD_SIZE: number = parseInt(<string>process.env.BOARD_SIZE, 10);
 const MOVE_PROMPT: string = "Next move: ";
-
-const MOVE_KEYS: Record<string, bigint[]> = {
-    w: [BigInt(-1), BigInt(0)],
-    a: [BigInt(0), BigInt(-1)],
-    s: [BigInt(1), BigInt(0)],
-    d: [BigInt(0), BigInt(1)],
+const MOVE_KEYS: Record<string, number[]> = {
+    w: [-1, 0],
+    a: [0, -1],
+    s: [1, 0],
+    d: [0, 1],
 };
 
 /*
@@ -60,6 +56,11 @@ const PLAYER = new Player(PLAYER_SYMBOL, signer.address);
  * Client's local belief on game state stored in Board object.
  */
 let b: Board;
+
+/*
+ * Cache for terrain
+ */
+const terrainUtils = new TerrainUtils();
 
 /*
  * Whether player has been spawned in.
@@ -96,7 +97,7 @@ async function commitToSpawn() {
     PLAYER.sampleBlind();
 
     // Save block number player commited to spawning
-    await PLAYER.commitToSpawn(PLAYER_SPAWN, nStates);
+    // await PLAYER.commitToSpawn(PLAYER_SPAWN, nStates);
 
     console.log("Getting spawn sig from enclave");
 
@@ -268,7 +269,7 @@ async function errorResponse(msg: string) {
 socket.on("connect", async () => {
     console.log("Server connection established");
 
-    b = new Board();
+    b = new Board(terrainUtils);
 
     // Pass in dummy function to terrain generator because init is false
     await b.seed();

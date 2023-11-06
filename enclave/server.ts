@@ -29,7 +29,6 @@ let inRecoveryMode = process.argv[2] == "1";
 /*
  * Set game parameters and create dummy players.
  */
-const BOARD_SIZE: number = parseInt(<string>process.env.BOARD_SIZE, 10);
 const START_RESOURCES: number = parseInt(
     <string>process.env.START_RESOURCES,
     10
@@ -73,6 +72,11 @@ const nStates = new ethers.Contract(worlds[31337].address, abi, signer);
  */
 let rand: bigint;
 let hRand: bigint;
+
+/*
+ * Cache for terrain
+ */
+const terrainUtils = new TerrainUtils();
 
 type ClaimedSpawn = {
     virtTile: Tile;
@@ -255,12 +259,18 @@ async function sendSpawnSignature(
         return;
     }
 
-    // Check if player has committed to spawning onchain
-    const hBlindLoc = BigInt(await nStates.getSpawnCommitment(sender));
-
-    if (hBlindLoc != Utils.poseidonExt([playerChallenge, loc.r, loc.c])) {
-        console.log("hBlindLoc is inconsistent");
+    // Check that location and tile can be spawned into
+    if (!b.inBounds(loc.r, loc.c)) {
+        console.log("Submitted out of bounds");
         socket.disconnect();
+        return;
+    }
+
+    const virtTile = Tile.genVirtual(loc, rand, terrainUtils);
+
+    if (!virtTile.isSpawnable() || !b.getTile(loc, rand).isUnowned()) {
+        console.log("Tile cannot be spawned on");
+        socket.emit("trySpawn");
         return;
     }
 
@@ -268,7 +278,6 @@ async function sendSpawnSignature(
     idToAddress.set(socket.id, sender);
     addressToId.set(sender, socket.id);
 
-    const virtTile = Tile.genVirtual(loc, rand);
     const spawnTile = Tile.spawn(
         new Player(symbol, sender),
         loc,
@@ -279,7 +288,12 @@ async function sendSpawnSignature(
     const hSpawnTile = spawnTile.hash();
 
     // Generate ZKP that attests to valid virtual tile commitment
-    const [prf, pubSignals] = await Tile.virtualZKP(loc, rand, hRand);
+    const [prf, pubSignals] = await Tile.virtualZKP(
+        loc,
+        rand,
+        hRand,
+        terrainUtils
+    );
 
     // Acknowledge reception of intended move
     const digest = utils.solidityKeccak256(["uint256"], [hSpawnTile]);
@@ -339,7 +353,8 @@ async function sendMoveSignature(
         const [prf, pubSignals] = await Tile.virtualZKP(
             uToAsTile.loc,
             rand,
-            hRand
+            hRand,
+            terrainUtils
         );
 
         const digest = utils.solidityKeccak256(
@@ -659,6 +674,17 @@ function upkeepClaimedMoves() {
 }
 
 /*
+ * Commit to enclave randomness, derived from AES key for DA.
+ */
+async function setEnclaveRandCommitment(nStates: any) {
+    rand = Utils.poseidonExt([
+        BigInt("0x" + tileEncryptionKey.toString("hex")),
+    ]);
+    hRand = Utils.poseidonExt([rand]);
+    await nStates.setEnclaveRandCommitment(hRand.toString());
+}
+
+/*
  * Attach event handlers to a new connection.
  */
 io.on("connection", (socket: Socket) => {
@@ -723,10 +749,9 @@ nStates.provider.on("block", async (n) => {
  * Start server & initialize game.
  */
 server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
-    b = new Board();
+    b = new Board(terrainUtils);
 
-    const terrainUtils = new TerrainUtils();
-    await terrainUtils.setup();
+    b.printTerrain();
 
     if (inRecoveryMode) {
         // Get previous encryption key
@@ -750,12 +775,7 @@ server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
             tileEncryptionKey.toString("hex")
         );
 
-        // Commit to enclave randomness, derived from AES key for DA
-        rand = Utils.poseidonExt([
-            BigInt("0x" + tileEncryptionKey.toString("hex")),
-        ]);
-        hRand = Utils.poseidonExt([rand]);
-        await nStates.setEnclaveRandCommitment(hRand.toString());
+        await setEnclaveRandCommitment(nStates);
     }
 
     console.log(

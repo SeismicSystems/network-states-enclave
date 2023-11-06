@@ -67,8 +67,8 @@ describe("Unit tests for CheckLeaves()", () => {
     it("fails if player tries to move troops they don't own", async () => {
         const p1 = new Player("A", BigInt("0xfff"));
         const p2 = new Player("B", BigInt("0xddd"));
-        const t1 = Tile.genOwned(p1, { r: 0, c: 0 }, 9, 1, 0, 0, Tile.NORMAL_TILE);
-        const t2 = Tile.genOwned(p1, { r: 0, c: 0 }, 9, 2, 0, 0, Tile.NORMAL_TILE);
+        const t1 = Tile.genOwned(p1, { r: 0, c: 0 }, 9, 1, 0, 0, Tile.BARE_TILE);
+        const t2 = Tile.genOwned(p1, { r: 0, c: 0 }, 9, 2, 0, 0, Tile.BARE_TILE);
 
         const w = await circuit.calculateWitness(
             {
@@ -88,8 +88,8 @@ describe("Unit tests for CheckLeaves()", () => {
     it("fails if proposed hashes don't match the new", async () => {
         const p1 = new Player("A", BigInt("0xfff"));
         const p2 = new Player("B", BigInt("0xddd"));
-        const t1 = Tile.genOwned(p1, { r: 0, c: 0 }, 9, 1, 0, 0, Tile.NORMAL_TILE);
-        const t2 = Tile.genOwned(p2, { r: 0, c: 0 }, 9, 2, 0, 0, Tile.NORMAL_TILE);
+        const t1 = Tile.genOwned(p1, { r: 0, c: 0 }, 9, 1, 0, 0, Tile.BARE_TILE);
+        const t2 = Tile.genOwned(p2, { r: 0, c: 0 }, 9, 2, 0, 0, Tile.BARE_TILE);
 
         const w1 = await circuit.calculateWitness(
             {
@@ -123,8 +123,8 @@ describe("Unit tests for CheckLeaves()", () => {
     it("passes if move initiated by owner & new hashes valid", async () => {
         const p1 = new Player("A", BigInt("0xfff"));
         const p2 = new Player("B", BigInt("0xddd"));
-        const t1 = Tile.genOwned(p1, { r: 0, c: 0 }, 9, 1, 0, 0, Tile.NORMAL_TILE);
-        const t2 = Tile.genOwned(p2, { r: 0, c: 0 }, 9, 2, 0, 0, Tile.NORMAL_TILE);
+        const t1 = Tile.genOwned(p1, { r: 0, c: 0 }, 9, 1, 0, 0, Tile.BARE_TILE);
+        const t2 = Tile.genOwned(p2, { r: 0, c: 0 }, 9, 2, 0, 0, Tile.BARE_TILE);
 
         const w = await circuit.calculateWitness(
             {
@@ -266,7 +266,7 @@ describe("Unit tests for CheckRsrc()", () => {
             1,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
         const t2 = Tile.genUnowned({ r: 124, c: 321 });
         const u1 = Tile.genOwned(
@@ -276,7 +276,7 @@ describe("Unit tests for CheckRsrc()", () => {
             1,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
         const u2 = Tile.genOwned(
             p,
@@ -285,7 +285,7 @@ describe("Unit tests for CheckRsrc()", () => {
             1,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
 
         const w = await circuit.calculateWitness(
@@ -315,7 +315,7 @@ describe("Unit tests for CheckRsrc()", () => {
             1,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
         const t2 = Tile.genUnowned({ r: 124, c: 321 });
         const u1 = Tile.genOwned(
@@ -325,7 +325,7 @@ describe("Unit tests for CheckRsrc()", () => {
             1,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
         const u2 = Tile.genOwned(
             p,
@@ -334,7 +334,7 @@ describe("Unit tests for CheckRsrc()", () => {
             1,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
 
         const w = await circuit.calculateWitness(
@@ -365,7 +365,7 @@ describe("Unit tests for CheckRsrc()", () => {
             1,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
         const t2 = Tile.genOwned(
             p2,
@@ -374,7 +374,7 @@ describe("Unit tests for CheckRsrc()", () => {
             2,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
         const u1 = Tile.genOwned(
             p1,
@@ -383,7 +383,7 @@ describe("Unit tests for CheckRsrc()", () => {
             1,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
         const u2 = Tile.genOwned(
             p1,
@@ -392,7 +392,7 @@ describe("Unit tests for CheckRsrc()", () => {
             1,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
 
         const w = await circuit.calculateWitness(
@@ -423,7 +423,7 @@ describe("Unit tests for CheckRsrc()", () => {
             1,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
         const t2 = Tile.genOwned(
             p2,
@@ -432,7 +432,7 @@ describe("Unit tests for CheckRsrc()", () => {
             2,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
         const u1 = Tile.genOwned(
             p1,
@@ -441,7 +441,7 @@ describe("Unit tests for CheckRsrc()", () => {
             1,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
         const u2 = Tile.genOwned(
             p1,
@@ -450,7 +450,7 @@ describe("Unit tests for CheckRsrc()", () => {
             1,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
 
         const w = await circuit.calculateWitness(
@@ -480,7 +480,7 @@ describe("Unit tests for CheckRsrc()", () => {
             1,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
         const t2 = Tile.genUnowned({ r: 124, c: 321 });
         const u1 = Tile.genOwned(
@@ -490,7 +490,7 @@ describe("Unit tests for CheckRsrc()", () => {
             1,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
         const u2 = Tile.genUnowned({ r: 124, c: 321 });
 
@@ -522,7 +522,7 @@ describe("Unit tests for CheckRsrc()", () => {
             1,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
         const t2 = Tile.genOwned(
             p2,
@@ -531,7 +531,7 @@ describe("Unit tests for CheckRsrc()", () => {
             2,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
         const u1 = Tile.genOwned(
             p1,
@@ -540,7 +540,7 @@ describe("Unit tests for CheckRsrc()", () => {
             1,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
         const u2 = Tile.genOwned(
             p2,
@@ -549,7 +549,7 @@ describe("Unit tests for CheckRsrc()", () => {
             2,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
 
         const w = await circuit.calculateWitness(
@@ -579,7 +579,7 @@ describe("Unit tests for CheckRsrc()", () => {
             1,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
         const t2 = Tile.genUnowned({ r: 124, c: 321 });
         const u1 = Tile.genOwned(
@@ -589,7 +589,7 @@ describe("Unit tests for CheckRsrc()", () => {
             1,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
         const u2 = Tile.genOwned(
             p,
@@ -598,7 +598,7 @@ describe("Unit tests for CheckRsrc()", () => {
             1,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
 
         const w = await circuit.calculateWitness(
@@ -629,7 +629,7 @@ describe("Unit tests for CheckRsrc()", () => {
             1,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
         const t2 = Tile.genOwned(
             p2,
@@ -638,7 +638,7 @@ describe("Unit tests for CheckRsrc()", () => {
             2,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
         const u1 = Tile.genOwned(
             p1,
@@ -647,7 +647,7 @@ describe("Unit tests for CheckRsrc()", () => {
             1,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
         const u2 = Tile.genOwned(
             p2,
@@ -656,7 +656,7 @@ describe("Unit tests for CheckRsrc()", () => {
             2,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
 
         const w = await circuit.calculateWitness(
@@ -687,7 +687,7 @@ describe("Unit tests for CheckRsrc()", () => {
             1,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
         const t2 = Tile.genOwned(
             p2,
@@ -696,7 +696,7 @@ describe("Unit tests for CheckRsrc()", () => {
             2,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
         const u1 = Tile.genOwned(
             p1,
@@ -705,7 +705,7 @@ describe("Unit tests for CheckRsrc()", () => {
             1,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
         const u2 = Tile.genOwned(
             p1,
@@ -714,7 +714,7 @@ describe("Unit tests for CheckRsrc()", () => {
             1,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
 
         const w = await circuit.calculateWitness(
@@ -881,8 +881,8 @@ describe("Unit tests for CheckWaterUpdates()", () => {
     });
 
     it("fails if player loses troops on a non-water tile", async () => {
-        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
-        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 1, Tile.NORMAL_TILE);
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.BARE_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 1, Tile.BARE_TILE);
 
         const w = await circuit.calculateWitness(
             {
@@ -1017,8 +1017,8 @@ describe("Unit tests for CheckWaterUpdates()", () => {
     });
 
     it("passes if player keeps troops on a non-water tile", async () => {
-        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
-        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 1, Tile.NORMAL_TILE);
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.BARE_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 1, Tile.BARE_TILE);
 
         const w = await circuit.calculateWitness(
             {
@@ -1042,8 +1042,8 @@ describe("Unit tests for CheckRsrcCases()", () => {
     });
 
     it("fails (case 1)", async () => {
-        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 20, 0, 0, 0, Tile.NORMAL_TILE);
-        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 0, Tile.NORMAL_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 20, 0, 0, 0, Tile.BARE_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 0, Tile.BARE_TILE);
 
         const w = await circuit.calculateWitness(
             {
@@ -1061,8 +1061,8 @@ describe("Unit tests for CheckRsrcCases()", () => {
     });
 
     it("fails (case 2)", async () => {
-        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
-        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.BARE_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.BARE_TILE);
 
         const w = await circuit.calculateWitness(
             {
@@ -1080,8 +1080,8 @@ describe("Unit tests for CheckRsrcCases()", () => {
     });
 
     it("fails (case 3, onto less resources)", async () => {
-        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
-        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 0, Tile.NORMAL_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.BARE_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 0, Tile.BARE_TILE);
 
         const w = await circuit.calculateWitness(
             {
@@ -1099,8 +1099,8 @@ describe("Unit tests for CheckRsrcCases()", () => {
     });
 
     it("fails (case 3, onto more or equal resources)", async () => {
-        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
-        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 1, 0, 0, 0, Tile.NORMAL_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.BARE_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 1, 0, 0, 0, Tile.BARE_TILE);
 
         const w = await circuit.calculateWitness(
             {
@@ -1118,8 +1118,8 @@ describe("Unit tests for CheckRsrcCases()", () => {
     });
 
     it("passes (case 1)", async () => {
-        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
-        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 0, Tile.NORMAL_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.BARE_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 0, Tile.BARE_TILE);
 
         const w = await circuit.calculateWitness(
             {
@@ -1137,8 +1137,8 @@ describe("Unit tests for CheckRsrcCases()", () => {
     });
 
     it("passes (case 2)", async () => {
-        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 0, Tile.NORMAL_TILE);
-        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 15, 0, 0, 0, Tile.NORMAL_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 0, Tile.BARE_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 15, 0, 0, 0, Tile.BARE_TILE);
 
         const w = await circuit.calculateWitness(
             {
@@ -1156,8 +1156,8 @@ describe("Unit tests for CheckRsrcCases()", () => {
     });
 
     it("passes (case 3, onto less resources)", async () => {
-        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 0, Tile.NORMAL_TILE);
-        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 0, Tile.NORMAL_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 0, Tile.BARE_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 0, Tile.BARE_TILE);
 
         const w = await circuit.calculateWitness(
             {
@@ -1175,8 +1175,8 @@ describe("Unit tests for CheckRsrcCases()", () => {
     });
 
     it("passes (case 3, onto more or equal resources)", async () => {
-        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 0, Tile.NORMAL_TILE);
-        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 25, 0, 0, 0, Tile.NORMAL_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, 0, Tile.BARE_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 25, 0, 0, 0, Tile.BARE_TILE);
 
         const w = await circuit.calculateWitness(
             {
@@ -1202,10 +1202,10 @@ describe("Unit tests for CheckCityIdCases()", () => {
     });
 
     it("fails if 'from' tile's city changes", async () => {
-        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.NORMAL_TILE);
-        const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 0, 0, 0, Tile.NORMAL_TILE);
-        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 2, 0, 0, Tile.NORMAL_TILE);
-        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 0, 0, 0, Tile.NORMAL_TILE);
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.BARE_TILE);
+        const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 0, 0, 0, Tile.BARE_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 2, 0, 0, Tile.BARE_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 0, 0, 0, Tile.BARE_TILE);
 
         const w = await circuit.calculateWitness({
             tFrom: t1.toCircuitInput(),
@@ -1221,9 +1221,9 @@ describe("Unit tests for CheckCityIdCases()", () => {
     });
 
     it("fails if city ID changes when moving onto enemy city", async () => {
-        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.NORMAL_TILE);
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.BARE_TILE);
         const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 2, 0, 0, Tile.CITY_TILE);
-        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.NORMAL_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.BARE_TILE);
         const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.CITY_TILE);
 
         const w = await circuit.calculateWitness({
@@ -1240,9 +1240,9 @@ describe("Unit tests for CheckCityIdCases()", () => {
     });
 
     it("fails if city ID changes when moving onto enemy capital", async () => {
-        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.NORMAL_TILE);
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.BARE_TILE);
         const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 2, 0, 0, Tile.CAPITAL_TILE);
-        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.NORMAL_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.BARE_TILE);
         const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.CAPITAL_TILE);
 
         const w = await circuit.calculateWitness({
@@ -1259,10 +1259,10 @@ describe("Unit tests for CheckCityIdCases()", () => {
     });
 
     it("fails if city ID changes when moving into a different city", async () => {
-        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.NORMAL_TILE);
-        const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 2, 0, 0, Tile.NORMAL_TILE);
-        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.NORMAL_TILE);
-        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.NORMAL_TILE);
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.BARE_TILE);
+        const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 2, 0, 0, Tile.BARE_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.BARE_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.BARE_TILE);
 
         const w = await circuit.calculateWitness({
             tFrom: t1.toCircuitInput(),
@@ -1278,10 +1278,10 @@ describe("Unit tests for CheckCityIdCases()", () => {
     });
 
     it("fails if city ID changes when moving in the same city", async () => {
-        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.NORMAL_TILE);
-        const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.NORMAL_TILE);
-        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.NORMAL_TILE);
-        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 2, 0, 0, Tile.NORMAL_TILE);
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.BARE_TILE);
+        const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.BARE_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.BARE_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 2, 0, 0, Tile.BARE_TILE);
 
         const w = await circuit.calculateWitness({
             tFrom: t1.toCircuitInput(),
@@ -1297,10 +1297,10 @@ describe("Unit tests for CheckCityIdCases()", () => {
     });
 
     it("fails if city ID changes when failing to take an enemy", async () => {
-        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.NORMAL_TILE);
-        const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 2, 0, 0, Tile.NORMAL_TILE);
-        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.NORMAL_TILE);
-        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.NORMAL_TILE);
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.BARE_TILE);
+        const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 2, 0, 0, Tile.BARE_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.BARE_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.BARE_TILE);
 
         const w = await circuit.calculateWitness({
             tFrom: t1.toCircuitInput(),
@@ -1316,10 +1316,10 @@ describe("Unit tests for CheckCityIdCases()", () => {
     });
 
     it("fails if city ID stays the same taking unowned", async () => {
-        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.NORMAL_TILE);
-        const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 0, 0, 0, Tile.NORMAL_TILE);
-        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.NORMAL_TILE);
-        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 0, 0, 0, Tile.NORMAL_TILE);
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.BARE_TILE);
+        const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 0, 0, 0, Tile.BARE_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.BARE_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 0, 0, 0, Tile.BARE_TILE);
 
         const w = await circuit.calculateWitness({
             tFrom: t1.toCircuitInput(),
@@ -1335,10 +1335,10 @@ describe("Unit tests for CheckCityIdCases()", () => {
     });
 
     it("fails if city ID stays the same taking enemy non-city", async () => {
-        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.NORMAL_TILE);
-        const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 2, 0, 0, Tile.NORMAL_TILE);
-        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.NORMAL_TILE);
-        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 2, 0, 0, Tile.NORMAL_TILE);
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.BARE_TILE);
+        const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 2, 0, 0, Tile.BARE_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, 0, Tile.BARE_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 2, 0, 0, Tile.BARE_TILE);
 
         const w = await circuit.calculateWitness({
             tFrom: t1.toCircuitInput(),
@@ -1362,10 +1362,10 @@ describe("Unit tests for CheckTypeConsistency()", () => {
     });
 
     it("fails if 'from' tile changes type", async () => {
-        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
-        const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 1 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.BARE_TILE);
+        const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 1 }, 10, 0, 0, 0, Tile.BARE_TILE);
         const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.WATER_TILE);
-        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 1 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 1 }, 10, 0, 0, 0, Tile.BARE_TILE);
 
         const w = await circuit.calculateWitness(
             {
@@ -1383,9 +1383,9 @@ describe("Unit tests for CheckTypeConsistency()", () => {
     });
 
     it("fails if 'to' tile changes type, not an enemy capital", async () => {
-        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
-        const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 1 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
-        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.BARE_TILE);
+        const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 1 }, 10, 0, 0, 0, Tile.BARE_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.BARE_TILE);
         const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 1 }, 10, 0, 0, 0, Tile.WATER_TILE);
 
         const w = await circuit.calculateWitness(
@@ -1404,7 +1404,7 @@ describe("Unit tests for CheckTypeConsistency()", () => {
     });
 
     it("fails if enemy capital is not turned into a city", async () => {
-        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.BARE_TILE);
         const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 1 }, 10, 0, 0, 0, Tile.CAPITAL_TILE);
         const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.WATER_TILE);
         const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 1 }, 10, 0, 0, 0, Tile.CAPITAL_TILE);
@@ -1425,7 +1425,7 @@ describe("Unit tests for CheckTypeConsistency()", () => {
     });
 
     it("fails if player capital turns into a city", async () => {
-        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.BARE_TILE);
         const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 1 }, 10, 0, 0, 0, Tile.CAPITAL_TILE);
         const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.WATER_TILE);
         const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 1 }, 10, 0, 0, 0, Tile.CITY_TILE);
@@ -1446,10 +1446,10 @@ describe("Unit tests for CheckTypeConsistency()", () => {
     });
 
     it("passes when moving onto a normal tile", async () => {
-        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
-        const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 1 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
-        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
-        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 1 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.BARE_TILE);
+        const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 1 }, 10, 0, 0, 0, Tile.BARE_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.BARE_TILE);
+        const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 1 }, 10, 0, 0, 0, Tile.BARE_TILE);
 
         const w = await circuit.calculateWitness(
             {
@@ -1467,9 +1467,9 @@ describe("Unit tests for CheckTypeConsistency()", () => {
     });
 
     it("passes when taking over enemy capital", async () => {
-        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
+        const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.BARE_TILE);
         const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 1 }, 10, 0, 0, 0, Tile.CAPITAL_TILE);
-        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.NORMAL_TILE);
+        const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, 0, Tile.BARE_TILE);
         const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 1 }, 10, 0, 0, 0, Tile.CITY_TILE);
 
         const w = await circuit.calculateWitness(
@@ -1507,7 +1507,7 @@ describe("Unit tests for CheckMerkleInclusion()", () => {
             1,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
         const t2 = Tile.genOwned(
             p2,
@@ -1516,7 +1516,7 @@ describe("Unit tests for CheckMerkleInclusion()", () => {
             2,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
 
         tree.insert(Utils.hIntoBigNumber(t1.hash()));
@@ -1552,7 +1552,7 @@ describe("Unit tests for CheckMerkleInclusion()", () => {
             1,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
         const t2 = Tile.genOwned(
             p2,
@@ -1561,7 +1561,7 @@ describe("Unit tests for CheckMerkleInclusion()", () => {
             2,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
 
         tree.insert(Utils.hIntoBigNumber(t1.hash()));
@@ -1597,7 +1597,7 @@ describe("Unit tests for CheckMerkleInclusion()", () => {
             1,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
         const t2 = Tile.genOwned(
             p2,
@@ -1606,7 +1606,7 @@ describe("Unit tests for CheckMerkleInclusion()", () => {
             2,
             0,
             0,
-            Tile.NORMAL_TILE
+            Tile.BARE_TILE
         );
 
         tree.insert(Utils.hIntoBigNumber(t1.hash()));

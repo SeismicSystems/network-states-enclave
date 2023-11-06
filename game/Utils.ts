@@ -35,9 +35,9 @@ export type TerrainGenerator = (location: Location) => Terrain;
 
 export const dummyTerrainGenerator = (location: Location) => {
     const { r: i, c: j } = location;
-    if (i === BigInt(0) && j === BigInt(1)) {
+    if (i === 0 && j === 1) {
         return Terrain.HILL;
-    } else if (i === BigInt(1) && j === BigInt(1)) {
+    } else if (i === 1 && j === 1) {
         return Terrain.WATER;
     } else {
         return Terrain.BARE;
@@ -63,8 +63,8 @@ export class Utils {
         try {
             const location = JSON.parse(locationString);
             return {
-                r: BigInt(location.r),
-                c: BigInt(location.c),
+                r: Number(location.r),
+                c: Number(location.c),
             };
         } catch (error) {
             console.error("Error while unstringifying location:", error);

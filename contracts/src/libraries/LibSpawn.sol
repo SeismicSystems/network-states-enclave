@@ -12,7 +12,7 @@ library LibSpawn {
         SpawnInputs memory spawnInputs,
         Signature memory sig
     ) internal view {
-        require(SpawnCommitment.get(player) != 0, "Commit to spawn first");
+        // require(SpawnCommitment.get(player) != 0, "Commit to spawn first");
         require(spawnInputs.spawnCityId != 0, "City ID must be non-zero");
         require(
             CityPlayer.getValue(spawnInputs.spawnCityId) == address(0),
@@ -23,10 +23,10 @@ library LibSpawn {
                 Config.getEnclave(),
             "Enclave spawn sig incorrect"
         );
-        require(
-            SpawnCommitment.get(player) == spawnInputs.hBlindLoc,
-            "Incorrect H(b, r, c)"
-        );
+        // require(
+        //     SpawnCommitment.get(player) == spawnInputs.hBlindLoc,
+        //     "Incorrect H(b, r, c)"
+        // );
     }
 
     function spawnPlayer(address player, SpawnInputs memory sp) internal {

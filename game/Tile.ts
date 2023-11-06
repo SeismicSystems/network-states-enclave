@@ -1,13 +1,14 @@
 // @ts-ignore
 import { groth16 } from "snarkjs";
-import { Groth16Proof } from "./Utils.js";
+import { Groth16Proof, Terrain } from "./Utils.js";
 import { genRandomSalt } from "maci-crypto";
 import { Player } from "./Player.js";
 import { Utils } from "./Utils.js";
+import { TerrainUtils } from "./Terrain.js";
 
 export type Location = {
-    r: bigint;
-    c: bigint;
+    r: number;
+    c: number;
 };
 
 export class Tile {
@@ -21,7 +22,7 @@ export class Tile {
     static UNOWNED_ID: number = 0;
 
     // tileType options
-    static NORMAL_TILE: number = 0;
+    static BARE_TILE: number = 0;
     static CITY_TILE: number = 1;
     static WATER_TILE: number = 2;
     static HILL_TILE: number = 3;
@@ -157,9 +158,10 @@ export class Tile {
     static async virtualZKP(
         loc: Location,
         rand: bigint,
-        hRand: bigint
+        hRand: bigint,
+        terrainUtils: TerrainUtils
     ): Promise<[Groth16Proof, any]> {
-        const v: Tile = Tile.genVirtual(loc, rand);
+        const v: Tile = Tile.genVirtual(loc, rand, terrainUtils);
         const { proof, publicSignals } = await groth16.fullProve(
             {
                 hRand: hRand.toString(),
@@ -179,7 +181,7 @@ export class Tile {
     static fromJSON(obj: any): Tile {
         return new Tile(
             new Player(obj.symbol, obj.address),
-            { r: BigInt(obj.r), c: BigInt(obj.c) },
+            { r: Number(obj.r), c: Number(obj.c) },
             parseInt(obj.resources, 10),
             BigInt(obj.key),
             parseInt(obj.cityId, 10),
@@ -192,7 +194,7 @@ export class Tile {
      * Meant to represent a tile in the fog of war.
      */
     static mystery(l: Location): Tile {
-        return new Tile(Tile.MYSTERY, l, 0, BigInt(0), 0, 0, this.NORMAL_TILE);
+        return new Tile(Tile.MYSTERY, l, 0, BigInt(0), 0, 0, this.BARE_TILE);
     }
 
     /*
@@ -213,7 +215,11 @@ export class Tile {
     /*
      * New virtual / unowned tile.
      */
-    static genVirtual(l: Location, r: bigint): Tile {
+    static genVirtual(
+        l: Location,
+        r: bigint,
+        terrainUtils: TerrainUtils
+    ): Tile {
         return new Tile(
             Tile.UNOWNED,
             l,
@@ -221,7 +227,7 @@ export class Tile {
             Tile.proceduralSalt(l, r),
             0,
             0,
-            this.NORMAL_TILE
+            Tile.terrainAt(l, terrainUtils)
         );
     }
 
@@ -230,7 +236,22 @@ export class Tile {
      * random value.
      */
     static proceduralSalt(l: Location, r: bigint): bigint {
-        return Utils.poseidonExt([r, l.r, l.c]);
+        return Utils.poseidonExt([r, BigInt(l.r), BigInt(l.c)]);
+    }
+
+    /*
+     * Return type value corresponding to output of getTerrainAtLoc
+     */
+    static terrainAt(l: Location, terrainUtils: TerrainUtils): number {
+        const terrainValue = terrainUtils.getTerrainAtLoc(l);
+        switch (terrainValue) {
+            case Terrain.WATER:
+                return this.WATER_TILE;
+            case Terrain.HILL:
+                return this.HILL_TILE;
+            default:
+                return this.BARE_TILE;
+        }
     }
 
     /*

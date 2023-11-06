@@ -30,18 +30,19 @@ export class Player {
     }
 
     public hBlindLoc(l: Location): string {
-        return Utils.poseidonExt([this.blind, l.r, l.c]).toString();
+        return Utils.poseidonExt([
+            this.blind,
+            BigInt(l.r),
+            BigInt(l.c),
+        ]).toString();
     }
 
-    public async commitToSpawn(spawnLoc: Location, nStates: any) {
+    public async commitHBlind(spawnLoc: Location, nStates: any) {
         const tx = await nStates.commitToSpawn(this.hBlindLoc(spawnLoc));
         await tx.wait();
     }
 
-    public async spawnZKP(
-        prevTile: Tile,
-        spawnTile: Tile
-    ) {
+    public async spawnZKP(prevTile: Tile, spawnTile: Tile) {
         const { proof, publicSignals } = await groth16.fullProve(
             {
                 canSpawn: prevTile.isSpawnable() ? "1" : "0",
