@@ -64,7 +64,7 @@ const signer = new ethers.Wallet(
 );
 
 const abi = IWorld.abi.concat(IEnclaveEvents.abi);
-const nStates = new ethers.Contract(worlds[31337].address, abi, signer);
+const nStates = new ethers.Contract(worlds[4242].address, abi, signer);
 
 /*
  * Enclave randomness that it commits to in contract. Used for virtual tile
@@ -726,7 +726,6 @@ io.on("connection", (socket: Socket) => {
 });
 
 nStates.on(nStates.filters.NewSpawnAttempt(), (player, success) => {
-    console.log('new spawn attempt', success);
     onSpawnAttempt(player, success);
 });
 
@@ -751,7 +750,6 @@ nStates.provider.on("block", async (n) => {
  */
 server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
     b = new Board(terrainUtils);
-
     b.printTerrain();
 
     if (inRecoveryMode) {

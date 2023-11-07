@@ -38,7 +38,7 @@ const signer = new ethers.Wallet(
     new ethers.providers.JsonRpcProvider(process.env.RPC_URL)
 );
 const nStates = new ethers.Contract(
-    worlds[31337].address,
+    worlds[4242].address,
     IWorldAbi.abi,
     signer
 );
@@ -139,16 +139,13 @@ async function spawnSignatureResponse(
 
     console.log("Submitting spawn proof to nStates");
     try {
-        const tx = await nStates.spawn(
+        await nStates.spawn(
             spawnInputs,
             spawnProof,
             virtInputs,
             virtProof,
             spawnSig
         );
-        console.log("tx:", tx);
-        const res = await tx.wait();
-        console.log("res:", res);
         cursor = spawnTile.loc;
     } catch (error) {
         console.error(error);
