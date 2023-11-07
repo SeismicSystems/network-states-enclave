@@ -7,21 +7,19 @@ import { ServerToClientEvents, ClientToServerEvents } from "../enclave/socket";
 import { Tile, Location } from "../game/Tile.js";
 import { Player } from "../game/Player.js";
 import { Board } from "../game/Board.js";
-import { Utils, Groth16ProofCalldata, Groth16Proof } from "../game/Utils.js";
+import { Utils, Groth16ProofCalldata } from "../game/Utils.js";
 import worlds from "../contracts/worlds.json" assert { type: "json" };
 import IWorldAbi from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "json" };
 import { TerrainUtils } from "../game";
 
 /*
- * Conditions depend on which player is currently active.
+ * Player arguments
  */
-const PLAYER_SYMBOL: string = process.argv[2];
-const PLAYER_PRIVKEY = JSON.parse(<string>process.env.ETH_PRIVKEYS)[
-    PLAYER_SYMBOL
-];
+const PLAYER_PRIVKEY: string = process.argv[2];
+const PLAYER_SYMBOL: string = process.argv[3];
 const PLAYER_SPAWN: Location = {
-    r: Number(process.argv[3]),
-    c: Number(process.argv[4]),
+    r: Number(process.argv[4]),
+    c: Number(process.argv[5]),
 };
 
 const MOVE_PROMPT: string = "Next move: ";
@@ -141,13 +139,16 @@ async function spawnSignatureResponse(
 
     console.log("Submitting spawn proof to nStates");
     try {
-        await nStates.spawn(
+        const tx = await nStates.spawn(
             spawnInputs,
             spawnProof,
             virtInputs,
             virtProof,
             spawnSig
         );
+        console.log("tx:", tx);
+        const res = await tx.wait();
+        console.log("res:", res);
         cursor = spawnTile.loc;
     } catch (error) {
         console.error(error);
@@ -270,9 +271,7 @@ socket.on("connect", async () => {
     console.log("Server connection established");
 
     b = new Board(terrainUtils);
-
-    // Pass in dummy function to terrain generator because init is false
-    await b.seed();
+    b.seed();
 
     const sig = await signer.signMessage(socket.id);
     socket.emit("login", PLAYER.address, sig);

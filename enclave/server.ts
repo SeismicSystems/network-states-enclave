@@ -726,6 +726,7 @@ io.on("connection", (socket: Socket) => {
 });
 
 nStates.on(nStates.filters.NewSpawnAttempt(), (player, success) => {
+    console.log('new spawn attempt', success);
     onSpawnAttempt(player, success);
 });
 
