@@ -64,7 +64,7 @@ const signer = new ethers.Wallet(
 );
 
 const abi = IWorld.abi.concat(IEnclaveEvents.abi);
-const nStates = new ethers.Contract(worlds[4242].address, abi, signer);
+const nStates = new ethers.Contract(worlds[31337].address, abi, signer);
 
 /*
  * Enclave randomness that it commits to in contract. Used for virtual tile

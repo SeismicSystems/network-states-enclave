@@ -38,7 +38,7 @@ const signer = new ethers.Wallet(
     new ethers.providers.JsonRpcProvider(process.env.RPC_URL)
 );
 const nStates = new ethers.Contract(
-    worlds[4242].address,
+    worlds[31337].address,
     IWorldAbi.abi,
     signer
 );
@@ -266,6 +266,25 @@ async function errorResponse(msg: string) {
  */
 socket.on("connect", async () => {
     console.log("Server connection established");
+
+    console.log(`Player's address: ${signer.address}`);
+    const balance = await signer.getBalance();
+    console.log(
+        `Signer's balance in ETH: ${ethers.utils.formatEther(balance)}`
+    );
+    console.log("Press any key to continue or ESC to exit...");
+    process.stdin.setRawMode(true);
+    process.stdin.resume();
+    process.stdin.on("data", (key) => {
+        // ESC
+        if (key.toString() === "\u001B") {
+            console.log("Exiting...");
+            process.exit();
+        }
+    });
+    await new Promise((resolve) => process.stdin.once("data", resolve));
+    process.stdin.setRawMode(false);
+    process.stdin.pause();
 
     b = new Board(terrainUtils);
     b.seed();
