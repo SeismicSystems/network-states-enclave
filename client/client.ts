@@ -13,6 +13,11 @@ import IWorldAbi from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "
 import { TerrainUtils } from "../game";
 
 /*
+ * Chain ID
+ */
+const CHAIN_ID: number = parseInt(<string>process.env.CHAIN_ID);
+
+/*
  * Player arguments
  */
 const PLAYER_PRIVKEY: string = process.argv[2];
@@ -38,7 +43,7 @@ const signer = new ethers.Wallet(
     new ethers.providers.JsonRpcProvider(process.env.RPC_URL)
 );
 const nStates = new ethers.Contract(
-    worlds[31337].address,
+    worlds[CHAIN_ID].address,
     IWorldAbi.abi,
     signer
 );
@@ -80,7 +85,7 @@ let formattedProof: Groth16ProofCalldata;
  * Using Socket.IO to manage communication with enclave.
  */
 const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
-    `http://localhost:${process.env.ENCLAVE_SERVER_PORT}`
+    `${process.env.ENCLAVE_ADDRESS}:${process.env.ENCLAVE_SERVER_PORT}`
 );
 
 /*
@@ -273,7 +278,6 @@ socket.on("connect", async () => {
         `Signer's balance in ETH: ${ethers.utils.formatEther(balance)}`
     );
     console.log("Press any key to continue or ESC to exit...");
-    process.stdin.setRawMode(true);
     process.stdin.resume();
     process.stdin.on("data", (key) => {
         // ESC
@@ -283,8 +287,6 @@ socket.on("connect", async () => {
         }
     });
     await new Promise((resolve) => process.stdin.once("data", resolve));
-    process.stdin.setRawMode(false);
-    process.stdin.pause();
 
     b = new Board(terrainUtils);
     b.seed();
