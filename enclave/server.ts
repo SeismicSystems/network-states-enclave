@@ -27,6 +27,11 @@ import IEnclaveEvents from "../contracts/out/IEnclaveEvents.sol/IEnclaveEvents.j
 let inRecoveryMode = process.argv[2] == "1";
 
 /*
+ * Chain ID
+ */
+const CHAIN_ID: number = parseInt(<string>process.env.CHAIN_ID);
+
+/*
  * Set game parameters and create dummy players.
  */
 const START_RESOURCES: number = parseInt(
@@ -64,7 +69,7 @@ const signer = new ethers.Wallet(
 );
 
 const abi = IWorld.abi.concat(IEnclaveEvents.abi);
-const nStates = new ethers.Contract(worlds[31337].address, abi, signer);
+const nStates = new ethers.Contract(worlds[CHAIN_ID].address, abi, signer);
 
 /*
  * Enclave randomness that it commits to in contract. Used for virtual tile
@@ -750,7 +755,6 @@ nStates.provider.on("block", async (n) => {
  */
 server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
     b = new Board(terrainUtils);
-
     b.printTerrain();
 
     if (inRecoveryMode) {
@@ -779,6 +783,6 @@ server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
     }
 
     console.log(
-        `Server running on http://localhost:${process.env.ENCLAVE_SERVER_PORT}`
+        `Server running on ${process.env.ENCLAVE_ADDRESS}:${process.env.ENCLAVE_SERVER_PORT}`
     );
 });

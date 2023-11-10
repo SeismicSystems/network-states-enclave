@@ -7,21 +7,24 @@ import { ServerToClientEvents, ClientToServerEvents } from "../enclave/socket";
 import { Tile, Location } from "../game/Tile.js";
 import { Player } from "../game/Player.js";
 import { Board } from "../game/Board.js";
-import { Utils, Groth16ProofCalldata, Groth16Proof } from "../game/Utils.js";
+import { Utils, Groth16ProofCalldata } from "../game/Utils.js";
 import worlds from "../contracts/worlds.json" assert { type: "json" };
 import IWorldAbi from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "json" };
 import { TerrainUtils } from "../game";
 
 /*
- * Conditions depend on which player is currently active.
+ * Chain ID
  */
-const PLAYER_SYMBOL: string = process.argv[2];
-const PLAYER_PRIVKEY = JSON.parse(<string>process.env.ETH_PRIVKEYS)[
-    PLAYER_SYMBOL
-];
+const CHAIN_ID: number = parseInt(<string>process.env.CHAIN_ID);
+
+/*
+ * Player arguments
+ */
+const PLAYER_PRIVKEY: string = process.argv[2];
+const PLAYER_SYMBOL: string = process.argv[3];
 const PLAYER_SPAWN: Location = {
-    r: Number(process.argv[3]),
-    c: Number(process.argv[4]),
+    r: Number(process.argv[4]),
+    c: Number(process.argv[5]),
 };
 
 const MOVE_PROMPT: string = "Next move: ";
@@ -40,7 +43,7 @@ const signer = new ethers.Wallet(
     new ethers.providers.JsonRpcProvider(process.env.RPC_URL)
 );
 const nStates = new ethers.Contract(
-    worlds[31337].address,
+    worlds[CHAIN_ID].address,
     IWorldAbi.abi,
     signer
 );
@@ -82,7 +85,7 @@ let formattedProof: Groth16ProofCalldata;
  * Using Socket.IO to manage communication with enclave.
  */
 const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
-    `http://localhost:${process.env.ENCLAVE_SERVER_PORT}`
+    `${process.env.ENCLAVE_ADDRESS}:${process.env.ENCLAVE_SERVER_PORT}`
 );
 
 /*
@@ -269,10 +272,24 @@ async function errorResponse(msg: string) {
 socket.on("connect", async () => {
     console.log("Server connection established");
 
-    b = new Board(terrainUtils);
+    console.log(`Player's address: ${signer.address}`);
+    const balance = await signer.getBalance();
+    console.log(
+        `Signer's balance in ETH: ${ethers.utils.formatEther(balance)}`
+    );
+    console.log("Press any key to continue or ESC to exit...");
+    process.stdin.resume();
+    process.stdin.on("data", (key) => {
+        // ESC
+        if (key.toString() === "\u001B") {
+            console.log("Exiting...");
+            process.exit();
+        }
+    });
+    await new Promise((resolve) => process.stdin.once("data", resolve));
 
-    // Pass in dummy function to terrain generator because init is false
-    await b.seed();
+    b = new Board(terrainUtils);
+    b.seed();
 
     const sig = await signer.signMessage(socket.id);
     socket.emit("login", PLAYER.address, sig);
