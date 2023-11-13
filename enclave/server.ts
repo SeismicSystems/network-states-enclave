@@ -13,10 +13,10 @@ import {
 } from "./socket";
 import { Queue } from "queue-typescript";
 import { TerrainUtils } from "../game/Terrain.js";
-import { Tile, Location } from "../game/Tile.js";
+import { Tile } from "../game/Tile.js";
 import { Player } from "../game/Player.js";
 import { Board } from "../game/Board.js";
-import { Utils } from "../game/Utils.js";
+import { Utils, Location } from "../game/Utils.js";
 import worlds from "../contracts/worlds.json" assert { type: "json" };
 import IWorld from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "json" };
 import IEnclaveEvents from "../contracts/out/IEnclaveEvents.sol/IEnclaveEvents.json" assert { type: "json" };
@@ -585,7 +585,9 @@ async function sendRecoveredTileResponse(socket: Socket, encTile: any) {
         return;
     }
 
-    const tile = Utils.decryptTile(tileEncryptionKey, ciphertext, iv, tag);
+    const tile = Tile.fromJSON(
+        Utils.decryptTile(tileEncryptionKey, ciphertext, iv, tag)
+    );
 
     // Push tile into state if it's hash has been emitted
     const newTileEvents: ethers.Event[] = await nStates.queryFilter(

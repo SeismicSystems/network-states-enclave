@@ -1,8 +1,8 @@
 // @ts-ignore
 import { groth16 } from "snarkjs";
-import { Groth16Proof, Terrain, TerrainGenerator, Utils } from "./Utils.js";
+import { Utils, Location, Groth16Proof } from "./Utils.js";
 import { Player } from "./Player.js";
-import { Tile, Location } from "./Tile.js";
+import { Tile } from "./Tile.js";
 import dotenv from "dotenv";
 import { TerrainUtils } from "./Terrain.js";
 dotenv.config({ path: "../.env" });

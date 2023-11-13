@@ -1,7 +1,5 @@
 // @ts-ignore
-import { groth16 } from "snarkjs";
-import { Location, Tile } from "./Tile";
-import { Utils } from "./Utils";
+import { Utils, Location } from "./Utils";
 import { genRandomSalt } from "maci-crypto";
 /*
  * poseidonPerm is a modified version of iden3's poseidonPerm.js.
@@ -40,24 +38,5 @@ export class Player {
     public async commitHBlind(spawnLoc: Location, nStates: any) {
         const tx = await nStates.commitToSpawn(this.hBlindLoc(spawnLoc));
         await tx.wait();
-    }
-
-    public async spawnZKP(prevTile: Tile, spawnTile: Tile) {
-        const { proof, publicSignals } = await groth16.fullProve(
-            {
-                canSpawn: prevTile.isSpawnable() ? "1" : "0",
-                spawnCityId: spawnTile.cityId.toString(),
-                hPrevTile: prevTile.hash(),
-                hSpawnTile: spawnTile.hash(),
-                hBlindLoc: this.hBlindLoc(spawnTile.loc),
-                prevTile: prevTile.toCircuitInput(),
-                spawnTile: spawnTile.toCircuitInput(),
-                blind: this.blind.toString(),
-            },
-            Player.SPAWN_WASM,
-            Player.SPAWN_PROVKEY
-        );
-
-        return [proof, publicSignals];
     }
 }
