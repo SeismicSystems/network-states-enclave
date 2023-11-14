@@ -137,6 +137,10 @@ async function spawnSignatureResponse(
     const [virtInputs, virtProof] =
         Utils.unpackVirtualInputs(virtFormattedProof);
 
+    console.log('------------------------');
+    console.log("virtInputs: ", virtInputs, typeof virtInputs);
+    console.log("virtProof: ", virtProof, typeof virtProof);
+
     const [prf, pubSigs] = await PLAYER.spawnZKP(virtTile, spawnTile);
 
     const spawnFormattedProof = await Utils.exportCallDataGroth16(prf, pubSigs);
@@ -144,6 +148,10 @@ async function spawnSignatureResponse(
         spawnFormattedProof,
         sig
     );
+
+    console.log('------------------------');
+    console.log('spawnInputs: ', spawnInputs, typeof spawnInputs);
+    console.log('spawnProof: ', spawnProof, typeof spawnProof);
 
     console.log("Submitting spawn proof to nStates");
     try {
