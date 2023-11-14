@@ -48,6 +48,33 @@ const CLAIMED_MOVE_LIFE_SPAN = parseInt(
     10
 );
 
+// Demo vars for virtual
+const prf = {
+    pi_a: [
+        "17560276126132103511910853159354401790873782774644499066688990009141646188780",
+        "19389848734472598351562886266566629276522225123696743896519506106663604226707",
+        "1",
+    ],
+    pi_b: [
+        [
+            "14983450138254185342617533026639191618728940708352168876822618102427768698577",
+            "9071919334574237067703497594822741658903315352688855452462911063018259117184",
+        ],
+        [
+            "494169910348826940380155983299304193586514376978862138052258486205156069598",
+            "2395442262049367222304639471242973265149830402607466932371753178734993276020",
+        ],
+        ["1", "0"],
+    ],
+    pi_c: [
+        "3268217767572032204923596281494126640026802666991765256142412974196361517463",
+        "13164977009915308563970287418239683283312029983074817529408749626255138787623",
+        "1",
+    ],
+    protocol: "groth16",
+    curve: "bn128",
+};
+
 /*
  * Using Socket.IO to manage communication to clients.
  */
@@ -240,11 +267,13 @@ async function sendSpawnSignature(
         return;
     }
 
-    if (claimedSpawns.has(sender)) {
-        console.log("Already committed to spawn");
-        socket.disconnect();
-        return;
-    }
+    // Demo-cli
+    
+    // if (claimedSpawns.has(sender)) {
+    //     console.log("Already committed to spawn");
+    //     socket.disconnect();
+    //     return;
+    // }
 
     let playerChallenge: bigint;
     try {
@@ -293,12 +322,16 @@ async function sendSpawnSignature(
     const hSpawnTile = spawnTile.hash();
 
     // Generate ZKP that attests to valid virtual tile commitment
-    const [prf, pubSignals] = await Tile.virtualZKP(
-        loc,
-        rand,
-        hRand,
-        terrainUtils
-    );
+    // const [prf, pubSignals] = await Tile.virtualZKP(
+    //     loc,
+    //     rand,
+    //     hRand,
+    //     terrainUtils
+    // );
+    const pubSignals = {
+        hRand: hRand.toString(),
+        hVirt: virtTile.hash(),
+    };
 
     // Acknowledge reception of intended move
     const digest = utils.solidityKeccak256(["uint256"], [hSpawnTile]);
@@ -355,18 +388,25 @@ async function sendMoveSignature(
         const hUTo = uToAsTile.hash();
 
         // Generate ZKP that attests to valid virtual tile commitment
-        const [prf, pubSignals] = await Tile.virtualZKP(
-            uToAsTile.loc,
-            rand,
-            hRand,
-            terrainUtils
-        );
+        // const [prf, pubSignals] = await Tile.virtualZKP(
+        //     uToAsTile.loc,
+        //     rand,
+        //     hRand,
+        //     terrainUtils
+        // );
 
         const digest = utils.solidityKeccak256(
             ["uint256", "uint256", "uint256"],
             [currentBlockHeight, hUFrom, hUTo]
         );
         const sig = await signer.signMessage(utils.arrayify(digest));
+
+
+        const virtTile = Tile.genVirtual(uToAsTile.loc, rand, terrainUtils);
+        const pubSignals = {
+            hRand: hRand.toString(),
+            hVirt: virtTile.hash()
+        };
 
         socket.emit(
             "moveSignatureResponse",
