@@ -8,6 +8,7 @@ circom virtual/virtual.circom --c --r1cs
 # ./virtual
 cd virtual_cpp
 make
+mv virtual.dat ..
 cd ..
 
 # virtual.zkey
