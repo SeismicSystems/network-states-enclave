@@ -293,6 +293,32 @@ async function sendSpawnSignature(
     cityId++;
     const hSpawnTile = spawnTile.hash();
 
+    const [proof, publicSignals] = virtualZKP(virtTile);
+
+    // const [prf, pubSignals] = await Tile.virtualZKP(
+    //     loc,
+    //     rand,
+    //     hRand,
+    //     terrainUtils
+    // );
+
+    // Acknowledge reception of intended move
+    const digest = utils.solidityKeccak256(["uint256"], [hSpawnTile]);
+    const sig = await signer.signMessage(utils.arrayify(digest));
+
+    socket.emit(
+        "spawnSignatureResponse",
+        virtTile,
+        spawnTile,
+        sig,
+        proof,
+        publicSignals
+    );
+
+    claimedSpawns.set(sender, { virtTile, spawnTile });
+}
+
+function virtualZKP(virtTile: Tile) {
     const inputs = {
         hRand: hRand.toString(),
         hVirt: virtTile.hash(),
@@ -326,33 +352,7 @@ async function sendSpawnSignature(
         return;
     }
 
-    console.log("exec proof:", proof);
-    console.log("exec publicSignals:", publicSignals);
-
-    const [prf1, pubSignals1] = await Tile.virtualZKP(
-        loc,
-        rand,
-        hRand,
-        terrainUtils
-    );
-
-    console.log("og prf:", prf1);
-    console.log("og pubSigs:", pubSignals1);
-
-    // Acknowledge reception of intended move
-    const digest = utils.solidityKeccak256(["uint256"], [hSpawnTile]);
-    const sig = await signer.signMessage(utils.arrayify(digest));
-
-    socket.emit(
-        "spawnSignatureResponse",
-        virtTile,
-        spawnTile,
-        sig,
-        proof,
-        publicSignals
-    );
-
-    claimedSpawns.set(sender, { virtTile, spawnTile });
+    return [proof, publicSignals];
 }
 
 /*
@@ -394,12 +394,16 @@ async function sendMoveSignature(
         const hUTo = uToAsTile.hash();
 
         // Generate ZKP that attests to valid virtual tile commitment
-        const [prf, pubSignals] = await Tile.virtualZKP(
-            uToAsTile.loc,
-            rand,
-            hRand,
-            terrainUtils
+        const [proof, publicSignals] = virtualZKP(
+            Tile.genVirtual(uToAsTile.loc, rand, terrainUtils)
         );
+
+        // const [prf, pubSignals] = await Tile.virtualZKP(
+        //     uToAsTile.loc,
+        //     rand,
+        //     hRand,
+        //     terrainUtils
+        // );
 
         const digest = utils.solidityKeccak256(
             ["uint256", "uint256", "uint256"],
@@ -411,8 +415,8 @@ async function sendMoveSignature(
             "moveSignatureResponse",
             sig,
             currentBlockHeight,
-            prf,
-            pubSignals
+            proof,
+            publicSignals
         );
 
         playerLatestBlock.set(sender, currentBlockHeight);

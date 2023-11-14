@@ -14,10 +14,10 @@ library LibSpawn {
     ) internal view {
         // require(SpawnCommitment.get(player) != 0, "Commit to spawn first");
         require(spawnInputs.spawnCityId != 0, "City ID must be non-zero");
-        require(
-            CityPlayer.getValue(spawnInputs.spawnCityId) == address(0),
-            "City is already in game"
-        );
+        // require(
+        //     CityPlayer.getValue(spawnInputs.spawnCityId) == address(0),
+        //     "City is already in game"
+        // );
         require(
             _getSigner(spawnInputs.hSpawnTile, sig) ==
                 Config.getEnclave(),

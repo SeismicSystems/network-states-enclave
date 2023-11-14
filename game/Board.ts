@@ -104,8 +104,8 @@ export class Board {
      * the perspective of the client.
      */
     public printView(): void {
-        for (let r = 0; r < 5; r++) {
-            for (let c = 0; c < 5; c++) {
+        for (let r = 0; r < 15; r++) {
+            for (let c = 0; c < 15; c++) {
                 let tl: Tile = this.getTile({ r, c }, 0n);
                 let color;
                 const reset = "\x1b[0m";

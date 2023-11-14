@@ -37,6 +37,9 @@ export class TerrainUtils {
             }
         );
 
+        // Demo cli: no terrain
+        return Terrain.BARE;
+
         let terrain: Terrain;
         if (perlinValue >= this.perlinThresholdBonusTroops) {
             terrain = Terrain.BONUS_TROOPS;
