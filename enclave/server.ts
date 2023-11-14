@@ -326,12 +326,18 @@ async function sendSpawnSignature(
         return;
     }
 
-    // const [prf, pubSignals] = await Tile.virtualZKP(
-    //     loc,
-    //     rand,
-    //     hRand,
-    //     terrainUtils
-    // );
+    console.log("exec proof:", proof);
+    console.log("exec publicSignals:", publicSignals);
+
+    const [prf1, pubSignals1] = await Tile.virtualZKP(
+        loc,
+        rand,
+        hRand,
+        terrainUtils
+    );
+
+    console.log("og prf:", prf1);
+    console.log("og pubSigs:", pubSignals1);
 
     // Acknowledge reception of intended move
     const digest = utils.solidityKeccak256(["uint256"], [hSpawnTile]);
