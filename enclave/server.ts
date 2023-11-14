@@ -5,6 +5,7 @@ import { ethers, utils } from "ethers";
 import * as fs from "fs";
 import dotenv from "dotenv";
 dotenv.config({ path: "../.env" });
+import { exec } from "child_process";
 import {
     ServerToClientEvents,
     ClientToServerEvents,
@@ -292,13 +293,45 @@ async function sendSpawnSignature(
     cityId++;
     const hSpawnTile = spawnTile.hash();
 
-    // Generate ZKP that attests to valid virtual tile commitment
-    const [prf, pubSignals] = await Tile.virtualZKP(
-        loc,
-        rand,
-        hRand,
-        terrainUtils
-    );
+    const inputs = {
+        hRand: hRand.toString(),
+        hVirt: virtTile.hash(),
+        rand: rand.toString(),
+        virt: virtTile.toCircuitInput(),
+    };
+
+    // Write the inputs to inputs.json
+    fs.writeFileSync("inputs.json", JSON.stringify(inputs));
+
+    // Call virtual-prover.sh
+    exec("../enclave/scripts/virtual-prover.sh", (error, stdout, stderr) => {
+        if (error) {
+            console.log(`error: ${error.message}`);
+            return;
+        }
+        if (stderr) {
+            console.log(`stderr: ${stderr}`);
+            return;
+        }
+        console.log(`stdout: ${stdout}`);
+    });
+
+    let proof;
+    let publicSignals;
+    try {
+        proof = JSON.parse(fs.readFileSync("proof.json", "utf8"));
+        publicSignals = JSON.parse(fs.readFileSync("public.json", "utf8"));
+    } catch (error) {
+        console.error(`Error reading JSON files: ${error}`);
+        return;
+    }
+
+    // const [prf, pubSignals] = await Tile.virtualZKP(
+    //     loc,
+    //     rand,
+    //     hRand,
+    //     terrainUtils
+    // );
 
     // Acknowledge reception of intended move
     const digest = utils.solidityKeccak256(["uint256"], [hSpawnTile]);
@@ -309,8 +342,8 @@ async function sendSpawnSignature(
         virtTile,
         spawnTile,
         sig,
-        prf,
-        pubSignals
+        proof,
+        publicSignals
     );
 
     claimedSpawns.set(sender, { virtTile, spawnTile });

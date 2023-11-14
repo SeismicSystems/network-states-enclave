@@ -127,6 +127,9 @@ async function spawnSignatureResponse(
     const virtTile = Tile.fromJSON(virt);
     const spawnTile = Tile.fromJSON(spawn);
 
+    console.log("virtPrf: ", virtPrf, typeof virtPrf);
+    console.log("virtPubSigs: ", virtPubSigs, typeof virtPubSigs);
+
     const virtFormattedProof = await Utils.exportCallDataGroth16(
         virtPrf,
         virtPubSigs
