@@ -147,7 +147,7 @@ async function spawnSignatureResponse(
         await nStates.spawn(
             spawnInputs,
             spawnProof,
-            virtInputs,
+            virtPubSigs,
             virtProof,
             spawnSig
         );
@@ -241,7 +241,7 @@ async function moveSignatureResponse(
     const [virtInputs, virtProof] =
         Utils.unpackVirtualInputs(virtFormattedProof);
 
-    await nStates.move(moveInputs, moveProof, virtInputs, virtProof, moveSig);
+    await nStates.move(moveInputs, moveProof, virtPubSigs, virtProof, moveSig);
 }
 
 /*
