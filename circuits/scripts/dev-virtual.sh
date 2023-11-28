@@ -13,8 +13,8 @@ awk '/#include/ {print; next} !p {print "namespace CIRCUIT_NAME {\n"; p=1} {prin
 if [ ! -d "circom_c_witness_generator" ]; then
   git clone https://github.com/bajpai244/circom_c_witness_generator.git
 fi
-cd circom_c_witness_generator
 
+cd circom_c_witness_generator
 ./witness_generator.sh $ARCH ../virtual_cpp/virtual.cpp ../virtual_cpp/virtual.dat
 mv wtns_build/circuit ../virtual/virtual-witness-generator
 mv ../virtual_cpp/virtual.dat ../virtual/virtual-witness-generator.dat
@@ -47,12 +47,12 @@ if [ ! -d "../virtual/virtual-prover" ]; then
     mkdir build_prover && cd build_prover
     cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=../package
     make -j4 && make install
+    mv ../package/bin/prover ../../virtual/virtual-prover
   elif [ "$ARCH" = "arm64" ]; then
     ./build_gmp.sh macos_arm64
     mkdir build_prover_macos_arm64 && cd build_prover_macos_arm64
     cmake .. -DTARGET_PLATFORM=macos_arm64 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=../package_macos_arm64
     make -j4 && make install
+    mv ../package_macos_arm64/bin/prover ../../virtual/virtual-prover
   fi
-
-  mv ../package_macos_arm64/bin/prover ../../virtual/virtual-prover
 fi

@@ -33,7 +33,7 @@ node ${NAME}_js/generate_witness.js \
 yarn run snarkjs zkey export solidityverifier ${NAME}.zkey \
                                               ${NAME}Verifier.sol
 sed -i -e 's/0.6.11;/0.8.13;/g' ${NAME}Verifier.sol
-mv ${UPPER_NAME}Verifier.sol ../contracts/src
+mv ${NAME}Verifier.sol ../contracts/src/${UPPER_NAME}Verifier.sol
 
 # Save proving key and witness generation script
 mv ${NAME}_js/${NAME}.wasm ${NAME}.zkey ${NAME}/

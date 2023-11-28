@@ -350,6 +350,13 @@ async function virtualZKP(virtTile: Tile) {
         return;
     }
 
+    // Remove the generated files
+    try {
+        await exec("rm input.json witness.wtns proof.json public.json");
+    } catch (error) {
+        console.error(`Error removing files: ${error}`);
+    }
+
     return [proof, publicSignals];
 }
 
