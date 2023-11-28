@@ -5,7 +5,9 @@ import { ethers, utils } from "ethers";
 import * as fs from "fs";
 import dotenv from "dotenv";
 dotenv.config({ path: "../.env" });
-import { exec } from "child_process";
+import { exec as execCb } from "child_process";
+import { promisify } from "util";
+const exec = promisify(execCb);
 import {
     ServerToClientEvents,
     ClientToServerEvents,
@@ -293,7 +295,7 @@ async function sendSpawnSignature(
     cityId++;
     const hSpawnTile = spawnTile.hash();
 
-    const [proof, publicSignals] = virtualZKP(virtTile);
+    const [proof, publicSignals] = await virtualZKP(virtTile);
 
     // const [prf, pubSignals] = await Tile.virtualZKP(
     //     loc,
@@ -318,7 +320,7 @@ async function sendSpawnSignature(
     claimedSpawns.set(sender, { virtTile, spawnTile });
 }
 
-function virtualZKP(virtTile: Tile) {
+async function virtualZKP(virtTile: Tile) {
     const inputs = {
         hRand: hRand.toString(),
         hVirt: virtTile.hash(),
@@ -327,21 +329,17 @@ function virtualZKP(virtTile: Tile) {
     };
 
     // Write the inputs to inputs.json
-    fs.writeFileSync("inputs.json", JSON.stringify(inputs));
+    fs.writeFileSync("input.json", JSON.stringify(inputs));
 
     // Call virtual-prover.sh
-    exec("../enclave/scripts/virtual-prover.sh", (error, stdout, stderr) => {
-        if (error) {
-            console.log(`error: ${error.message}`);
-            return;
-        }
-        if (stderr) {
-            console.log(`stderr: ${stderr}`);
-            return;
-        }
-        console.log(`stdout: ${stdout}`);
-    });
+    try {
+        await exec("../enclave/scripts/virtual-prover.sh");
+    } catch (error) {
+        console.log(`error: ${error.message}`);
+        return;
+    }
 
+    // Read from proof.json and public.json
     let proof;
     let publicSignals;
     try {
@@ -394,9 +392,8 @@ async function sendMoveSignature(
         const hUTo = uToAsTile.hash();
 
         // Generate ZKP that attests to valid virtual tile commitment
-        const [proof, publicSignals] = virtualZKP(
-            Tile.genVirtual(uToAsTile.loc, rand, terrainUtils)
-        );
+        const virtTile = Tile.genVirtual(uToAsTile.loc, rand, terrainUtils);
+        const [proof, publicSignals] = await virtualZKP(virtTile);
 
         // const [prf, pubSignals] = await Tile.virtualZKP(
         //     uToAsTile.loc,

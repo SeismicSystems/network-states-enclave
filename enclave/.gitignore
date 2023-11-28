@@ -1,3 +1,4 @@
 node_modules/
 .secrets
+encryption_key.txt
 dist

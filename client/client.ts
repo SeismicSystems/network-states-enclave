@@ -127,16 +127,12 @@ async function spawnSignatureResponse(
     const virtTile = Tile.fromJSON(virt);
     const spawnTile = Tile.fromJSON(spawn);
 
-    console.log("virtPrf: ", virtPrf, typeof virtPrf);
-    console.log("virtPubSigs: ", virtPubSigs, typeof virtPubSigs);
-
     const virtFormattedProof = await Utils.exportCallDataGroth16(
         virtPrf,
         virtPubSigs
     );
     const [virtInputs, virtProof] =
         Utils.unpackVirtualInputs(virtFormattedProof);
-
 
     const [prf, pubSigs] = await PLAYER.spawnZKP(virtTile, spawnTile);
     const spawnFormattedProof = await Utils.exportCallDataGroth16(prf, pubSigs);
