@@ -3,8 +3,8 @@
 : '
   This script performs the following operations:
   1. Generates the witness file from the given input file.
-  2. Executes virtual-prover (rapidsnark prover) to generate the proof-$ID.json 
-  and public-$ID.json.
+  2. Executes virtual-prover (rapidsnark prover) to generate proof-$ID.json and 
+  public-$ID.json.
 
   This script generates files that should be eventually be removed to save 
   space.
