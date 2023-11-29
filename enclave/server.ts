@@ -335,7 +335,11 @@ async function virtualZKP(virtTile: Tile) {
         fs.writeFileSync(`bin/input-${inputs.hVirt}.json`, JSON.stringify(inputs));
     
         // Call virtual-prover.sh with hVirt as argument
+        console.log(`Proving virtual ZKP with hVirt = ${inputs.hVirt}`);
+        const startTime = Date.now();
         await exec(`../enclave/scripts/virtual-prover.sh ${inputs.hVirt}`);
+        const endTime = Date.now();
+        console.log(`virtual-prover.sh: completed in ${endTime - startTime} ms`);
     
         // Read from bin/proof-hVirt.json and bin/public-hVirt.json
         proof = JSON.parse(fs.readFileSync(`bin/proof-${inputs.hVirt}.json`, "utf8"));
