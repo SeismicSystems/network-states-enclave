@@ -297,13 +297,6 @@ async function sendSpawnSignature(
 
     const [proof, publicSignals] = await virtualZKP(virtTile, socket.id);
 
-    // const [prf, pubSignals] = await Tile.virtualZKP(
-    //     loc,
-    //     rand,
-    //     hRand,
-    //     terrainUtils
-    // );
-
     // Acknowledge reception of intended move
     const digest = utils.solidityKeccak256(["uint256"], [hSpawnTile]);
     const sig = await signer.signMessage(utils.arrayify(digest));
@@ -320,6 +313,12 @@ async function sendSpawnSignature(
     claimedSpawns.set(sender, { virtTile, spawnTile });
 }
 
+/*
+ * Generates a ZKP that attests to the faithful computation of a virtual
+ * tile given some committed randomness. Requester of this ZKP also provides
+ * a blinding factor for location so they can use it in their client-side
+ * ZKP. Uses rapidsnark prover if possible, otherwise snarkjs.
+ */
 async function virtualZKP(virtTile: Tile, socketId: string) {
     const inputs = {
         hRand: hRand.toString(),
@@ -340,18 +339,33 @@ async function virtualZKP(virtTile: Tile, socketId: string) {
         // Call virtual-prover.sh
         console.log(`Proving virtual ZKP with ID = ${proofId}`);
         const startTime = Date.now();
-        await exec(`../enclave/scripts/virtual-prover.sh ${proofId}`);
+        await exec(`../enclave/scripts/virtual-prove.sh ${proofId}`); // Fix this pleaseeeeeeeeeeee
         const endTime = Date.now();
-        console.log(`virtual-prover.sh: completed in ${endTime - startTime} ms`);
+        console.log(
+            `virtual-prover.sh: completed in ${endTime - startTime} ms`
+        );
 
         // Read from bin/proof-proofId.json and bin/public-proofId.json
-        proof = JSON.parse(fs.readFileSync(`bin/proof-${proofId}.json`, "utf8"));
-        publicSignals = JSON.parse(fs.readFileSync(`bin/public-${proofId}.json`, "utf8"));
+        proof = JSON.parse(
+            fs.readFileSync(`bin/proof-${proofId}.json`, "utf8")
+        );
+        publicSignals = JSON.parse(
+            fs.readFileSync(`bin/public-${proofId}.json`, "utf8")
+        );
 
         // Remove the generated files
         await exec(`rm -rf bin/*-${proofId}.*`);
     } catch (error) {
         console.error(`Error: ${error}`);
+
+        // If rapidsnark fails, run snarkjs prover
+        console.log(`Proving virtual ZKP with snarkjs`);
+        const startTime = Date.now();
+        [proof, publicSignals] = await Tile.virtualZKP(inputs);
+        const endTime = Date.now();
+        console.log(
+            `snarkjs: completed in ${endTime - startTime} ms`
+        );
     }
 
     return [proof, publicSignals];
@@ -398,13 +412,6 @@ async function sendMoveSignature(
         // Generate ZKP that attests to valid virtual tile commitment
         const virtTile = Tile.genVirtual(uToAsTile.loc, rand, terrainUtils);
         const [proof, publicSignals] = await virtualZKP(virtTile, socket.id);
-
-        // const [prf, pubSignals] = await Tile.virtualZKP(
-        //     uToAsTile.loc,
-        //     rand,
-        //     hRand,
-        //     terrainUtils
-        // );
 
         const digest = utils.solidityKeccak256(
             ["uint256", "uint256", "uint256"],

@@ -155,22 +155,11 @@ export class Tile {
      * Generates a ZKP that attests to the faithful computation of a virtual
      * tile given some committed randomness. Requester of this ZKP also provides
      * a blinding factor for location so they can use it in their client-side
-     * ZKP.
+     * ZKP. Uses snarkjs Groth16 fullProve.
      */
-    static async virtualZKP(
-        loc: Location,
-        rand: bigint,
-        hRand: bigint,
-        terrainUtils: TerrainUtils
-    ): Promise<[Groth16Proof, any]> {
-        const v: Tile = Tile.genVirtual(loc, rand, terrainUtils);
+    static async virtualZKP(inputs: object): Promise<[Groth16Proof, any]> {
         const { proof, publicSignals } = await groth16.fullProve(
-            {
-                hRand: hRand.toString(),
-                hVirt: v.hash(),
-                rand: rand.toString(),
-                virt: v.toCircuitInput(),
-            },
+            inputs,
             Tile.VIRT_WASM,
             Tile.VIRT_PROVKEY
         );
