@@ -328,33 +328,23 @@ async function virtualZKP(virtTile: Tile) {
         virt: virtTile.toCircuitInput(),
     };
 
-    // Write the inputs to inputs.json
-    fs.writeFileSync("input.json", JSON.stringify(inputs));
-
-    // Call virtual-prover.sh
-    try {
-        await exec("../enclave/scripts/virtual-prover.sh");
-    } catch (error) {
-        console.log(`error: ${error.message}`);
-        return;
-    }
-
-    // Read from proof.json and public.json
     let proof;
-    let publicSignals;
+    let publicSignals
     try {
-        proof = JSON.parse(fs.readFileSync("proof.json", "utf8"));
-        publicSignals = JSON.parse(fs.readFileSync("public.json", "utf8"));
+        // Write the inputs to bin/input-hVirt.json
+        fs.writeFileSync(`bin/input-${inputs.hVirt}.json`, JSON.stringify(inputs));
+    
+        // Call virtual-prover.sh with hVirt as argument
+        await exec(`../enclave/scripts/virtual-prover.sh ${inputs.hVirt}`);
+    
+        // Read from bin/proof-hVirt.json and bin/public-hVirt.json
+        proof = JSON.parse(fs.readFileSync(`bin/proof-${inputs.hVirt}.json`, "utf8"));
+        publicSignals = JSON.parse(fs.readFileSync(`bin/public-${inputs.hVirt}.json`, "utf8"));
+    
+        // Remove the generated files
+        await exec(`rm -rf bin/*-${inputs.hVirt}.*`);
     } catch (error) {
-        console.error(`Error reading JSON files: ${error}`);
-        return;
-    }
-
-    // Remove the generated files
-    try {
-        await exec("rm input.json witness.wtns proof.json public.json");
-    } catch (error) {
-        console.error(`Error removing files: ${error}`);
+        console.error(`Error: ${error}`);
     }
 
     return [proof, publicSignals];
