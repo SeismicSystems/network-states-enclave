@@ -295,7 +295,7 @@ async function sendSpawnSignature(
     cityId++;
     const hSpawnTile = spawnTile.hash();
 
-    const [proof, publicSignals] = await virtualZKP(virtTile);
+    const [proof, publicSignals] = await virtualZKP(virtTile, socket.id);
 
     // const [prf, pubSignals] = await Tile.virtualZKP(
     //     loc,
@@ -320,7 +320,7 @@ async function sendSpawnSignature(
     claimedSpawns.set(sender, { virtTile, spawnTile });
 }
 
-async function virtualZKP(virtTile: Tile) {
+async function virtualZKP(virtTile: Tile, socketId: string) {
     const inputs = {
         hRand: hRand.toString(),
         hVirt: virtTile.hash(),
@@ -331,22 +331,25 @@ async function virtualZKP(virtTile: Tile) {
     let proof;
     let publicSignals
     try {
-        // Write the inputs to bin/input-hVirt.json
-        fs.writeFileSync(`bin/input-${inputs.hVirt}.json`, JSON.stringify(inputs));
-    
-        // Call virtual-prover.sh with hVirt as argument
-        console.log(`Proving virtual ZKP with hVirt = ${inputs.hVirt}`);
+        // Unique ID for proof-related files
+        const proofId = socketId + "-" + inputs.hVirt;
+
+        // Write the inputs to bin/input-proofId.json
+        fs.writeFileSync(`bin/input-${proofId}.json`, JSON.stringify(inputs));
+
+        // Call virtual-prover.sh
+        console.log(`Proving virtual ZKP with ID = ${proofId}`);
         const startTime = Date.now();
-        await exec(`../enclave/scripts/virtual-prover.sh ${inputs.hVirt}`);
+        await exec(`../enclave/scripts/virtual-prover.sh ${proofId}`);
         const endTime = Date.now();
         console.log(`virtual-prover.sh: completed in ${endTime - startTime} ms`);
-    
-        // Read from bin/proof-hVirt.json and bin/public-hVirt.json
-        proof = JSON.parse(fs.readFileSync(`bin/proof-${inputs.hVirt}.json`, "utf8"));
-        publicSignals = JSON.parse(fs.readFileSync(`bin/public-${inputs.hVirt}.json`, "utf8"));
-    
+
+        // Read from bin/proof-proofId.json and bin/public-proofId.json
+        proof = JSON.parse(fs.readFileSync(`bin/proof-${proofId}.json`, "utf8"));
+        publicSignals = JSON.parse(fs.readFileSync(`bin/public-${proofId}.json`, "utf8"));
+
         // Remove the generated files
-        await exec(`rm -rf bin/*-${inputs.hVirt}.*`);
+        await exec(`rm -rf bin/*-${proofId}.*`);
     } catch (error) {
         console.error(`Error: ${error}`);
     }
@@ -394,7 +397,7 @@ async function sendMoveSignature(
 
         // Generate ZKP that attests to valid virtual tile commitment
         const virtTile = Tile.genVirtual(uToAsTile.loc, rand, terrainUtils);
-        const [proof, publicSignals] = await virtualZKP(virtTile);
+        const [proof, publicSignals] = await virtualZKP(virtTile, socket.id);
 
         // const [prf, pubSignals] = await Tile.virtualZKP(
         //     uToAsTile.loc,

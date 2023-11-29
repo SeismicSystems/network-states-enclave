@@ -56,12 +56,12 @@ if [ ! -d "../virtual/virtual-prover" ]; then
     mkdir build_prover && cd build_prover
     cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=../package
     make -j4 && make install
-    mv ../package/bin/prover ../../virtual/virtual-prover
+    cp package/bin/prover ../virtual/virtual-prover
   elif [ "$ARCH" = "arm64" ]; then
     ./build_gmp.sh macos_arm64
     mkdir build_prover_macos_arm64 && cd build_prover_macos_arm64
     cmake .. -DTARGET_PLATFORM=macos_arm64 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=../package_macos_arm64
     make -j4 && make install
-    mv ../package_macos_arm64/bin/prover ../../virtual/virtual-prover
+    cp package_macos_arm64/bin/prover ../virtual/virtual-prover
   fi
 fi
