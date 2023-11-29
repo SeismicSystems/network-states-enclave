@@ -1,5 +1,14 @@
 #! /bin/bash
 
+: '
+  This script performs the following operations:
+  1. Compiles the circuit file virtual.circom using the circom compiler.
+  2. Computes virtual.zkey.
+  2. Generates a witness gen executable using circom_c_witness_generator repo.
+  3. Compiles a prover executable using the rapidsnark repo.
+  4. Exports a solidity verifier using snarkjs and the virtual.zkey file.
+'
+
 ARCH=$1
 PTAU=$2
 
