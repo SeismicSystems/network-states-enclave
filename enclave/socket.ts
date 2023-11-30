@@ -10,7 +10,9 @@ interface ServerToClientEvents {
         spawn: any,
         sig: string,
         prf: any,
-        pubsigs: any
+        pubsigs: any,
+        proverStatus: ProverStatus,
+        proverTime: number
     ) => void;
     moveSignatureResponse: (
         sig: string,

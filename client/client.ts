@@ -123,8 +123,19 @@ async function spawnSignatureResponse(
     spawn: any,
     sig: string,
     virtPrf: any,
-    virtPubSigs: any
+    virtPubSigs: any,
+    proverStatus: ProverStatus,
+    proverTime: number
 ) {
+    console.log();
+    switch (proverStatus) {
+        case ProverStatus.Incomplete:
+            console.error(`Rapidsnark and snarkjs failed, canceled spawn`);
+            break;
+        default:
+            console.log(`${proverStatus} proved in ${proverTime} ms`);
+    }
+
     const virtTile = Tile.fromJSON(virt);
     const spawnTile = Tile.fromJSON(spawn);
 

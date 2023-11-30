@@ -53,7 +53,7 @@ mv wtns_build/circuit ../virtual/virtual-witness-generator
 mv ../virtual_cpp/virtual.dat ../virtual/virtual-witness-generator.dat
 cd ..
 
-rm -rf virtual.r1cs virtual_cpp
+rm -rf virtual.r1cs virtual_cpp VirtualVerifier.sol-e
 rm -rf virtual.vkey.json virtual.wtns virtual_js
 
 # If necessary, clone and compile rapidsnark
