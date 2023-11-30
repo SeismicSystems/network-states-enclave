@@ -370,23 +370,26 @@ async function virtualZKP(virtTile: Tile, socketId: string) {
         proverStatus = ProverStatus.Rapidsnark;
     } catch (error) {
         console.error(`Error: ${error}`);
-
-        // If rapidsnark fails, run snarkjs prover
-        console.log(`Proving virtual ZKP with snarkjs`);
-        const startTime = Date.now();
-        [proof, publicSignals] = await Tile.virtualZKP(inputs);
-        const endTime = Date.now();
-
-        proverTime = endTime - startTime;
-        console.log(
-            `snarkjs: completed in ${proverTime} ms`
-        );
-
-        proverStatus = ProverStatus.Snarkjs;
     }
 
     if (!proverStatus) {
-        proverStatus = ProverStatus.Incomplete;
+        try {
+            // If rapidsnark fails, run snarkjs prover
+            console.log(`Proving virtual ZKP with snarkjs`);
+            const startTime = Date.now();
+            [proof, publicSignals] = await Tile.virtualZKP(inputs);
+            const endTime = Date.now();
+
+            proverTime = endTime - startTime;
+            console.log(
+                `snarkjs: completed in ${proverTime} ms`
+            );
+
+            proverStatus = ProverStatus.Snarkjs;
+        } catch (error) {
+            console.error(`Error: ${error}`);
+            proverStatus = ProverStatus.Incomplete;
+        }
     }
 
     return { proof, publicSignals, proverStatus, proverTime };
