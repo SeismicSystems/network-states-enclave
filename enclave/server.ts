@@ -349,8 +349,9 @@ async function virtualZKP(virtTile: Tile, socketId: string) {
         console.log(`Proving virtual ZKP with ID = ${proofId}`);
         const startTime = Date.now();
         await exec(`../enclave/scripts/virtual-prover.sh ${proofId}`);
+        const endTime = Date.now();
 
-        proverTime = Date.now() - startTime;
+        proverTime = endTime - startTime;
         console.log(
             `virtual-prover.sh: completed in ${proverTime} ms`
         );
@@ -374,8 +375,9 @@ async function virtualZKP(virtTile: Tile, socketId: string) {
         console.log(`Proving virtual ZKP with snarkjs`);
         const startTime = Date.now();
         [proof, publicSignals] = await Tile.virtualZKP(inputs);
+        const endTime = Date.now();
 
-        proverTime = Date.now() - startTime;
+        proverTime = endTime - startTime;
         console.log(
             `snarkjs: completed in ${proverTime} ms`
         );
@@ -834,7 +836,7 @@ nStates.provider.on("block", async (n) => {
  */
 server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
     b = new Board(terrainUtils);
-    b.printTerrain();
+    b.printView();
 
     if (inRecoveryMode) {
         // Get previous encryption key
