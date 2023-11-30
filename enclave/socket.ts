@@ -1,4 +1,4 @@
-import { Groth16Proof, Location } from "../game";
+import { ProverStatus } from "../game/Utils";
 
 interface ServerToClientEvents {
     loginResponse: (locs: string[]) => void;
@@ -16,7 +16,9 @@ interface ServerToClientEvents {
         sig: string,
         b: number,
         prf: any,
-        pubsigs: any
+        pubsigs: any,
+        proverStatus: ProverStatus,
+        proverTime: number
     ) => void;
     errorResponse: (msg: string) => void;
     updateDisplay: (locs: string[]) => void;

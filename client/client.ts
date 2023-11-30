@@ -7,7 +7,7 @@ import { ServerToClientEvents, ClientToServerEvents } from "../enclave/socket";
 import { Tile } from "../game/Tile.js";
 import { Player } from "../game/Player.js";
 import { Board } from "../game/Board.js";
-import { Utils, Location, Groth16ProofCalldata } from "../game/Utils.js";
+import { Utils, Location, Groth16ProofCalldata, ProverStatus } from "../game/Utils.js";
 import worlds from "../contracts/worlds.json" assert { type: "json" };
 import IWorldAbi from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "json" };
 import { TerrainUtils } from "../game";
@@ -227,8 +227,19 @@ async function moveSignatureResponse(
     sig: string,
     blockNumber: number,
     virtPrf: any,
-    virtPubSigs: any
+    virtPubSigs: any,
+    proverStatus: ProverStatus,
+    proverTime: number
 ) {
+    console.log();
+    switch (proverStatus) {
+        case ProverStatus.Incomplete:
+            console.error(`Rapidsnark and snarkjs failed, canceled move`);
+            break;
+        default:
+            console.log(`${proverStatus} proved in ${proverTime} ms`);
+    }
+
     const [moveInputs, moveProof, moveSig] = Utils.unpackMoveInputs(
         formattedProof,
         sig,

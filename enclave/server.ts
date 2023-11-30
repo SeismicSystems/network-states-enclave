@@ -19,7 +19,7 @@ import { TerrainUtils } from "../game/Terrain.js";
 import { Tile } from "../game/Tile.js";
 import { Player } from "../game/Player.js";
 import { Board } from "../game/Board.js";
-import { Utils, Location } from "../game/Utils.js";
+import { Utils, Location, ProverStatus } from "../game/Utils.js";
 import worlds from "../contracts/worlds.json" assert { type: "json" };
 import IWorld from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "json" };
 import IEnclaveEvents from "../contracts/out/IEnclaveEvents.sol/IEnclaveEvents.json" assert { type: "json" };
@@ -295,7 +295,12 @@ async function sendSpawnSignature(
     cityId++;
     const hSpawnTile = spawnTile.hash();
 
-    const [proof, publicSignals] = await virtualZKP(virtTile, socket.id);
+    const {
+        proof, 
+        publicSignals, 
+        proverStatus, 
+        proverTime
+    } = await virtualZKP(virtTile, socket.id);
 
     // Acknowledge reception of intended move
     const digest = utils.solidityKeccak256(["uint256"], [hSpawnTile]);
@@ -307,7 +312,9 @@ async function sendSpawnSignature(
         spawnTile,
         sig,
         proof,
-        publicSignals
+        publicSignals,
+        proverStatus,
+        proverTime
     );
 
     claimedSpawns.set(sender, { virtTile, spawnTile });
@@ -328,7 +335,9 @@ async function virtualZKP(virtTile: Tile, socketId: string) {
     };
 
     let proof;
-    let publicSignals
+    let publicSignals;
+    let proverStatus: ProverStatus;
+    let proverTime;
     try {
         // Unique ID for proof-related files
         const proofId = socketId + "-" + inputs.hVirt;
@@ -340,9 +349,10 @@ async function virtualZKP(virtTile: Tile, socketId: string) {
         console.log(`Proving virtual ZKP with ID = ${proofId}`);
         const startTime = Date.now();
         await exec(`../enclave/scripts/virtual-prover.sh ${proofId}`);
-        const endTime = Date.now();
+
+        proverTime = Date.now() - startTime;
         console.log(
-            `virtual-prover.sh: completed in ${endTime - startTime} ms`
+            `virtual-prover.sh: completed in ${proverTime} ms`
         );
 
         // Read from bin/proof-proofId.json and bin/public-proofId.json
@@ -355,6 +365,8 @@ async function virtualZKP(virtTile: Tile, socketId: string) {
 
         // Remove the generated files
         await exec(`rm -rf bin/*-${proofId}.*`);
+
+        proverStatus = ProverStatus.Rapidsnark;
     } catch (error) {
         console.error(`Error: ${error}`);
 
@@ -362,13 +374,20 @@ async function virtualZKP(virtTile: Tile, socketId: string) {
         console.log(`Proving virtual ZKP with snarkjs`);
         const startTime = Date.now();
         [proof, publicSignals] = await Tile.virtualZKP(inputs);
-        const endTime = Date.now();
+
+        proverTime = Date.now() - startTime;
         console.log(
-            `snarkjs: completed in ${endTime - startTime} ms`
+            `snarkjs: completed in ${proverTime} ms`
         );
+
+        proverStatus = ProverStatus.Snarkjs;
     }
 
-    return [proof, publicSignals];
+    if (!proverStatus) {
+        proverStatus = ProverStatus.Incomplete;
+    }
+
+    return { proof, publicSignals, proverStatus, proverTime };
 }
 
 /*
@@ -411,7 +430,12 @@ async function sendMoveSignature(
 
         // Generate ZKP that attests to valid virtual tile commitment
         const virtTile = Tile.genVirtual(uToAsTile.loc, rand, terrainUtils);
-        const [proof, publicSignals] = await virtualZKP(virtTile, socket.id);
+        const {
+            proof, 
+            publicSignals, 
+            proverStatus, 
+            proverTime
+         } = await virtualZKP(virtTile, socket.id);
 
         const digest = utils.solidityKeccak256(
             ["uint256", "uint256", "uint256"],
@@ -424,7 +448,9 @@ async function sendMoveSignature(
             sig,
             currentBlockHeight,
             proof,
-            publicSignals
+            publicSignals,
+            proverStatus,
+            proverTime
         );
 
         playerLatestBlock.set(sender, currentBlockHeight);

@@ -29,6 +29,8 @@ export type Groth16ProofCalldata = {
     input: string[];
 };
 
+export type TerrainGenerator = (location: Location) => Terrain;
+
 export enum Terrain {
     BARE,
     WATER,
@@ -36,7 +38,15 @@ export enum Terrain {
     BONUS_TROOPS,
 }
 
-export type TerrainGenerator = (location: Location) => Terrain;
+/*
+* Used in virtualZKP(). Rapidsnark will run first. If that fails, snarkjs will
+* run. If both provers fail, then proof and pubSignals will be empty.
+*/
+export enum ProverStatus {
+   Rapidsnark = "Rapidsnark",
+   Snarkjs = "Snarkjs",
+   Incomplete = "Incomplete"
+}
 
 export const dummyTerrainGenerator = (location: Location) => {
     const { r: i, c: j } = location;
