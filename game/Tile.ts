@@ -3,13 +3,8 @@ import { groth16 } from "snarkjs";
 import { Groth16Proof, Terrain } from "./Utils.js";
 import { genRandomSalt } from "maci-crypto";
 import { Player } from "./Player.js";
-import { Utils } from "./Utils.js";
+import { Utils, Location } from "./Utils.js";
 import { TerrainUtils } from "./Terrain.js";
-
-export type Location = {
-    r: number;
-    c: number;
-};
 
 export class Tile {
     static UNOWNED: Player = new Player("_", "");
@@ -174,6 +169,25 @@ export class Tile {
             Tile.VIRT_WASM,
             Tile.VIRT_PROVKEY
         );
+        return [proof, publicSignals];
+    }
+
+    static async spawnZKP(player: Player, prevTile: Tile, spawnTile: Tile) {
+        const { proof, publicSignals } = await groth16.fullProve(
+            {
+                canSpawn: prevTile.isSpawnable() ? "1" : "0",
+                spawnCityId: spawnTile.cityId.toString(),
+                hPrevTile: prevTile.hash(),
+                hSpawnTile: spawnTile.hash(),
+                hBlindLoc: player.hBlindLoc(spawnTile.loc),
+                prevTile: prevTile.toCircuitInput(),
+                spawnTile: spawnTile.toCircuitInput(),
+                blind: player.blind.toString(),
+            },
+            Player.SPAWN_WASM,
+            Player.SPAWN_PROVKEY
+        );
+    
         return [proof, publicSignals];
     }
 

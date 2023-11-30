@@ -1,6 +1,5 @@
 import { perlin } from "@darkforest_eth/hashing";
-import { Terrain } from "./Utils.js";
-import { Location } from "./Tile.js";
+import { Terrain, Location } from "./Utils.js";
 
 export class TerrainUtils {
     terrainMemo: Map<string, Terrain>;

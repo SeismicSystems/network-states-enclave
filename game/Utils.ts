@@ -4,11 +4,15 @@ import { groth16 } from "snarkjs";
 import { Signature } from "maci-crypto";
 import crypto from "crypto";
 import { BigNumber } from "ethers";
-import { Tile, Location } from "./Tile";
 /*
  * poseidonPerm is a modified version of iden3's poseidonPerm.js.
  */
 import poseidonPerm from "../game/poseidonPerm.js";
+
+export type Location = {
+    r: number,
+    c: number
+}
 
 export type Groth16Proof = {
     pi_a: [string, string, string];
@@ -252,7 +256,7 @@ export class Utils {
      * Encrypt tile data with AES-256-GCM cipher. Returns the ciphertext, along
      * with the IV used and the authTag.
      */
-    static encryptTile(encKey: Buffer, tile: Tile) {
+    static encryptTile(encKey: Buffer, tile: any) {
         const iv = crypto.randomBytes(16);
         const cipher = crypto.createCipheriv("aes-256-gcm", encKey, iv);
         return {
@@ -273,7 +277,7 @@ export class Utils {
         ciphertext: string,
         iv: string,
         tag: string
-    ): Tile {
+    ): any {
         const ivBuffer = Buffer.from(iv, "hex");
         let decipher = crypto.createDecipheriv("aes-256-gcm", decKey, ivBuffer);
         decipher.setAuthTag(Buffer.from(tag, "hex"));
@@ -283,6 +287,6 @@ export class Utils {
             decipher.final(),
         ]).toString();
 
-        return Tile.fromJSON(JSON.parse(tileString));
+        return JSON.parse(tileString);
     }
 }

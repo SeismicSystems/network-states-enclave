@@ -4,10 +4,10 @@ import { io, Socket } from "socket.io-client";
 import dotenv from "dotenv";
 dotenv.config({ path: "../.env" });
 import { ServerToClientEvents, ClientToServerEvents } from "../enclave/socket";
-import { Tile, Location } from "../game/Tile.js";
+import { Tile } from "../game/Tile.js";
 import { Player } from "../game/Player.js";
 import { Board } from "../game/Board.js";
-import { Utils, Groth16ProofCalldata } from "../game/Utils.js";
+import { Utils, Location, Groth16ProofCalldata } from "../game/Utils.js";
 import worlds from "../contracts/worlds.json" assert { type: "json" };
 import IWorldAbi from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "json" };
 import { TerrainUtils } from "../game";
@@ -134,7 +134,7 @@ async function spawnSignatureResponse(
     const [virtInputs, virtProof] =
         Utils.unpackVirtualInputs(virtFormattedProof);
 
-    const [prf, pubSigs] = await PLAYER.spawnZKP(virtTile, spawnTile);
+    const [prf, pubSigs] = await Tile.spawnZKP(PLAYER, virtTile, spawnTile);
 
     const spawnFormattedProof = await Utils.exportCallDataGroth16(prf, pubSigs);
     const [spawnInputs, spawnProof, spawnSig] = Utils.unpackSpawnInputs(
