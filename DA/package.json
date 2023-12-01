@@ -1,5 +1,5 @@
 {
-  "license": "BSD-4-Clause",
+  "license": "GPL-3.0",
   "scripts": {
     "dev": "ts-node server.ts"
   },
