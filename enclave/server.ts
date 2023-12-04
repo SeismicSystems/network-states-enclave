@@ -5,6 +5,9 @@ import { ethers, utils } from "ethers";
 import * as fs from "fs";
 import dotenv from "dotenv";
 dotenv.config({ path: "../.env" });
+import { exec as execCb } from "child_process";
+import { promisify } from "util";
+const exec = promisify(execCb);
 import {
     ServerToClientEvents,
     ClientToServerEvents,
@@ -16,7 +19,7 @@ import { TerrainUtils } from "../game/Terrain.js";
 import { Tile } from "../game/Tile.js";
 import { Player } from "../game/Player.js";
 import { Board } from "../game/Board.js";
-import { Utils, Location } from "../game/Utils.js";
+import { Utils, Location, ProverStatus } from "../game/Utils.js";
 import worlds from "../contracts/worlds.json" assert { type: "json" };
 import IWorld from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "json" };
 import IEnclaveEvents from "../contracts/out/IEnclaveEvents.sol/IEnclaveEvents.json" assert { type: "json" };
@@ -292,13 +295,11 @@ async function sendSpawnSignature(
     cityId++;
     const hSpawnTile = spawnTile.hash();
 
-    // Generate ZKP that attests to valid virtual tile commitment
-    const [prf, pubSignals] = await Tile.virtualZKP(
-        loc,
-        rand,
-        hRand,
-        terrainUtils
-    );
+    const {
+        proof,
+        publicSignals,
+        proverStatus
+    } = await virtualZKP(virtTile, socket.id);
 
     // Acknowledge reception of intended move
     const digest = utils.solidityKeccak256(["uint256"], [hSpawnTile]);
@@ -309,11 +310,86 @@ async function sendSpawnSignature(
         virtTile,
         spawnTile,
         sig,
-        prf,
-        pubSignals
+        proof,
+        publicSignals,
+        proverStatus
     );
 
     claimedSpawns.set(sender, { virtTile, spawnTile });
+}
+
+/*
+ * Generates a ZKP that attests to the faithful computation of a virtual
+ * tile given some committed randomness. Requester of this ZKP also provides
+ * a blinding factor for location so they can use it in their client-side
+ * ZKP. Uses rapidsnark prover if possible, otherwise snarkjs.
+ */
+async function virtualZKP(virtTile: Tile, socketId: string) {
+    const inputs = {
+        hRand: hRand.toString(),
+        hVirt: virtTile.hash(),
+        rand: rand.toString(),
+        virt: virtTile.toCircuitInput(),
+    };
+
+    let proof;
+    let publicSignals;
+    let proverStatus: ProverStatus;
+    try {
+        // Unique ID for proof-related files
+        const proofId = socketId + "-" + inputs.hVirt;
+
+        // Write the inputs to bin/input-proofId.json
+        fs.writeFileSync(`bin/input-${proofId}.json`, JSON.stringify(inputs));
+
+        // Call virtual-prover.sh
+        console.log(`Proving virtual ZKP with ID = ${proofId}`);
+        const startTime = Date.now();
+        await exec(`../enclave/scripts/virtual-prover.sh ${proofId}`);
+        const endTime = Date.now();
+
+        const proverTime = endTime - startTime;
+        console.log(
+            `virtual-prover.sh: completed in ${proverTime} ms`
+        );
+
+        // Read from bin/proof-proofId.json and bin/public-proofId.json
+        proof = JSON.parse(
+            fs.readFileSync(`bin/proof-${proofId}.json`, "utf8")
+        );
+        publicSignals = JSON.parse(
+            fs.readFileSync(`bin/public-${proofId}.json`, "utf8")
+        );
+
+        // Remove the generated files
+        await exec(`rm -rf bin/*-${proofId}.*`);
+
+        proverStatus = ProverStatus.Rapidsnark;
+    } catch (error) {
+        console.error(`Error: ${error}`);
+    }
+
+    if (!proverStatus) {
+        try {
+            // If rapidsnark fails, run snarkjs prover
+            console.log(`Proving virtual ZKP with snarkjs`);
+            const startTime = Date.now();
+            [proof, publicSignals] = await Tile.virtualZKP(inputs);
+            const endTime = Date.now();
+
+            const proverTime = endTime - startTime;
+            console.log(
+                `snarkjs: completed in ${proverTime} ms`
+            );
+
+            proverStatus = ProverStatus.Snarkjs;
+        } catch (error) {
+            console.error(`Error: ${error}`);
+            proverStatus = ProverStatus.Incomplete;
+        }
+    }
+
+    return { proof, publicSignals, proverStatus };
 }
 
 /*
@@ -355,12 +431,12 @@ async function sendMoveSignature(
         const hUTo = uToAsTile.hash();
 
         // Generate ZKP that attests to valid virtual tile commitment
-        const [prf, pubSignals] = await Tile.virtualZKP(
-            uToAsTile.loc,
-            rand,
-            hRand,
-            terrainUtils
-        );
+        const virtTile = Tile.genVirtual(uToAsTile.loc, rand, terrainUtils);
+        const {
+            proof,
+            publicSignals,
+            proverStatus
+        } = await virtualZKP(virtTile, socket.id);
 
         const digest = utils.solidityKeccak256(
             ["uint256", "uint256", "uint256"],
@@ -372,8 +448,9 @@ async function sendMoveSignature(
             "moveSignatureResponse",
             sig,
             currentBlockHeight,
-            prf,
-            pubSignals
+            proof,
+            publicSignals,
+            proverStatus
         );
 
         playerLatestBlock.set(sender, currentBlockHeight);
@@ -757,7 +834,7 @@ nStates.provider.on("block", async (n) => {
  */
 server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
     b = new Board(terrainUtils);
-    b.printTerrain();
+    b.printView();
 
     if (inRecoveryMode) {
         // Get previous encryption key

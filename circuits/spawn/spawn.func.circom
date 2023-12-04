@@ -72,7 +72,7 @@ template Spawn() {
     var WATER_TYPE = 2;
     var HILL_TYPE = 3;
 
-    var START_RESOURCES = 9;
+    var START_RESOURCES = 50;
 
     signal input canSpawn;
     signal input spawnCityId;

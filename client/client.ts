@@ -7,7 +7,7 @@ import { ServerToClientEvents, ClientToServerEvents } from "../enclave/socket";
 import { Tile } from "../game/Tile.js";
 import { Player } from "../game/Player.js";
 import { Board } from "../game/Board.js";
-import { Utils, Location, Groth16ProofCalldata } from "../game/Utils.js";
+import { Utils, Location, Groth16ProofCalldata, ProverStatus } from "../game/Utils.js";
 import worlds from "../contracts/worlds.json" assert { type: "json" };
 import IWorldAbi from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "json" };
 import { TerrainUtils } from "../game";
@@ -102,6 +102,7 @@ async function commitToSpawn() {
     // Save block number player commited to spawning
     // await PLAYER.commitToSpawn(PLAYER_SPAWN, nStates);
 
+    console.log();
     console.log("Getting spawn sig from enclave");
 
     socket.emit(
@@ -122,8 +123,17 @@ async function spawnSignatureResponse(
     spawn: any,
     sig: string,
     virtPrf: any,
-    virtPubSigs: any
+    virtPubSigs: any,
+    proverStatus: ProverStatus
 ) {
+    console.log();
+    if (proverStatus === ProverStatus.Incomplete) {
+        console.error(`Rapidsnark and snarkjs failed, canceled spawn`);
+        return;
+    } else {
+        console.log(`${proverStatus} successfully proved virtual ZKP`);
+    }
+
     const virtTile = Tile.fromJSON(virt);
     const spawnTile = Tile.fromJSON(spawn);
 
@@ -227,8 +237,18 @@ async function moveSignatureResponse(
     sig: string,
     blockNumber: number,
     virtPrf: any,
-    virtPubSigs: any
+    virtPubSigs: any,
+    proverStatus: ProverStatus
 ) {
+    console.log();
+    switch (proverStatus) {
+        case ProverStatus.Incomplete:
+            console.error(`Rapidsnark and snarkjs failed, canceled move`);
+            break;
+        default:
+            console.log(`${proverStatus} successfully proved virtual ZKP`);
+    }
+
     const [moveInputs, moveProof, moveSig] = Utils.unpackMoveInputs(
         formattedProof,
         sig,

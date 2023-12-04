@@ -104,51 +104,32 @@ export class Board {
      * the perspective of the client.
      */
     public printView(): void {
-        for (let r = 0; r < 5; r++) {
-            for (let c = 0; c < 5; c++) {
+        for (let r = 0; r < 25; r++) {
+            for (let c = 0; c < 25; c++) {
                 let tl: Tile = this.getTile({ r, c }, 0n);
                 let color;
                 const reset = "\x1b[0m";
-                if (tl.tileType === Tile.WATER_TILE) {
+                if (tl.isBare() && tl.resources === 5 && tl.isUnowned()) {
+                    color = "\x1b[33m";
+                    process.stdout.write(color + `[5]` + reset);
+                } else if (tl.isWater()) {
                     color = "\x1b[36m";
-                } else if (tl.tileType === Tile.HILL_TILE) {
+                    process.stdout.write(color + `[~]` + reset);
+                } else if (tl.isHill()) {
                     color = "\x1b[90m";
+                    process.stdout.write(color + `[^]` + reset);
                 } else if (tl.owner.symbol === "A") {
                     color = "\x1b[32m";
+                    process.stdout.write(color + `[${tl.owner.symbol}]` + reset);
                 } else if (tl.owner.symbol === "B") {
                     color = "\x1b[31m";
+                    process.stdout.write(color + `[${tl.owner.symbol}]` + reset);
                 } else if (tl.owner.symbol === "C") {
                     color = "\x1b[44m";
+                    process.stdout.write(color + `[${tl.owner.symbol}]` + reset);
                 } else {
                     color = "\x1b[37m";
-                }
-                process.stdout.write(color + `[${tl.owner.symbol}]` + reset);
-            }
-            process.stdout.write("\n");
-        }
-        process.stdout.write("---\n");
-    }
-
-    public printTerrain(): void {
-        for (let r = 0; r < 25; r++) {
-            for (let c = 0; c < 25; c++) {
-                let tl = this.getTile({ r, c }, 0n);
-                switch (tl.tileType) {
-                    case Tile.BARE_TILE:
-                        if (tl.resources === 5) {
-                            process.stdout.write("[5]");
-                        } else {
-                            process.stdout.write("[_]");
-                        }
-                        break;
-                    case Tile.WATER_TILE:
-                        process.stdout.write("[~]");
-                        break;
-                    case Tile.HILL_TILE:
-                        process.stdout.write("[^]");
-                        break;
-                    default:
-                        break;
+                    process.stdout.write(color + `[_]` + reset);
                 }
             }
             process.stdout.write("\n");

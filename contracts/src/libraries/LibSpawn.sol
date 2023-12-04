@@ -12,21 +12,27 @@ library LibSpawn {
         SpawnInputs memory spawnInputs,
         Signature memory sig
     ) internal view {
+        // [TODO]: if players can choose where to spawn, remove this
         // require(SpawnCommitment.get(player) != 0, "Commit to spawn first");
+
+        // [TODO]: if players can choose where to spawn, remove this
+        // require(
+        //     SpawnCommitment.get(player) == spawnInputs.hBlindLoc,
+        //     "Incorrect H(b, r, c)"
+        // );
+
         require(spawnInputs.spawnCityId != 0, "City ID must be non-zero");
-        require(
-            CityPlayer.getValue(spawnInputs.spawnCityId) == address(0),
-            "City is already in game"
-        );
+
+        // [TMP]: commented out for debugging purposes
+        // require(
+        //     CityPlayer.getValue(spawnInputs.spawnCityId) == address(0),
+        //     "City is already in game"
+        // );
         require(
             _getSigner(spawnInputs.hSpawnTile, sig) ==
                 Config.getEnclave(),
             "Enclave spawn sig incorrect"
         );
-        // require(
-        //     SpawnCommitment.get(player) == spawnInputs.hBlindLoc,
-        //     "Incorrect H(b, r, c)"
-        // );
     }
 
     function spawnPlayer(address player, SpawnInputs memory sp) internal {
