@@ -3,7 +3,7 @@
     "type": "module",
     "version": "1.0.0",
     "main": "client.ts",
-    "license": "BSD-4-Clause",
+    "license": "GPL-3.0",
     "scripts": {
         "devA": "yarn tsx client.ts 59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d A 0 0",
         "devB": "yarn tsx client.ts 5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a B 0 4",
