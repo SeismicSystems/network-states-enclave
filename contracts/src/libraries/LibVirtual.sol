@@ -26,7 +26,7 @@ library LibVirtual {
             moveInputs.hTTo == virtualInputs.hVirt,
             "hTTo != hVirt"
         );
-        // LibVirtualVerify.verifyVirtualProof(virtualInputs, virtualProof);
+        LibVirtualVerify.verifyVirtualProof(virtualInputs, virtualProof);
     }
 
     function getEnclaveRandCommitment() public view returns (uint256) {

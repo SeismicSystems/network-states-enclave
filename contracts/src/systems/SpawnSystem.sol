@@ -33,7 +33,7 @@ contract SpawnSystem is IEnclaveEvents, System {
     ) public {
         LibSpawn.checkSpawnInputs(_msgSender(), spawnInputs, sig);
         LibSpawnVerify.verifySpawnProof(spawnInputs, spawnProof);
-        // LibVirtualVerify.verifyVirtualProof(virtualInputs, virtualProof);
+        LibVirtualVerify.verifyVirtualProof(virtualInputs, virtualProof);
 
         if (spawnInputs.canSpawn) {
             LibSpawn.spawnPlayer(_msgSender(), spawnInputs);

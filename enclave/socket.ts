@@ -11,16 +11,14 @@ interface ServerToClientEvents {
         sig: string,
         prf: any,
         pubsigs: any,
-        proverStatus: ProverStatus,
-        proverTime: number
+        proverStatus: ProverStatus
     ) => void;
     moveSignatureResponse: (
         sig: string,
         b: number,
         prf: any,
         pubsigs: any,
-        proverStatus: ProverStatus,
-        proverTime: number
+        proverStatus: ProverStatus
     ) => void;
     errorResponse: (msg: string) => void;
     updateDisplay: (locs: string[]) => void;

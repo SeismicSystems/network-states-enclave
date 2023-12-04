@@ -296,10 +296,9 @@ async function sendSpawnSignature(
     const hSpawnTile = spawnTile.hash();
 
     const {
-        proof, 
-        publicSignals, 
-        proverStatus, 
-        proverTime
+        proof,
+        publicSignals,
+        proverStatus
     } = await virtualZKP(virtTile, socket.id);
 
     // Acknowledge reception of intended move
@@ -313,8 +312,7 @@ async function sendSpawnSignature(
         sig,
         proof,
         publicSignals,
-        proverStatus,
-        proverTime
+        proverStatus
     );
 
     claimedSpawns.set(sender, { virtTile, spawnTile });
@@ -337,7 +335,6 @@ async function virtualZKP(virtTile: Tile, socketId: string) {
     let proof;
     let publicSignals;
     let proverStatus: ProverStatus;
-    let proverTime;
     try {
         // Unique ID for proof-related files
         const proofId = socketId + "-" + inputs.hVirt;
@@ -351,7 +348,7 @@ async function virtualZKP(virtTile: Tile, socketId: string) {
         await exec(`../enclave/scripts/virtual-prover.sh ${proofId}`);
         const endTime = Date.now();
 
-        proverTime = endTime - startTime;
+        const proverTime = endTime - startTime;
         console.log(
             `virtual-prover.sh: completed in ${proverTime} ms`
         );
@@ -380,7 +377,7 @@ async function virtualZKP(virtTile: Tile, socketId: string) {
             [proof, publicSignals] = await Tile.virtualZKP(inputs);
             const endTime = Date.now();
 
-            proverTime = endTime - startTime;
+            const proverTime = endTime - startTime;
             console.log(
                 `snarkjs: completed in ${proverTime} ms`
             );
@@ -392,7 +389,7 @@ async function virtualZKP(virtTile: Tile, socketId: string) {
         }
     }
 
-    return { proof, publicSignals, proverStatus, proverTime };
+    return { proof, publicSignals, proverStatus };
 }
 
 /*
@@ -436,11 +433,10 @@ async function sendMoveSignature(
         // Generate ZKP that attests to valid virtual tile commitment
         const virtTile = Tile.genVirtual(uToAsTile.loc, rand, terrainUtils);
         const {
-            proof, 
-            publicSignals, 
-            proverStatus, 
-            proverTime
-         } = await virtualZKP(virtTile, socket.id);
+            proof,
+            publicSignals,
+            proverStatus
+        } = await virtualZKP(virtTile, socket.id);
 
         const digest = utils.solidityKeccak256(
             ["uint256", "uint256", "uint256"],
@@ -454,8 +450,7 @@ async function sendMoveSignature(
             currentBlockHeight,
             proof,
             publicSignals,
-            proverStatus,
-            proverTime
+            proverStatus
         );
 
         playerLatestBlock.set(sender, currentBlockHeight);

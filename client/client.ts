@@ -124,16 +124,14 @@ async function spawnSignatureResponse(
     sig: string,
     virtPrf: any,
     virtPubSigs: any,
-    proverStatus: ProverStatus,
-    proverTime: number
+    proverStatus: ProverStatus
 ) {
     console.log();
-    switch (proverStatus) {
-        case ProverStatus.Incomplete:
-            console.error(`Rapidsnark and snarkjs failed, canceled spawn`);
-            break;
-        default:
-            console.log(`${proverStatus} proved in ${proverTime} ms`);
+    if (proverStatus === ProverStatus.Incomplete) {
+        console.error(`Rapidsnark and snarkjs failed, canceled spawn`);
+        return;
+    } else {
+        console.log(`${proverStatus} successfully proved virtual ZKP`);
     }
 
     const virtTile = Tile.fromJSON(virt);
@@ -240,8 +238,7 @@ async function moveSignatureResponse(
     blockNumber: number,
     virtPrf: any,
     virtPubSigs: any,
-    proverStatus: ProverStatus,
-    proverTime: number
+    proverStatus: ProverStatus
 ) {
     console.log();
     switch (proverStatus) {
@@ -249,7 +246,7 @@ async function moveSignatureResponse(
             console.error(`Rapidsnark and snarkjs failed, canceled move`);
             break;
         default:
-            console.log(`${proverStatus} proved in ${proverTime} ms`);
+            console.log(`${proverStatus} successfully proved virtual ZKP`);
     }
 
     const [moveInputs, moveProof, moveSig] = Utils.unpackMoveInputs(
