@@ -758,13 +758,22 @@ function upkeepClaimedMoves() {
 }
 
 /*
- * Commit to enclave randomness, derived from AES key for DA.
+ * Computes rand from the AES key. Rand is some randomness the enclave commits
+ * to. In recovery mode it is crucial that rand is the same as in the enclave's
+ * previous execution.
  */
-async function setEnclaveRandCommitment(nStates: any) {
+function setRand() {
     rand = Utils.poseidonExt([
         BigInt("0x" + tileEncryptionKey.toString("hex")),
     ]);
     hRand = Utils.poseidonExt([rand]);
+}
+
+/*
+ * Commit to enclave randomness, derived from AES key for DA.
+ */
+async function setEnclaveRandCommitment(nStates: any) {
+    setRand();
     await nStates.setEnclaveRandCommitment(hRand.toString());
 }
 
@@ -844,6 +853,9 @@ server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
             }),
             "hex"
         );
+
+        // Compute and save rand, hRand from tileEncryptionKey
+        setRand();
 
         // Cannot recover until DA node connects
         console.log("In recovery mode, waiting for DA node to connect");
