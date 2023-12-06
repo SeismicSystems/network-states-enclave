@@ -1,7 +1,8 @@
 {
   "license": "GPL-3.0",
   "scripts": {
-    "dev": "yarn tsx server.ts"
+    "dev": "pm2 start server.ts --interpreter ./node_modules/.bin/ts-node && pm2 logs",
+    "reset": "pm2 delete server"
   },
   "devDependencies": {
     "ts-node": "^10.9.1",
