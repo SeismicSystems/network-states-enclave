@@ -72,7 +72,11 @@ const signer = new ethers.Wallet(
 );
 
 const abi = IWorld.abi.concat(IEnclaveEvents.abi);
-const nStates = new ethers.Contract(worlds[CHAIN_ID].address, abi, signer);
+const nStates = new ethers.Contract(
+    (worlds as { [key: string]: any })[CHAIN_ID.toString()].address, 
+    abi, 
+    signer
+);
 
 /*
  * Enclave randomness that it commits to in contract. Used for virtual tile
@@ -258,25 +262,23 @@ async function sendSpawnSignature(
         return;
     }
 
-    let loc: Location;
+    let loc: Location | undefined;
+
     try {
         loc = Utils.unstringifyLocation(l);
     } catch (error) {
         console.log("Malignant location string: ", l);
         socket.disconnect();
-        return;
     }
-
-    // Check that location and tile can be spawned into
-    if (!b.inBounds(loc.r, loc.c)) {
-        console.log("Submitted out of bounds");
-        socket.disconnect();
+    
+    if (!loc) {
+        console.log("Location is undefined");
         return;
     }
 
     const virtTile = Tile.genVirtual(loc, rand, terrainUtils);
-
-    if (!virtTile.isSpawnable() || !b.getTile(loc, rand).isUnowned()) {
+    const tile = b.getTile(loc, rand);
+    if (!virtTile.isSpawnable() || !tile || !tile.isUnowned()) {
         console.log("Tile cannot be spawned on");
         socket.emit("trySpawn");
         return;
@@ -334,7 +336,7 @@ async function virtualZKP(virtTile: Tile, socketId: string) {
 
     let proof;
     let publicSignals;
-    let proverStatus: ProverStatus;
+    let proverStatus = ProverStatus.Incomplete;
     try {
         // Unique ID for proof-related files
         const proofId = socketId + "-" + inputs.hVirt;
@@ -479,17 +481,23 @@ async function sendMoveSignature(
  * Exposes secrets at location l if a requesting player proves ownership of
  * neighboring tile.
  */
-function decrypt(socket: Socket, l: Location) {
+function decrypt(socket: Socket, l: string) {
     if (inRecoveryMode || !idToAddress.has(socket.id)) {
         socket.disconnect();
         return;
     }
 
+    const loc = Utils.unstringifyLocation(l);
+    if (!loc) {
+        socket.disconnect();
+        return;
+    }
+
     const owner = new Player("", idToAddress.get(socket.id)!);
-    if (b.noFog(l, owner, rand)) {
-        socket.emit("decryptResponse", b.getTile(l, rand));
+    if (b.noFog(loc, owner, rand)) {
+        socket.emit("decryptResponse", b.getTile(loc, rand));
     } else {
-        socket.emit("decryptResponse", Tile.mystery(l));
+        socket.emit("decryptResponse", Tile.mystery(loc));
     }
 }
 
@@ -538,7 +546,7 @@ function onSpawnAttempt(player: string, success: boolean) {
             .map((loc) => Utils.stringifyLocation(loc));
 
         io.to(socketId).emit("loginResponse", visibleLocs);
-    } else if (!success) {
+    } else if (!success && socketId) {
         io.to(socketId).emit("trySpawn");
     } else if (socketId) {
         console.error(`Player ${player} spawned without a signature.`);
@@ -561,6 +569,10 @@ function onMoveFinalize(hUFrom: string, hUTo: string) {
 
         // Before state is updated, we need the previous 'to' tile owner
         const tTo = b.getTile(move.uTo.loc, rand);
+        if (!tTo) {
+            return;
+        }
+
         const newOwner = move.uTo.owner.address;
         const prevOwner = tTo.owner.address;
         const ownershipChanged = prevOwner !== newOwner;
@@ -611,15 +623,18 @@ function alertPlayers(
     for (let loc of updatedLocs) {
         const locString = Utils.stringifyLocation(loc);
         for (let l of b.getNearbyLocations(loc)) {
-            const tileOwner = b.getTile(l, rand).owner.address;
-            const lString = Utils.stringifyLocation(l);
+            const tile = b.getTile(l, rand);
+            if (tile) {
+                const tileOwner = tile.owner.address;
+                const lString = Utils.stringifyLocation(l);
 
-            if (!alertPlayerMap.has(tileOwner)) {
-                alertPlayerMap.set(tileOwner, new Set<string>());
+                if (!alertPlayerMap.has(tileOwner)) {
+                    alertPlayerMap.set(tileOwner, new Set<string>());
+                }
+                alertPlayerMap.get(tileOwner)?.add(locString);
+                alertPlayerMap.get(newOwner)?.add(lString);
+                alertPlayerMap.get(prevOwner)?.add(lString);
             }
-            alertPlayerMap.get(tileOwner)?.add(locString);
-            alertPlayerMap.get(newOwner)?.add(lString);
-            alertPlayerMap.get(prevOwner)?.add(lString);
         }
     }
 
@@ -802,7 +817,7 @@ io.on("connection", (socket: Socket) => {
         }
     );
     socket.on("decrypt", (l: string) => {
-        decrypt(socket, Utils.unstringifyLocation(l));
+        decrypt(socket, l);
     });
     socket.on("sendRecoveredTileResponse", (encTile: any) => {
         sendRecoveredTileResponse(socket, encTile);

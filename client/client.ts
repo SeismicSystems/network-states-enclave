@@ -43,7 +43,7 @@ const signer = new ethers.Wallet(
     new ethers.providers.JsonRpcProvider(process.env.RPC_URL)
 );
 const nStates = new ethers.Contract(
-    worlds[CHAIN_ID].address,
+    (worlds as { [key: number]: { address: string } })[CHAIN_ID].address,
     IWorldAbi.abi,
     signer
 );
@@ -126,7 +126,6 @@ async function spawnSignatureResponse(
     virtPubSigs: any,
     proverStatus: ProverStatus
 ) {
-    console.log();
     if (proverStatus === ProverStatus.Incomplete) {
         console.error(`Rapidsnark and snarkjs failed, canceled spawn`);
         return;
