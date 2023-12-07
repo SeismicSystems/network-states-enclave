@@ -1,5 +1,4 @@
 // @ts-ignore
-import { ethers } from "ethers";
 import { groth16 } from "snarkjs";
 import { Signature } from "maci-crypto";
 import crypto from "crypto";
@@ -10,9 +9,9 @@ import { BigNumber } from "ethers";
 import poseidonPerm from "../game/poseidonPerm.js";
 
 export type Location = {
-    r: number,
-    c: number
-}
+    r: number;
+    c: number;
+};
 
 export type Groth16Proof = {
     pi_a: [string, string, string];
@@ -39,13 +38,13 @@ export enum Terrain {
 }
 
 /*
-* Used in virtualZKP(). Rapidsnark will run first. If that fails, snarkjs will
-* run. If both provers fail, then proof and pubSignals will be empty.
-*/
+ * Used in virtualZKP(). Rapidsnark will run first. If that fails, snarkjs will
+ * run. If both provers fail, then proof and pubSignals will be empty.
+ */
 export enum ProverStatus {
-   Rapidsnark = "Rapidsnark",
-   Snarkjs = "Snarkjs",
-   Incomplete = "Incomplete"
+    Rapidsnark = "Rapidsnark",
+    Snarkjs = "Snarkjs",
+    Incomplete = "Incomplete",
 }
 
 export const dummyTerrainGenerator = (location: Location) => {
@@ -174,11 +173,7 @@ export class Utils {
         };
     }
 
-    static unpackMoveInputs(
-        formattedProof: Groth16ProofCalldata,
-        sig: string,
-        b: number
-    ) {
+    static unpackMoveInputs(formattedProof: Groth16ProofCalldata) {
         const moveInputs = {
             fromIsCityCenter: formattedProof.input[6] === "1",
             toIsCityCenter: formattedProof.input[7] === "1",
@@ -203,15 +198,8 @@ export class Utils {
             b: formattedProof.b,
             c: formattedProof.c,
         };
-        const unpackedSig = ethers.utils.splitSignature(sig);
-        const moveSig = {
-            v: unpackedSig.v,
-            r: unpackedSig.r,
-            s: unpackedSig.s,
-            b,
-        };
 
-        return [moveInputs, moveProof, moveSig];
+        return [moveInputs, moveProof];
     }
 
     static unpackVirtualInputs(formattedProof: Groth16ProofCalldata) {
@@ -228,10 +216,7 @@ export class Utils {
         return [virtualInputs, virtualProof];
     }
 
-    static unpackSpawnInputs(
-        formattedProof: Groth16ProofCalldata,
-        sig: string
-    ) {
+    static unpackSpawnInputs(formattedProof: Groth16ProofCalldata) {
         const spawnInputs = {
             canSpawn: formattedProof.input[0] === "1",
             spawnCityId: Number(formattedProof.input[1]),
@@ -244,15 +229,8 @@ export class Utils {
             b: formattedProof.b,
             c: formattedProof.c,
         };
-        const unpackedSig = ethers.utils.splitSignature(sig);
-        const spawnSig = {
-            v: unpackedSig.v,
-            r: unpackedSig.r,
-            s: unpackedSig.s,
-            b: 0,
-        };
 
-        return [spawnInputs, spawnProof, spawnSig];
+        return [spawnInputs, spawnProof];
     }
 
     /*

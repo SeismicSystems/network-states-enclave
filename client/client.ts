@@ -172,10 +172,15 @@ async function spawnSignatureResponse(
     const [prf, pubSigs] = await Tile.spawnZKP(PLAYER, virtTile, spawnTile);
 
     const spawnFormattedProof = await Utils.exportCallDataGroth16(prf, pubSigs);
-    const [spawnInputs, spawnProof, spawnSig] = Utils.unpackSpawnInputs(
-        spawnFormattedProof,
-        sig
-    );
+    const [spawnInputs, spawnProof] =
+        Utils.unpackSpawnInputs(spawnFormattedProof);
+    const unpackedSig = ethers.utils.splitSignature(sig);
+    const spawnSig = {
+        v: unpackedSig.v,
+        r: unpackedSig.r,
+        s: unpackedSig.s,
+        b: 0,
+    };
 
     console.log("Submitting spawn proof to nStates");
     try {
@@ -274,11 +279,15 @@ async function moveSignatureResponse(
             console.log(`${proverStatus} successfully proved virtual ZKP`);
     }
 
-    const [moveInputs, moveProof, moveSig] = Utils.unpackMoveInputs(
-        formattedProof,
-        sig,
-        blockNumber
-    );
+    const [moveInputs, moveProof] = Utils.unpackMoveInputs(formattedProof);
+    const unpackedSig = ethers.utils.splitSignature(sig);
+    const moveSig = {
+        v: unpackedSig.v,
+        r: unpackedSig.r,
+        s: unpackedSig.s,
+        b: blockNumber,
+    };
+
     const virtFormattedProof = await Utils.exportCallDataGroth16(
         virtPrf,
         virtPubSigs

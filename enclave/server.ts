@@ -71,6 +71,11 @@ const nStates = getContract({
     publicClient,
 });
 
+const signer = new ethers.Wallet(
+    <string>process.env.PRIVATE_KEY,
+    new ethers.providers.JsonRpcProvider(process.env.RPC_URL)
+);
+
 /*
  * Set game parameters and create dummy players.
  */
@@ -325,7 +330,9 @@ async function sendSpawnSignature(
 
     // Acknowledge reception of intended move
     const digest = utils.solidityKeccak256(["uint256"], [hSpawnTile]);
-    const sig = await walletClient.signMessage({ message: digest });
+    const sig = await signer.signMessage(utils.arrayify(digest));
+
+    console.log("address: ", walletClient.account.address);
 
     socket.emit(
         "spawnSignatureResponse",
