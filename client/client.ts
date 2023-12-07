@@ -54,19 +54,6 @@ const worldAddress = worldData.address as Address;
 const account = privateKeyToAccount(`0x${PLAYER_PRIVKEY}`);
 const abi = IWorldAbi.abi;
 
-/*
- * Boot up interface with 1) Network States contract and 2) the CLI.
- */
-// const signer = new ethers.Wallet(
-//     PLAYER_PRIVKEY,
-//     new ethers.providers.JsonRpcProvider(process.env.RPC_URL)
-// );
-// const nStates = new ethers.Contract(
-//     (worlds as { [key: number]: { address: string } })[CHAIN_ID].address,
-//     IWorldAbi.abi,
-//     signer
-// );
-
 const walletClient = createWalletClient({
     account,
     chain: foundry,
@@ -85,7 +72,7 @@ const nStates = getContract({
     publicClient,
 });
 
-var rl = readline.createInterface({
+readline.createInterface({
     input: process.stdin,
     output: process.stdout,
 });
