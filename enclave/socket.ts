@@ -15,7 +15,7 @@ interface ServerToClientEvents {
     ) => void;
     moveSignatureResponse: (
         sig: string,
-        b: number,
+        b: string,
         prf: any,
         pubsigs: any,
         proverStatus: ProverStatus

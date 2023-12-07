@@ -265,7 +265,7 @@ function decryptResponse(t: any) {
  */
 async function moveSignatureResponse(
     sig: string,
-    blockNumber: number,
+    blockNumber: string,
     virtPrf: any,
     virtPubSigs: any,
     proverStatus: ProverStatus

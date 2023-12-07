@@ -469,16 +469,22 @@ async function sendMoveSignature(
             socket.id
         );
 
-        const digest = utils.solidityKeccak256(
-            ["uint256", "uint256", "uint256"],
-            [currentBlockHeight, hUFrom, hUTo]
+        const abiEncoded = encodeAbiParameters(
+            [
+                { name: "currentBlockHeight", type: "uint256" },
+                { name: "hUFrom", type: "uint256" },
+                { name: "hUTo", type: "uint256" },
+            ],
+            [currentBlockHeight, BigInt(hUFrom), BigInt(hUTo)]
         );
-        const sig = await walletClient.signMessage({ message: digest });
+        const sig = await walletClient.signMessage({
+            message: { raw: keccak256(abiEncoded) },
+        });
 
         socket.emit(
             "moveSignatureResponse",
             sig,
-            currentBlockHeight,
+            currentBlockHeight.toString(),
             proof,
             publicSignals,
             proverStatus
@@ -868,16 +874,32 @@ io.on("connection", (socket: Socket) => {
 /*
  * Event handler for NewSpawnAttempt event.
  */
-
 publicClient.watchEvent({
     address: nStates.address,
     event: parseAbiItem(
         "event NewSpawnAttempt(address indexed player, bool indexed success)"
     ),
-    onLogs: (logs) => console.log(logs),
+    strict: true,
+    onLogs: (logs) =>
+        logs.forEach((log) =>
+            onSpawnAttempt(log.args.player, log.args.success)
+        ),
 });
 
-// [TODO]: add the rest
+/*
+ * Event handler for NewMove event.
+ */
+publicClient.watchEvent({
+    address: nStates.address,
+    event: parseAbiItem(
+        "event NewMove(uint256 indexed hUFrom, uint256 indexed hUTo)"
+    ),
+    strict: true,
+    onLogs: (logs) =>
+        logs.forEach((log) =>
+            onMoveFinalize(log.args.hUFrom.toString(), log.args.hUTo.toString())
+        ),
+});
 
 /*
  * Event handler for new blocks. Claimed moves that have been stored for too
