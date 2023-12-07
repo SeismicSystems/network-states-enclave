@@ -24,11 +24,15 @@ import worlds from "../contracts/worlds.json" assert { type: "json" };
 import IWorldAbi from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "json" };
 import {
     Address,
+    Log,
     createPublicClient,
     createWalletClient,
+    encodeAbiParameters,
     getContract,
     http as httpTransport,
+    keccak256,
     parseAbiItem,
+    toHex,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { foundry } from "viem/chains";
@@ -329,10 +333,13 @@ async function sendSpawnSignature(
     );
 
     // Acknowledge reception of intended move
-    const digest = utils.solidityKeccak256(["uint256"], [hSpawnTile]);
-    const sig = await signer.signMessage(utils.arrayify(digest));
-
-    console.log("address: ", walletClient.account.address);
+    const abiEncoded = encodeAbiParameters(
+        [{ name: "hSpawnTile", type: "uint256" }],
+        [BigInt(hSpawnTile)]
+    );
+    const sig = await walletClient.signMessage({
+        message: { raw: keccak256(abiEncoded) },
+    });
 
     socket.emit(
         "spawnSignatureResponse",
@@ -396,7 +403,7 @@ async function virtualZKP(virtTile: Tile, socketId: string) {
         console.error(`Error: ${error}`);
     }
 
-    if (!proverStatus) {
+    if (proverStatus === ProverStatus.Incomplete) {
         try {
             // If rapidsnark fails, run snarkjs prover
             console.log(`Proving virtual ZKP with snarkjs`);
@@ -861,30 +868,16 @@ io.on("connection", (socket: Socket) => {
 /*
  * Event handler for NewSpawnAttempt event.
  */
+
 publicClient.watchEvent({
+    address: nStates.address,
     event: parseAbiItem(
-        "event NewSpawnAttempt(uint256 indexed player, uint256 indexed success)"
+        "event NewSpawnAttempt(address indexed player, bool indexed success)"
     ),
     onLogs: (logs) => console.log(logs),
 });
 
-/*
- * Event handler for NewMove event.
- */
-publicClient.watchEvent({
-    event: parseAbiItem(
-        "event NewMove(uint256 indexed hUFrom, uint256 indexed hUTo)"
-    ),
-    onLogs: (logs) => console.log(logs),
-});
-
-/*
- * History of state for recovery.
- */
-publicClient.watchEvent({
-    event: parseAbiItem("event NewTile(uint256 indexed hTile)"),
-    onLogs: (logs) => console.log(logs),
-});
+// [TODO]: add the rest
 
 /*
  * Event handler for new blocks. Claimed moves that have been stored for too

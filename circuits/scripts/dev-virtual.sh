@@ -32,9 +32,9 @@ node virtual_js/generate_witness.js \
 
 # Export solidity verifier
 yarn run snarkjs zkey export solidityverifier virtual.zkey \
-                                              VirtualVerifier.sol
-sed -i -e 's/0.6.11;/0.8.13;/g' VirtualVerifier.sol
-mv VirtualVerifier.sol ../contracts/src
+                                              virtualVerifier.sol
+sed -i -e 's/0.6.11;/0.8.13;/g' virtualVerifier.sol
+mv virtualVerifier.sol ../contracts/src/VirtualVerifier.sol
 
 # Save proving key and witness generation script
 mv virtual_js/virtual.wasm virtual.zkey virtual/
@@ -53,7 +53,7 @@ mv wtns_build/circuit ../virtual/virtual-witness-generator
 mv ../virtual_cpp/virtual.dat ../virtual/virtual-witness-generator.dat
 cd ..
 
-rm -rf virtual.r1cs virtual_cpp VirtualVerifier.sol-e
+rm -rf virtual.r1cs virtual_cpp virtualVerifier.sol-e
 rm -rf virtual.vkey.json virtual.wtns virtual_js
 
 # If necessary, clone and compile rapidsnark
