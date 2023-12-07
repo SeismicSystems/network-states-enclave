@@ -7,13 +7,23 @@ import { ServerToClientEvents, ClientToServerEvents } from "../enclave/socket";
 import { Tile } from "../game/Tile.js";
 import { Player } from "../game/Player.js";
 import { Board } from "../game/Board.js";
-import { Utils, Location, Groth16ProofCalldata, ProverStatus } from "../game/Utils.js";
+import {
+    Utils,
+    Location,
+    Groth16ProofCalldata,
+    ProverStatus,
+} from "../game/Utils.js";
 import worlds from "../contracts/worlds.json" assert { type: "json" };
 import IWorldAbi from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "json" };
 import { TerrainUtils } from "../game";
-import { Address, createPublicClient, createWalletClient, getContract } from "viem";
-import { privateKeyToAddress } from "viem/accounts";
-import { localhost } from "viem/chains";
+import {
+    Address,
+    createPublicClient,
+    createWalletClient,
+    getContract,
+} from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { foundry } from "viem/chains";
 import { http as httpTransport } from "viem";
 
 /*
@@ -41,6 +51,7 @@ const CHAIN_ID = Number(process.env.CHAIN_ID);
 const worldsTyped = worlds as { [key: number]: { address: string } };
 const worldData = worldsTyped[CHAIN_ID];
 const worldAddress = worldData.address as Address;
+const account = privateKeyToAccount(`0x${PLAYER_PRIVKEY}`);
 const abi = IWorldAbi.abi;
 
 /*
@@ -56,25 +67,22 @@ const abi = IWorldAbi.abi;
 //     signer
 // );
 
-console.log("Creating wallet");
 const walletClient = createWalletClient({
-    account: privateKeyToAddress(`0x${PLAYER_PRIVKEY}`),
-    chain: localhost,
-    transport: httpTransport()
+    account,
+    chain: foundry,
+    transport: httpTransport(),
 });
 
-console.log("Creating public")
 const publicClient = createPublicClient({
-    chain: localhost,
-    transport: httpTransport()
+    chain: foundry,
+    transport: httpTransport(),
 });
 
-console.log("creating contract")
 const nStates = getContract({
     abi,
     address: worldAddress,
     walletClient,
-    publicClient
+    publicClient,
 });
 
 var rl = readline.createInterface({
@@ -184,13 +192,12 @@ async function spawnSignatureResponse(
 
     console.log("Submitting spawn proof to nStates");
     try {
-        console.log('calling nStates spawn');
         await nStates.write.spawn([
-            spawnInputs, 
-            spawnProof, 
-            virtInputs, 
-            virtProof, 
-            spawnSig
+            spawnInputs,
+            spawnProof,
+            virtInputs,
+            virtProof,
+            spawnSig,
         ]);
         cursor = spawnTile.loc;
     } catch (error) {
@@ -292,13 +299,12 @@ async function moveSignatureResponse(
     const [virtInputs, virtProof] =
         Utils.unpackVirtualInputs(virtFormattedProof);
 
-    console.log('calling nStates move')
     await nStates.write.move([
-        moveInputs, 
-        moveProof, 
-        virtInputs, 
-        virtProof, 
-        moveSig
+        moveInputs,
+        moveProof,
+        virtInputs,
+        virtProof,
+        moveSig,
     ]);
 }
 
@@ -332,7 +338,7 @@ socket.on("connect", async () => {
 
     console.log(`Player's address: ${walletClient.account.address}`);
     const balance = await publicClient.getBalance({
-        address: walletClient.account.address
+        address: account.address,
     });
     console.log(
         `Signer's balance in ETH: ${ethers.utils.formatEther(balance)}`
@@ -352,7 +358,6 @@ socket.on("connect", async () => {
     b = new Board(terrainUtils);
     b.seed();
 
-    console.log('socket on connect signMessage');
     const sig = await walletClient.signMessage({ message: socket.id });
     socket.emit("login", PLAYER.address, sig);
 });
