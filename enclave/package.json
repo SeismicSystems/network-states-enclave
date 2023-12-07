@@ -11,6 +11,7 @@
         "queue-typescript": "^1.0.1",
         "socket.io": "^4.7.1",
         "tsx": "^3.14.0",
+        "viem": "^1.19.11",
         "watch": "^1.0.2"
     },
     "scripts": {

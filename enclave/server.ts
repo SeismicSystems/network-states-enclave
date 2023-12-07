@@ -21,8 +21,17 @@ import { Player } from "../game/Player.js";
 import { Board } from "../game/Board.js";
 import { Utils, Location, ProverStatus } from "../game/Utils.js";
 import worlds from "../contracts/worlds.json" assert { type: "json" };
-import IWorld from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "json" };
-import IEnclaveEvents from "../contracts/out/IEnclaveEvents.sol/IEnclaveEvents.json" assert { type: "json" };
+import IWorldAbi from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "json" };
+import {
+    Address,
+    createPublicClient,
+    createWalletClient,
+    getContract,
+    http as httpTransport,
+    parseAbiItem,
+} from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { foundry } from "viem/chains";
 
 /*
  * Whether the enclave's global state should be blank or pull from DA.
@@ -30,9 +39,37 @@ import IEnclaveEvents from "../contracts/out/IEnclaveEvents.sol/IEnclaveEvents.j
 let inRecoveryMode = process.argv[2] == "1";
 
 /*
- * Chain ID
+ * All NewTile Events emitted
  */
-const CHAIN_ID: number = parseInt(<string>process.env.CHAIN_ID);
+let hashHistory: Set<string>;
+
+/*
+ * Contract values
+ */
+const CHAIN_ID = Number(process.env.CHAIN_ID);
+const worldsTyped = worlds as { [key: number]: { address: string } };
+const worldData = worldsTyped[CHAIN_ID];
+const worldAddress = worldData.address as Address;
+const account = privateKeyToAccount(process.env.PRIVATE_KEY as Address);
+const abi = IWorldAbi.abi;
+
+const walletClient = createWalletClient({
+    account,
+    chain: foundry,
+    transport: httpTransport(),
+});
+
+const publicClient = createPublicClient({
+    chain: foundry,
+    transport: httpTransport(),
+});
+
+const nStates = getContract({
+    abi,
+    address: worldAddress,
+    walletClient,
+    publicClient,
+});
 
 /*
  * Set game parameters and create dummy players.
@@ -46,9 +83,8 @@ const START_RESOURCES: number = parseInt(
  * Number of blocks that a claimed move is allowed to be pending without being
  * deleted.
  */
-const CLAIMED_MOVE_LIFE_SPAN = parseInt(
-    <string>process.env.CLAIMED_MOVE_LIFE_SPAN,
-    10
+const CLAIMED_MOVE_LIFE_SPAN = BigInt(
+    <string>process.env.CLAIMED_MOVE_LIFE_SPAN
 );
 
 /*
@@ -62,21 +98,6 @@ const io = new Server<
     InterServerEvents,
     SocketData
 >(server);
-
-/*
- * Boot up interface with Network States contract.
- */
-const signer = new ethers.Wallet(
-    <string>process.env.PRIVATE_KEY,
-    new ethers.providers.JsonRpcProvider(process.env.RPC_URL)
-);
-
-const abi = IWorld.abi.concat(IEnclaveEvents.abi);
-const nStates = new ethers.Contract(
-    (worlds as { [key: string]: any })[CHAIN_ID.toString()].address, 
-    abi, 
-    signer
-);
 
 /*
  * Enclave randomness that it commits to in contract. Used for virtual tile
@@ -98,7 +119,7 @@ type ClaimedSpawn = {
 type ClaimedMove = {
     uFrom: Tile;
     uTo: Tile;
-    blockSubmitted: number;
+    blockSubmitted: bigint;
     uFromEnc: EncryptedTile;
     uToEnc: EncryptedTile;
 };
@@ -146,12 +167,12 @@ let claimedSpawns = new Map<string, ClaimedSpawn>();
  * Current block height. Storing the value in a variable saves from
  * unnecessarily indexing twice.
  */
-let currentBlockHeight: number;
+let currentBlockHeight: bigint;
 
 /*
  * Latest block height players proposed a move.
  */
-let playerLatestBlock = new Map<string, number>();
+let playerLatestBlock = new Map<string, bigint>();
 
 /*
  * Encryption key for global state sent to DA.
@@ -211,7 +232,7 @@ function login(socket: Socket, address: string, sigStr: string) {
         idToAddress.set(socket.id, address);
         addressToId.set(address, socket.id);
 
-        playerLatestBlock.set(address, 0);
+        playerLatestBlock.set(address, 0n);
 
         let visibleTiles = new Set<string>();
         b.playerCities.get(address)?.forEach((cityId: number) => {
@@ -270,7 +291,7 @@ async function sendSpawnSignature(
         console.log("Malignant location string: ", l);
         socket.disconnect();
     }
-    
+
     if (!loc) {
         console.log("Location is undefined");
         return;
@@ -297,15 +318,14 @@ async function sendSpawnSignature(
     cityId++;
     const hSpawnTile = spawnTile.hash();
 
-    const {
-        proof,
-        publicSignals,
-        proverStatus
-    } = await virtualZKP(virtTile, socket.id);
+    const { proof, publicSignals, proverStatus } = await virtualZKP(
+        virtTile,
+        socket.id
+    );
 
     // Acknowledge reception of intended move
     const digest = utils.solidityKeccak256(["uint256"], [hSpawnTile]);
-    const sig = await signer.signMessage(utils.arrayify(digest));
+    const sig = await walletClient.signMessage({ message: digest });
 
     socket.emit(
         "spawnSignatureResponse",
@@ -351,9 +371,7 @@ async function virtualZKP(virtTile: Tile, socketId: string) {
         const endTime = Date.now();
 
         const proverTime = endTime - startTime;
-        console.log(
-            `virtual-prover.sh: completed in ${proverTime} ms`
-        );
+        console.log(`virtual-prover.sh: completed in ${proverTime} ms`);
 
         // Read from bin/proof-proofId.json and bin/public-proofId.json
         proof = JSON.parse(
@@ -380,9 +398,7 @@ async function virtualZKP(virtTile: Tile, socketId: string) {
             const endTime = Date.now();
 
             const proverTime = endTime - startTime;
-            console.log(
-                `snarkjs: completed in ${proverTime} ms`
-            );
+            console.log(`snarkjs: completed in ${proverTime} ms`);
 
             proverStatus = ProverStatus.Snarkjs;
         } catch (error) {
@@ -434,17 +450,16 @@ async function sendMoveSignature(
 
         // Generate ZKP that attests to valid virtual tile commitment
         const virtTile = Tile.genVirtual(uToAsTile.loc, rand, terrainUtils);
-        const {
-            proof,
-            publicSignals,
-            proverStatus
-        } = await virtualZKP(virtTile, socket.id);
+        const { proof, publicSignals, proverStatus } = await virtualZKP(
+            virtTile,
+            socket.id
+        );
 
         const digest = utils.solidityKeccak256(
             ["uint256", "uint256", "uint256"],
             [currentBlockHeight, hUFrom, hUTo]
         );
-        const sig = await signer.signMessage(utils.arrayify(digest));
+        const sig = await walletClient.signMessage({ message: digest });
 
         socket.emit(
             "moveSignatureResponse",
@@ -536,7 +551,7 @@ function onSpawnAttempt(player: string, success: boolean) {
         // Spawn in player
         b.setTile(spawn.spawnTile);
 
-        playerLatestBlock.set(player, 0);
+        playerLatestBlock.set(player, 0n);
 
         enqueueTile(spawn.spawnTile);
         dequeueTileIfDAConnected();
@@ -650,9 +665,20 @@ function alertPlayers(
  * Sets the socket ID of the DA node, if not already set. Sends back
  * inRecoveryMode variable.
  */
-function handshakeDA(socket: Socket) {
+async function handshakeDA(socket: Socket) {
     if (socketIdDA == undefined) {
         socketIdDA = socket.id;
+
+        // Fetch all NewTile events
+        const newTileLogs = await publicClient.getLogs({
+            event: parseAbiItem("event NewTile(uint256 indexed hTile)"),
+            strict: true,
+        });
+        hashHistory = new Set<string>();
+        newTileLogs.forEach((e) => {
+            hashHistory.add(e.args.hTile.toString());
+        });
+
         io.to(socketIdDA).emit("handshakeDAResponse", inRecoveryMode);
     } else {
         // If DA socket ID is already set, then do nothing and break connection
@@ -682,14 +708,6 @@ async function sendRecoveredTileResponse(socket: Socket, encTile: any) {
     );
 
     // Push tile into state if it's hash has been emitted
-    const newTileEvents: ethers.Event[] = await nStates.queryFilter(
-        nStates.filters.NewTile()
-    );
-    let hashHistory = new Set<string>();
-    newTileEvents.forEach((e) => {
-        hashHistory.add(e.args?.hTile.toString());
-    });
-
     if (tile && hashHistory.has(tile.hash())) {
         if (!b.isSpawned(tile.owner)) {
             b.spawn(tile.loc, tile.owner, START_RESOURCES, tile.cityId);
@@ -789,7 +807,7 @@ function setRand() {
  */
 async function setEnclaveRandCommitment(nStates: any) {
     setRand();
-    await nStates.setEnclaveRandCommitment(hRand.toString());
+    await nStates.write.setEnclaveRandCommitment([hRand.toString()]);
 }
 
 /*
@@ -807,7 +825,7 @@ io.on("connection", (socket: Socket) => {
             sendSpawnSignature(socket, symb, l, blind);
         }
     );
-    socket.on("handshakeDA", () => {
+    socket.on("handshakeDA", async () => {
         handshakeDA(socket);
     });
     socket.on(
@@ -833,24 +851,43 @@ io.on("connection", (socket: Socket) => {
     });
 });
 
-nStates.on(nStates.filters.NewSpawnAttempt(), (player, success) => {
-    onSpawnAttempt(player, success);
+/*
+ * Event handler for NewSpawnAttempt event.
+ */
+publicClient.watchEvent({
+    event: parseAbiItem(
+        "event NewSpawnAttempt(uint256 indexed player, uint256 indexed success)"
+    ),
+    onLogs: (logs) => console.log(logs),
 });
 
 /*
- * Event handler for NewMove event. io is passed in so that we can ping players.
+ * Event handler for NewMove event.
  */
-nStates.on(nStates.filters.NewMove(), (hUFrom, hUTo) => {
-    onMoveFinalize(hUFrom.toString(), hUTo.toString());
+publicClient.watchEvent({
+    event: parseAbiItem(
+        "event NewMove(uint256 indexed hUFrom, uint256 indexed hUTo)"
+    ),
+    onLogs: (logs) => console.log(logs),
+});
+
+/*
+ * History of state for recovery.
+ */
+publicClient.watchEvent({
+    event: parseAbiItem("event NewTile(uint256 indexed hTile)"),
+    onLogs: (logs) => console.log(logs),
 });
 
 /*
  * Event handler for new blocks. Claimed moves that have been stored for too
  * long should be deleted.
  */
-nStates.provider.on("block", async (n) => {
-    currentBlockHeight = n;
-    upkeepClaimedMoves();
+publicClient.watchBlockNumber({
+    onBlockNumber: (blockNumber) => {
+        currentBlockHeight = blockNumber;
+        upkeepClaimedMoves();
+    },
 });
 
 /*
