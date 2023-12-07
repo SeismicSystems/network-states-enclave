@@ -1,30 +1,31 @@
-import readline from "readline";
-import { ethers } from "ethers";
-import { io, Socket } from "socket.io-client";
 import dotenv from "dotenv";
-dotenv.config({ path: "../.env" });
-import { ServerToClientEvents, ClientToServerEvents } from "../enclave/socket";
-import { Tile } from "../game/Tile.js";
-import { Player } from "../game/Player.js";
-import { Board } from "../game/Board.js";
-import {
-    Utils,
-    Location,
-    Groth16ProofCalldata,
-    ProverStatus,
-} from "../game/Utils.js";
-import worlds from "../contracts/worlds.json" assert { type: "json" };
-import IWorldAbi from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "json" };
-import { TerrainUtils } from "../game";
+import readline from "readline";
+import { io, Socket } from "socket.io-client";
 import {
     Address,
     createPublicClient,
     createWalletClient,
+    formatEther,
     getContract,
+    hexToSignature,
+    http as httpTransport,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { foundry } from "viem/chains";
-import { http as httpTransport } from "viem";
+import IWorldAbi from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "json" };
+import worlds from "../contracts/worlds.json" assert { type: "json" };
+import { ClientToServerEvents, ServerToClientEvents } from "../enclave/socket";
+import { TerrainUtils } from "../game";
+import { Board } from "../game/Board.js";
+import { Player } from "../game/Player.js";
+import { Tile } from "../game/Tile.js";
+import {
+    Groth16ProofCalldata,
+    Location,
+    ProverStatus,
+    Utils,
+} from "../game/Utils.js";
+dotenv.config({ path: "../.env" });
 
 /*
  * Player arguments
@@ -174,7 +175,7 @@ async function spawnSignatureResponse(
     const spawnFormattedProof = await Utils.exportCallDataGroth16(prf, pubSigs);
     const [spawnInputs, spawnProof] =
         Utils.unpackSpawnInputs(spawnFormattedProof);
-    const unpackedSig = ethers.utils.splitSignature(sig);
+    const unpackedSig = hexToSignature(sig as Address);
     const spawnSig = {
         v: unpackedSig.v,
         r: unpackedSig.r,
@@ -280,7 +281,7 @@ async function moveSignatureResponse(
     }
 
     const [moveInputs, moveProof] = Utils.unpackMoveInputs(formattedProof);
-    const unpackedSig = ethers.utils.splitSignature(sig);
+    const unpackedSig = hexToSignature(sig as Address);
     const moveSig = {
         v: unpackedSig.v,
         r: unpackedSig.r,
@@ -336,9 +337,7 @@ socket.on("connect", async () => {
     const balance = await publicClient.getBalance({
         address: account.address,
     });
-    console.log(
-        `Signer's balance in ETH: ${ethers.utils.formatEther(balance)}`
-    );
+    console.log(`Signer's balance in ETH: ${formatEther(balance)}`);
 
     console.log("Press any key to continue or ESC to exit...");
     process.stdin.resume();

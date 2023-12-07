@@ -1,30 +1,13 @@
-import express from "express";
-import http from "http";
-import { Server, Socket } from "socket.io";
-import { ethers, utils } from "ethers";
-import * as fs from "fs";
-import dotenv from "dotenv";
-dotenv.config({ path: "../.env" });
 import { exec as execCb } from "child_process";
-import { promisify } from "util";
-const exec = promisify(execCb);
-import {
-    ServerToClientEvents,
-    ClientToServerEvents,
-    InterServerEvents,
-    SocketData,
-} from "./socket";
+import dotenv from "dotenv";
+import express from "express";
+import * as fs from "fs";
+import http from "http";
 import { Queue } from "queue-typescript";
-import { TerrainUtils } from "../game/Terrain.js";
-import { Tile } from "../game/Tile.js";
-import { Player } from "../game/Player.js";
-import { Board } from "../game/Board.js";
-import { Utils, Location, ProverStatus } from "../game/Utils.js";
-import worlds from "../contracts/worlds.json" assert { type: "json" };
-import IWorldAbi from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "json" };
+import { Server, Socket } from "socket.io";
+import { promisify } from "util";
 import {
     Address,
-    Log,
     createPublicClient,
     createWalletClient,
     encodeAbiParameters,
@@ -32,10 +15,25 @@ import {
     http as httpTransport,
     keccak256,
     parseAbiItem,
-    toHex,
+    recoverMessageAddress,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { foundry } from "viem/chains";
+import IWorldAbi from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "json" };
+import worlds from "../contracts/worlds.json" assert { type: "json" };
+import { Board } from "../game/Board.js";
+import { Player } from "../game/Player.js";
+import { TerrainUtils } from "../game/Terrain.js";
+import { Tile } from "../game/Tile.js";
+import { Location, ProverStatus, Utils } from "../game/Utils.js";
+import {
+    ClientToServerEvents,
+    InterServerEvents,
+    ServerToClientEvents,
+    SocketData,
+} from "./socket";
+dotenv.config({ path: "../.env" });
+const exec = promisify(execCb);
 
 /*
  * Whether the enclave's global state should be blank or pull from DA.
@@ -74,11 +72,6 @@ const nStates = getContract({
     walletClient,
     publicClient,
 });
-
-const signer = new ethers.Wallet(
-    <string>process.env.PRIVATE_KEY,
-    new ethers.providers.JsonRpcProvider(process.env.RPC_URL)
-);
 
 /*
  * Set game parameters and create dummy players.
@@ -207,7 +200,7 @@ let recoveryModeIndex = 0;
  * If player is already spawned, return visible tiles for decryption. If not,
  * tell player to initiate spawning.
  */
-function login(socket: Socket, address: string, sigStr: string) {
+async function login(socket: Socket, address: string, sigStr: string) {
     if (inRecoveryMode) {
         socket.disconnect();
         return;
@@ -221,7 +214,10 @@ function login(socket: Socket, address: string, sigStr: string) {
 
     let sender: string | undefined;
     try {
-        sender = ethers.utils.verifyMessage(socket.id, sigStr);
+        sender = await recoverMessageAddress({
+            message: socket.id,
+            signature: sigStr as Address,
+        });
     } catch (error) {
         console.log("Malignant signature", sigStr);
         socket.disconnect();
