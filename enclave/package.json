@@ -14,10 +14,10 @@
         "watch": "^1.0.2"
     },
     "scripts": {
-        "dev": "rm -f encryption_key.txt && mkdir -p bin && pm2 start scripts/enclave.sh && pm2 logs",
+        "start": "rm -f encryption_key.txt && mkdir -p bin && pm2 start scripts/enclave.sh && pm2 logs",
         "reset": "pm2 delete enclave",
-        "start": "yarn tsx server.ts 0",
-        "start:recover": "yarn tsx server.ts 1"
+        "dev": "yarn tsx server.ts 0",
+        "dev:recover": "yarn tsx server.ts 1"
     },
     "devDependencies": {
         "ts-node": "^10.9.1",
