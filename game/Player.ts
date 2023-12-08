@@ -7,9 +7,6 @@ import { genRandomSalt } from "maci-crypto";
 import poseidonPerm from "../game/poseidonPerm.js";
 
 export class Player {
-    static SPAWN_WASM: string = "../circuits/spawn/spawn.wasm";
-    static SPAWN_PROVKEY: string = "../circuits/spawn/spawn.zkey";
-
     symbol: string;
     address: string;
     blind: bigint;

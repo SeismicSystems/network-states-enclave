@@ -10,6 +10,9 @@ export class Tile {
     static UNOWNED: Player = new Player("_", "");
     static MYSTERY: Player = new Player("?", "");
 
+    static SPAWN_WASM: string = "../circuits/spawn/spawn.wasm";
+    static SPAWN_PROVKEY: string = "../circuits/spawn/spawn.zkey";
+
     static VIRT_WASM: string = "../circuits/virtual/virtual.wasm";
     static VIRT_PROVKEY: string = "../circuits/virtual/virtual.zkey";
 
@@ -161,7 +164,23 @@ export class Tile {
         return [proof, publicSignals];
     }
 
-    static async spawnZKP(player: Player, prevTile: Tile, spawnTile: Tile) {
+    /*
+     * Proves the spawn zkp.
+     *
+     * wasmPath is the relative path to spawn.wasm, and zkeyPath for spawn.zkey.
+     * The default values for these paths are 
+     * ../circuits/spawn/spawn.(wasm/zkey)
+     */
+    static async spawnZKP(
+        player: Player,
+        prevTile: Tile,
+        spawnTile: Tile,
+        wasmPath?: string,
+        zkeyPath?: string
+    ) {
+        const wasm = wasmPath || Tile.SPAWN_WASM;
+        const zkey = zkeyPath || Tile.SPAWN_PROVKEY;
+
         const { proof, publicSignals } = await groth16.fullProve(
             {
                 canSpawn: prevTile.isSpawnable() ? "1" : "0",
@@ -173,10 +192,10 @@ export class Tile {
                 spawnTile: spawnTile.toCircuitInput(),
                 blind: player.blind.toString(),
             },
-            Player.SPAWN_WASM,
-            Player.SPAWN_PROVKEY
+            wasm,
+            zkey
         );
-    
+
         return [proof, publicSignals];
     }
 
