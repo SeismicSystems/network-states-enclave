@@ -1,21 +1,31 @@
-import readline from "readline";
-import { ethers } from "ethers";
-import { io, Socket } from "socket.io-client";
 import dotenv from "dotenv";
-dotenv.config({ path: "../.env" });
-import { ServerToClientEvents, ClientToServerEvents } from "../enclave/socket";
-import { Tile } from "../game/Tile.js";
-import { Player } from "../game/Player.js";
-import { Board } from "../game/Board.js";
-import { Utils, Location, Groth16ProofCalldata, ProverStatus } from "../game/Utils.js";
-import worlds from "../contracts/worlds.json" assert { type: "json" };
+import readline from "readline";
+import { io, Socket } from "socket.io-client";
+import {
+    Address,
+    createPublicClient,
+    createWalletClient,
+    formatEther,
+    getContract,
+    hexToSignature,
+    http as httpTransport,
+} from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { foundry } from "viem/chains";
 import IWorldAbi from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "json" };
+import worlds from "../contracts/worlds.json" assert { type: "json" };
+import { ClientToServerEvents, ServerToClientEvents } from "../enclave/socket";
 import { TerrainUtils } from "../game";
-
-/*
- * Chain ID
- */
-const CHAIN_ID: number = parseInt(<string>process.env.CHAIN_ID);
+import { Board } from "../game/Board.js";
+import { Player } from "../game/Player.js";
+import { Tile } from "../game/Tile.js";
+import {
+    Groth16ProofCalldata,
+    Location,
+    ProverStatus,
+    Utils,
+} from "../game/Utils.js";
+dotenv.config({ path: "../.env" });
 
 /*
  * Player arguments
@@ -36,24 +46,41 @@ const MOVE_KEYS: Record<string, number[]> = {
 };
 
 /*
- * Boot up interface with 1) Network States contract and 2) the CLI.
+ * Contract values
  */
-const signer = new ethers.Wallet(
-    PLAYER_PRIVKEY,
-    new ethers.providers.JsonRpcProvider(process.env.RPC_URL)
-);
-const nStates = new ethers.Contract(
-    worlds[CHAIN_ID].address,
-    IWorldAbi.abi,
-    signer
-);
-var rl = readline.createInterface({
+const CHAIN_ID = Number(process.env.CHAIN_ID);
+const worldsTyped = worlds as { [key: number]: { address: string } };
+const worldData = worldsTyped[CHAIN_ID];
+const worldAddress = worldData.address as Address;
+const account = privateKeyToAccount(`0x${PLAYER_PRIVKEY}`);
+const abi = IWorldAbi.abi;
+
+const walletClient = createWalletClient({
+    account,
+    chain: foundry,
+    transport: httpTransport(),
+});
+
+const publicClient = createPublicClient({
+    chain: foundry,
+    transport: httpTransport(),
+});
+
+const nStates = getContract({
+    abi,
+    address: worldAddress,
+    walletClient,
+    publicClient,
+});
+
+readline.createInterface({
     input: process.stdin,
     output: process.stdout,
 });
+
 let cursor: Location;
 
-const PLAYER = new Player(PLAYER_SYMBOL, signer.address);
+const PLAYER = new Player(PLAYER_SYMBOL, walletClient.account.address);
 
 /*
  * Client's local belief on game state stored in Board object.
@@ -74,7 +101,7 @@ let isSpawned = false;
  * Last block when player requested an enclave signature. Player's cannot submit
  * more than one move in a block.
  */
-let clientLatestMoveBlock: number = 0;
+let clientLatestMoveBlock: bigint = 0n;
 
 /*
  * Store pending move.
@@ -126,7 +153,6 @@ async function spawnSignatureResponse(
     virtPubSigs: any,
     proverStatus: ProverStatus
 ) {
-    console.log();
     if (proverStatus === ProverStatus.Incomplete) {
         console.error(`Rapidsnark and snarkjs failed, canceled spawn`);
         return;
@@ -147,20 +173,25 @@ async function spawnSignatureResponse(
     const [prf, pubSigs] = await Tile.spawnZKP(PLAYER, virtTile, spawnTile);
 
     const spawnFormattedProof = await Utils.exportCallDataGroth16(prf, pubSigs);
-    const [spawnInputs, spawnProof, spawnSig] = Utils.unpackSpawnInputs(
-        spawnFormattedProof,
-        sig
-    );
+    const [spawnInputs, spawnProof] =
+        Utils.unpackSpawnInputs(spawnFormattedProof);
+    const unpackedSig = hexToSignature(sig as Address);
+    const spawnSig = {
+        v: unpackedSig.v,
+        r: unpackedSig.r,
+        s: unpackedSig.s,
+        b: 0,
+    };
 
     console.log("Submitting spawn proof to nStates");
     try {
-        await nStates.spawn(
+        await nStates.write.spawn([
             spawnInputs,
             spawnProof,
             virtInputs,
             virtProof,
-            spawnSig
-        );
+            spawnSig,
+        ]);
         cursor = spawnTile.loc;
     } catch (error) {
         console.error(error);
@@ -173,7 +204,7 @@ async function spawnSignatureResponse(
  * to chain. Currently hardcoded to move all but one army unit to the next
  * tile.
  */
-async function move(inp: string, currentBlockHeight: number) {
+async function move(inp: string, currentBlockHeight: bigint) {
     try {
         if (inp !== "w" && inp !== "a" && inp !== "s" && inp !== "d") {
             throw new Error("Invalid move input.");
@@ -235,7 +266,7 @@ function decryptResponse(t: any) {
  */
 async function moveSignatureResponse(
     sig: string,
-    blockNumber: number,
+    blockNumber: string,
     virtPrf: any,
     virtPubSigs: any,
     proverStatus: ProverStatus
@@ -249,11 +280,15 @@ async function moveSignatureResponse(
             console.log(`${proverStatus} successfully proved virtual ZKP`);
     }
 
-    const [moveInputs, moveProof, moveSig] = Utils.unpackMoveInputs(
-        formattedProof,
-        sig,
-        blockNumber
-    );
+    const [moveInputs, moveProof] = Utils.unpackMoveInputs(formattedProof);
+    const unpackedSig = hexToSignature(sig as Address);
+    const moveSig = {
+        v: unpackedSig.v,
+        r: unpackedSig.r,
+        s: unpackedSig.s,
+        b: blockNumber,
+    };
+
     const virtFormattedProof = await Utils.exportCallDataGroth16(
         virtPrf,
         virtPubSigs
@@ -261,7 +296,13 @@ async function moveSignatureResponse(
     const [virtInputs, virtProof] =
         Utils.unpackVirtualInputs(virtFormattedProof);
 
-    await nStates.move(moveInputs, moveProof, virtInputs, virtProof, moveSig);
+    await nStates.write.move([
+        moveInputs,
+        moveProof,
+        virtInputs,
+        virtProof,
+        moveSig,
+    ]);
 }
 
 /*
@@ -292,11 +333,12 @@ async function errorResponse(msg: string) {
 socket.on("connect", async () => {
     console.log("Server connection established");
 
-    console.log(`Player's address: ${signer.address}`);
-    const balance = await signer.getBalance();
-    console.log(
-        `Signer's balance in ETH: ${ethers.utils.formatEther(balance)}`
-    );
+    console.log(`Player's address: ${walletClient.account.address}`);
+    const balance = await publicClient.getBalance({
+        address: account.address,
+    });
+    console.log(`Signer's balance in ETH: ${formatEther(balance)}`);
+
     console.log("Press any key to continue or ESC to exit...");
     process.stdin.resume();
     process.stdin.on("data", (key) => {
@@ -311,7 +353,7 @@ socket.on("connect", async () => {
     b = new Board(terrainUtils);
     b.seed();
 
-    const sig = await signer.signMessage(socket.id);
+    const sig = await walletClient.signMessage({ message: socket.id });
     socket.emit("login", PLAYER.address, sig);
 });
 
@@ -319,7 +361,7 @@ socket.on("connect", async () => {
  * Game loop.
  */
 process.stdin.on("keypress", async (str) => {
-    const currentBlockHeight = await nStates.provider.getBlockNumber();
+    const currentBlockHeight = await publicClient.getBlockNumber();
     if (clientLatestMoveBlock < currentBlockHeight && isSpawned) {
         await move(str, currentBlockHeight);
     }

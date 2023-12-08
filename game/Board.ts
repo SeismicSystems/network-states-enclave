@@ -120,13 +120,19 @@ export class Board {
                     process.stdout.write(color + `[^]` + reset);
                 } else if (tl.owner.symbol === "A") {
                     color = "\x1b[32m";
-                    process.stdout.write(color + `[${tl.owner.symbol}]` + reset);
+                    process.stdout.write(
+                        color + `[${tl.owner.symbol}]` + reset
+                    );
                 } else if (tl.owner.symbol === "B") {
                     color = "\x1b[31m";
-                    process.stdout.write(color + `[${tl.owner.symbol}]` + reset);
+                    process.stdout.write(
+                        color + `[${tl.owner.symbol}]` + reset
+                    );
                 } else if (tl.owner.symbol === "C") {
                     color = "\x1b[44m";
-                    process.stdout.write(color + `[${tl.owner.symbol}]` + reset);
+                    process.stdout.write(
+                        color + `[${tl.owner.symbol}]` + reset
+                    );
                 } else {
                     color = "\x1b[37m";
                     process.stdout.write(color + `[_]` + reset);
@@ -334,11 +340,14 @@ export class Board {
         const tFrom: Tile = this.getTile(from, 0n);
         const tTo: Tile = this.getTile(to, 0n);
 
-        const currentWaterInterval = (
-            await nStates.getCurrentInterval()
-        ).toNumber();
-        const fromCityTroops = await nStates.getCityCenterTroops(tFrom.cityId);
-        const toCityTroops = await nStates.getCityCenterTroops(tTo.cityId);
+        const currentWaterInterval = await nStates.read.getCurrentInterval();
+
+        const fromCityTroops = await nStates.read.getCityCenterTroops([
+            tFrom.cityId,
+        ]);
+        const toCityTroops = await nStates.read.getCityCenterTroops([
+            tTo.cityId,
+        ]);
 
         // Most recent troop counts
         const fromUpdatedTroops = Board.computeUpdatedTroops(

@@ -1,14 +1,14 @@
 #!/bin/bash
 
 : '
-  In execution, this script is managed by PM2. On startup, yarn start is called.
-  In case the enclave crashes, yarn start:recover is called.
+  In execution, this script is managed by PM2. On startup, yarn dev is called.
+  In case the enclave crashes, yarn dev:recover is called.
 '
 
 if [ -f "encryption_key.txt" ]
 then
-    yarn start:recover
+    yarn dev:recover
 else
     touch encryption_key.txt
-    yarn start
+    yarn dev
 fi

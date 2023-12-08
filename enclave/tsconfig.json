@@ -4,6 +4,7 @@
         "moduleResolution": "Node",
         "target": "ESNext",
         "resolveJsonModule": true,
-        "esModuleInterop": true
+        "esModuleInterop": true,
+        "strict": true
     }
 }

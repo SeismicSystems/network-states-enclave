@@ -1,28 +1,39 @@
-import express from "express";
-import http from "http";
-import { Server, Socket } from "socket.io";
-import { ethers, utils } from "ethers";
-import * as fs from "fs";
-import dotenv from "dotenv";
-dotenv.config({ path: "../.env" });
 import { exec as execCb } from "child_process";
-import { promisify } from "util";
-const exec = promisify(execCb);
-import {
-    ServerToClientEvents,
-    ClientToServerEvents,
-    InterServerEvents,
-    SocketData,
-} from "./socket";
+import dotenv from "dotenv";
+import express from "express";
+import * as fs from "fs";
+import http from "http";
 import { Queue } from "queue-typescript";
+import { Server, Socket } from "socket.io";
+import { promisify } from "util";
+import {
+    Address,
+    createPublicClient,
+    createWalletClient,
+    encodeAbiParameters,
+    getContract,
+    http as httpTransport,
+    keccak256,
+    parseAbiItem,
+    recoverMessageAddress,
+} from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { foundry } from "viem/chains";
+import IWorldAbi from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "json" };
+import worlds from "../contracts/worlds.json" assert { type: "json" };
+import { Board } from "../game/Board.js";
+import { Player } from "../game/Player.js";
 import { TerrainUtils } from "../game/Terrain.js";
 import { Tile } from "../game/Tile.js";
-import { Player } from "../game/Player.js";
-import { Board } from "../game/Board.js";
-import { Utils, Location, ProverStatus } from "../game/Utils.js";
-import worlds from "../contracts/worlds.json" assert { type: "json" };
-import IWorld from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "json" };
-import IEnclaveEvents from "../contracts/out/IEnclaveEvents.sol/IEnclaveEvents.json" assert { type: "json" };
+import { Location, ProverStatus, Utils } from "../game/Utils.js";
+import {
+    ClientToServerEvents,
+    InterServerEvents,
+    ServerToClientEvents,
+    SocketData,
+} from "./socket";
+dotenv.config({ path: "../.env" });
+const exec = promisify(execCb);
 
 /*
  * Whether the enclave's global state should be blank or pull from DA.
@@ -30,9 +41,37 @@ import IEnclaveEvents from "../contracts/out/IEnclaveEvents.sol/IEnclaveEvents.j
 let inRecoveryMode = process.argv[2] == "1";
 
 /*
- * Chain ID
+ * All NewTile Events emitted
  */
-const CHAIN_ID: number = parseInt(<string>process.env.CHAIN_ID);
+let hashHistory: Set<string>;
+
+/*
+ * Contract values
+ */
+const CHAIN_ID = Number(process.env.CHAIN_ID);
+const worldsTyped = worlds as { [key: number]: { address: string } };
+const worldData = worldsTyped[CHAIN_ID];
+const worldAddress = worldData.address as Address;
+const account = privateKeyToAccount(process.env.PRIVATE_KEY as Address);
+const abi = IWorldAbi.abi;
+
+const walletClient = createWalletClient({
+    account,
+    chain: foundry,
+    transport: httpTransport(),
+});
+
+const publicClient = createPublicClient({
+    chain: foundry,
+    transport: httpTransport(),
+});
+
+const nStates = getContract({
+    abi,
+    address: worldAddress,
+    walletClient,
+    publicClient,
+});
 
 /*
  * Set game parameters and create dummy players.
@@ -46,9 +85,8 @@ const START_RESOURCES: number = parseInt(
  * Number of blocks that a claimed move is allowed to be pending without being
  * deleted.
  */
-const CLAIMED_MOVE_LIFE_SPAN = parseInt(
-    <string>process.env.CLAIMED_MOVE_LIFE_SPAN,
-    10
+const CLAIMED_MOVE_LIFE_SPAN = BigInt(
+    <string>process.env.CLAIMED_MOVE_LIFE_SPAN
 );
 
 /*
@@ -62,17 +100,6 @@ const io = new Server<
     InterServerEvents,
     SocketData
 >(server);
-
-/*
- * Boot up interface with Network States contract.
- */
-const signer = new ethers.Wallet(
-    <string>process.env.PRIVATE_KEY,
-    new ethers.providers.JsonRpcProvider(process.env.RPC_URL)
-);
-
-const abi = IWorld.abi.concat(IEnclaveEvents.abi);
-const nStates = new ethers.Contract(worlds[CHAIN_ID].address, abi, signer);
 
 /*
  * Enclave randomness that it commits to in contract. Used for virtual tile
@@ -94,7 +121,7 @@ type ClaimedSpawn = {
 type ClaimedMove = {
     uFrom: Tile;
     uTo: Tile;
-    blockSubmitted: number;
+    blockSubmitted: bigint;
     uFromEnc: EncryptedTile;
     uToEnc: EncryptedTile;
 };
@@ -142,12 +169,12 @@ let claimedSpawns = new Map<string, ClaimedSpawn>();
  * Current block height. Storing the value in a variable saves from
  * unnecessarily indexing twice.
  */
-let currentBlockHeight: number;
+let currentBlockHeight: bigint;
 
 /*
  * Latest block height players proposed a move.
  */
-let playerLatestBlock = new Map<string, number>();
+let playerLatestBlock = new Map<string, bigint>();
 
 /*
  * Encryption key for global state sent to DA.
@@ -173,7 +200,7 @@ let recoveryModeIndex = 0;
  * If player is already spawned, return visible tiles for decryption. If not,
  * tell player to initiate spawning.
  */
-function login(socket: Socket, address: string, sigStr: string) {
+async function login(socket: Socket, address: string, sigStr: string) {
     if (inRecoveryMode) {
         socket.disconnect();
         return;
@@ -187,7 +214,10 @@ function login(socket: Socket, address: string, sigStr: string) {
 
     let sender: string | undefined;
     try {
-        sender = ethers.utils.verifyMessage(socket.id, sigStr);
+        sender = await recoverMessageAddress({
+            message: socket.id,
+            signature: sigStr as Address,
+        });
     } catch (error) {
         console.log("Malignant signature", sigStr);
         socket.disconnect();
@@ -207,7 +237,7 @@ function login(socket: Socket, address: string, sigStr: string) {
         idToAddress.set(socket.id, address);
         addressToId.set(address, socket.id);
 
-        playerLatestBlock.set(address, 0);
+        playerLatestBlock.set(address, 0n);
 
         let visibleTiles = new Set<string>();
         b.playerCities.get(address)?.forEach((cityId: number) => {
@@ -258,25 +288,23 @@ async function sendSpawnSignature(
         return;
     }
 
-    let loc: Location;
+    let loc: Location | undefined;
+
     try {
         loc = Utils.unstringifyLocation(l);
     } catch (error) {
         console.log("Malignant location string: ", l);
         socket.disconnect();
-        return;
     }
 
-    // Check that location and tile can be spawned into
-    if (!b.inBounds(loc.r, loc.c)) {
-        console.log("Submitted out of bounds");
-        socket.disconnect();
+    if (!loc) {
+        console.log("Location is undefined");
         return;
     }
 
     const virtTile = Tile.genVirtual(loc, rand, terrainUtils);
-
-    if (!virtTile.isSpawnable() || !b.getTile(loc, rand).isUnowned()) {
+    const tile = b.getTile(loc, rand);
+    if (!virtTile.isSpawnable() || !tile || !tile.isUnowned()) {
         console.log("Tile cannot be spawned on");
         socket.emit("trySpawn");
         return;
@@ -295,15 +323,19 @@ async function sendSpawnSignature(
     cityId++;
     const hSpawnTile = spawnTile.hash();
 
-    const {
-        proof,
-        publicSignals,
-        proverStatus
-    } = await virtualZKP(virtTile, socket.id);
+    const { proof, publicSignals, proverStatus } = await virtualZKP(
+        virtTile,
+        socket.id
+    );
 
     // Acknowledge reception of intended move
-    const digest = utils.solidityKeccak256(["uint256"], [hSpawnTile]);
-    const sig = await signer.signMessage(utils.arrayify(digest));
+    const abiEncoded = encodeAbiParameters(
+        [{ name: "hSpawnTile", type: "uint256" }],
+        [BigInt(hSpawnTile)]
+    );
+    const sig = await walletClient.signMessage({
+        message: { raw: keccak256(abiEncoded) },
+    });
 
     socket.emit(
         "spawnSignatureResponse",
@@ -334,7 +366,7 @@ async function virtualZKP(virtTile: Tile, socketId: string) {
 
     let proof;
     let publicSignals;
-    let proverStatus: ProverStatus;
+    let proverStatus = ProverStatus.Incomplete;
     try {
         // Unique ID for proof-related files
         const proofId = socketId + "-" + inputs.hVirt;
@@ -349,9 +381,7 @@ async function virtualZKP(virtTile: Tile, socketId: string) {
         const endTime = Date.now();
 
         const proverTime = endTime - startTime;
-        console.log(
-            `virtual-prover.sh: completed in ${proverTime} ms`
-        );
+        console.log(`virtual-prover.sh: completed in ${proverTime} ms`);
 
         // Read from bin/proof-proofId.json and bin/public-proofId.json
         proof = JSON.parse(
@@ -369,7 +399,7 @@ async function virtualZKP(virtTile: Tile, socketId: string) {
         console.error(`Error: ${error}`);
     }
 
-    if (!proverStatus) {
+    if (proverStatus === ProverStatus.Incomplete) {
         try {
             // If rapidsnark fails, run snarkjs prover
             console.log(`Proving virtual ZKP with snarkjs`);
@@ -378,9 +408,7 @@ async function virtualZKP(virtTile: Tile, socketId: string) {
             const endTime = Date.now();
 
             const proverTime = endTime - startTime;
-            console.log(
-                `snarkjs: completed in ${proverTime} ms`
-            );
+            console.log(`snarkjs: completed in ${proverTime} ms`);
 
             proverStatus = ProverStatus.Snarkjs;
         } catch (error) {
@@ -432,22 +460,27 @@ async function sendMoveSignature(
 
         // Generate ZKP that attests to valid virtual tile commitment
         const virtTile = Tile.genVirtual(uToAsTile.loc, rand, terrainUtils);
-        const {
-            proof,
-            publicSignals,
-            proverStatus
-        } = await virtualZKP(virtTile, socket.id);
-
-        const digest = utils.solidityKeccak256(
-            ["uint256", "uint256", "uint256"],
-            [currentBlockHeight, hUFrom, hUTo]
+        const { proof, publicSignals, proverStatus } = await virtualZKP(
+            virtTile,
+            socket.id
         );
-        const sig = await signer.signMessage(utils.arrayify(digest));
+
+        const abiEncoded = encodeAbiParameters(
+            [
+                { name: "currentBlockHeight", type: "uint256" },
+                { name: "hUFrom", type: "uint256" },
+                { name: "hUTo", type: "uint256" },
+            ],
+            [currentBlockHeight, BigInt(hUFrom), BigInt(hUTo)]
+        );
+        const sig = await walletClient.signMessage({
+            message: { raw: keccak256(abiEncoded) },
+        });
 
         socket.emit(
             "moveSignatureResponse",
             sig,
-            currentBlockHeight,
+            currentBlockHeight.toString(),
             proof,
             publicSignals,
             proverStatus
@@ -479,17 +512,23 @@ async function sendMoveSignature(
  * Exposes secrets at location l if a requesting player proves ownership of
  * neighboring tile.
  */
-function decrypt(socket: Socket, l: Location) {
+function decrypt(socket: Socket, l: string) {
     if (inRecoveryMode || !idToAddress.has(socket.id)) {
         socket.disconnect();
         return;
     }
 
+    const loc = Utils.unstringifyLocation(l);
+    if (!loc) {
+        socket.disconnect();
+        return;
+    }
+
     const owner = new Player("", idToAddress.get(socket.id)!);
-    if (b.noFog(l, owner, rand)) {
-        socket.emit("decryptResponse", b.getTile(l, rand));
+    if (b.noFog(loc, owner, rand)) {
+        socket.emit("decryptResponse", b.getTile(loc, rand));
     } else {
-        socket.emit("decryptResponse", Tile.mystery(l));
+        socket.emit("decryptResponse", Tile.mystery(loc));
     }
 }
 
@@ -528,7 +567,7 @@ function onSpawnAttempt(player: string, success: boolean) {
         // Spawn in player
         b.setTile(spawn.spawnTile);
 
-        playerLatestBlock.set(player, 0);
+        playerLatestBlock.set(player, 0n);
 
         enqueueTile(spawn.spawnTile);
         dequeueTileIfDAConnected();
@@ -538,7 +577,7 @@ function onSpawnAttempt(player: string, success: boolean) {
             .map((loc) => Utils.stringifyLocation(loc));
 
         io.to(socketId).emit("loginResponse", visibleLocs);
-    } else if (!success) {
+    } else if (!success && socketId) {
         io.to(socketId).emit("trySpawn");
     } else if (socketId) {
         console.error(`Player ${player} spawned without a signature.`);
@@ -561,6 +600,10 @@ function onMoveFinalize(hUFrom: string, hUTo: string) {
 
         // Before state is updated, we need the previous 'to' tile owner
         const tTo = b.getTile(move.uTo.loc, rand);
+        if (!tTo) {
+            return;
+        }
+
         const newOwner = move.uTo.owner.address;
         const prevOwner = tTo.owner.address;
         const ownershipChanged = prevOwner !== newOwner;
@@ -611,15 +654,18 @@ function alertPlayers(
     for (let loc of updatedLocs) {
         const locString = Utils.stringifyLocation(loc);
         for (let l of b.getNearbyLocations(loc)) {
-            const tileOwner = b.getTile(l, rand).owner.address;
-            const lString = Utils.stringifyLocation(l);
+            const tile = b.getTile(l, rand);
+            if (tile) {
+                const tileOwner = tile.owner.address;
+                const lString = Utils.stringifyLocation(l);
 
-            if (!alertPlayerMap.has(tileOwner)) {
-                alertPlayerMap.set(tileOwner, new Set<string>());
+                if (!alertPlayerMap.has(tileOwner)) {
+                    alertPlayerMap.set(tileOwner, new Set<string>());
+                }
+                alertPlayerMap.get(tileOwner)?.add(locString);
+                alertPlayerMap.get(newOwner)?.add(lString);
+                alertPlayerMap.get(prevOwner)?.add(lString);
             }
-            alertPlayerMap.get(tileOwner)?.add(locString);
-            alertPlayerMap.get(newOwner)?.add(lString);
-            alertPlayerMap.get(prevOwner)?.add(lString);
         }
     }
 
@@ -635,9 +681,20 @@ function alertPlayers(
  * Sets the socket ID of the DA node, if not already set. Sends back
  * inRecoveryMode variable.
  */
-function handshakeDA(socket: Socket) {
+async function handshakeDA(socket: Socket) {
     if (socketIdDA == undefined) {
         socketIdDA = socket.id;
+
+        // Fetch all NewTile events
+        const newTileLogs = await publicClient.getLogs({
+            event: parseAbiItem("event NewTile(uint256 indexed hTile)"),
+            strict: true,
+        });
+        hashHistory = new Set<string>();
+        newTileLogs.forEach((e) => {
+            hashHistory.add(e.args.hTile.toString());
+        });
+
         io.to(socketIdDA).emit("handshakeDAResponse", inRecoveryMode);
     } else {
         // If DA socket ID is already set, then do nothing and break connection
@@ -667,14 +724,6 @@ async function sendRecoveredTileResponse(socket: Socket, encTile: any) {
     );
 
     // Push tile into state if it's hash has been emitted
-    const newTileEvents: ethers.Event[] = await nStates.queryFilter(
-        nStates.filters.NewTile()
-    );
-    let hashHistory = new Set<string>();
-    newTileEvents.forEach((e) => {
-        hashHistory.add(e.args?.hTile.toString());
-    });
-
     if (tile && hashHistory.has(tile.hash())) {
         if (!b.isSpawned(tile.owner)) {
             b.spawn(tile.loc, tile.owner, START_RESOURCES, tile.cityId);
@@ -774,7 +823,7 @@ function setRand() {
  */
 async function setEnclaveRandCommitment(nStates: any) {
     setRand();
-    await nStates.setEnclaveRandCommitment(hRand.toString());
+    await nStates.write.setEnclaveRandCommitment([hRand.toString()]);
 }
 
 /*
@@ -792,7 +841,7 @@ io.on("connection", (socket: Socket) => {
             sendSpawnSignature(socket, symb, l, blind);
         }
     );
-    socket.on("handshakeDA", () => {
+    socket.on("handshakeDA", async () => {
         handshakeDA(socket);
     });
     socket.on(
@@ -802,7 +851,7 @@ io.on("connection", (socket: Socket) => {
         }
     );
     socket.on("decrypt", (l: string) => {
-        decrypt(socket, Utils.unstringifyLocation(l));
+        decrypt(socket, l);
     });
     socket.on("sendRecoveredTileResponse", (encTile: any) => {
         sendRecoveredTileResponse(socket, encTile);
@@ -818,24 +867,45 @@ io.on("connection", (socket: Socket) => {
     });
 });
 
-nStates.on(nStates.filters.NewSpawnAttempt(), (player, success) => {
-    onSpawnAttempt(player, success);
+/*
+ * Event handler for NewSpawnAttempt event.
+ */
+publicClient.watchEvent({
+    address: nStates.address,
+    event: parseAbiItem(
+        "event NewSpawnAttempt(address indexed player, bool indexed success)"
+    ),
+    strict: true,
+    onLogs: (logs) =>
+        logs.forEach((log) =>
+            onSpawnAttempt(log.args.player, log.args.success)
+        ),
 });
 
 /*
- * Event handler for NewMove event. io is passed in so that we can ping players.
+ * Event handler for NewMove event.
  */
-nStates.on(nStates.filters.NewMove(), (hUFrom, hUTo) => {
-    onMoveFinalize(hUFrom.toString(), hUTo.toString());
+publicClient.watchEvent({
+    address: nStates.address,
+    event: parseAbiItem(
+        "event NewMove(uint256 indexed hUFrom, uint256 indexed hUTo)"
+    ),
+    strict: true,
+    onLogs: (logs) =>
+        logs.forEach((log) =>
+            onMoveFinalize(log.args.hUFrom.toString(), log.args.hUTo.toString())
+        ),
 });
 
 /*
  * Event handler for new blocks. Claimed moves that have been stored for too
  * long should be deleted.
  */
-nStates.provider.on("block", async (n) => {
-    currentBlockHeight = n;
-    upkeepClaimedMoves();
+publicClient.watchBlockNumber({
+    onBlockNumber: (blockNumber) => {
+        currentBlockHeight = blockNumber;
+        upkeepClaimedMoves();
+    },
 });
 
 /*

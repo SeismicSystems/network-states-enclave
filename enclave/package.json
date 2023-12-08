@@ -6,18 +6,18 @@
         "axios": "^1.5.1",
         "circomlibjs": "^0.1.7",
         "dotenv": "^16.3.1",
-        "ethers": "^5.7.2",
         "express": "^4.18.2",
         "queue-typescript": "^1.0.1",
         "socket.io": "^4.7.1",
         "tsx": "^3.14.0",
+        "viem": "^1.19.11",
         "watch": "^1.0.2"
     },
     "scripts": {
-        "dev": "rm -f encryption_key.txt && mkdir -p bin && pm2 start scripts/enclave.sh && pm2 logs",
+        "start": "rm -f encryption_key.txt && mkdir -p bin && pm2 start scripts/enclave.sh && pm2 logs",
         "reset": "pm2 delete enclave",
-        "start": "yarn tsx server.ts 0",
-        "start:recover": "yarn tsx server.ts 1"
+        "dev": "yarn tsx server.ts 0",
+        "dev:recover": "yarn tsx server.ts 1"
     },
     "devDependencies": {
         "ts-node": "^10.9.1",
