@@ -387,6 +387,7 @@ async function virtualZKP(virtTile: Tile, socketId: string) {
         proof = JSON.parse(
             fs.readFileSync(`bin/proof-${proofId}.json`, "utf8")
         );
+        proof.curve = "bn128";
         publicSignals = JSON.parse(
             fs.readFileSync(`bin/public-${proofId}.json`, "utf8")
         );
