@@ -5,7 +5,7 @@ import crypto from "crypto";
 /*
  * poseidonPerm is a modified version of iden3's poseidonPerm.js.
  */
-import poseidonPerm from "../game/poseidonPerm.js";
+import poseidonPerm from "./poseidonPerm";
 
 export type Location = {
     r: number;

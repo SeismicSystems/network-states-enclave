@@ -2,6 +2,7 @@
     "license": "GPL-3.0",
     "type": "module",
     "dependencies": {
+        "@seismic-systems/ns-fow-game": "link:../game",
         "@types/express": "^4.17.17",
         "axios": "^1.5.1",
         "circomlibjs": "^0.1.7",

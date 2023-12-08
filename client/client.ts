@@ -14,17 +14,17 @@ import { privateKeyToAccount } from "viem/accounts";
 import { foundry } from "viem/chains";
 import IWorldAbi from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "json" };
 import worlds from "../contracts/worlds.json" assert { type: "json" };
-import { ClientToServerEvents, ServerToClientEvents } from "../enclave/socket";
-import { TerrainUtils } from "../game";
-import { Board } from "../game/Board.js";
-import { Player } from "../game/Player.js";
-import { Tile } from "../game/Tile.js";
+import { ClientToServerEvents, ServerToClientEvents } from "./socket";
 import {
+    Board,
     Groth16ProofCalldata,
-    Location,
+    Player,
     ProverStatus,
+    TerrainUtils,
+    Tile,
     Utils,
-} from "../game/Utils.js";
+    Location
+} from "@seismic-systems/ns-fow-game";
 dotenv.config({ path: "../.env" });
 
 /*
