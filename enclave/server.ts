@@ -368,6 +368,8 @@ async function virtualZKP(virtTile: Tile, socketId: string) {
     let publicSignals;
     let proverStatus = ProverStatus.Incomplete;
     try {
+        // [TMP]: getting error that solidity verifier does not accept proof
+        throw new Error("Rapidsnark is disabled");
         // Unique ID for proof-related files
         const proofId = socketId + "-" + inputs.hVirt;
 
