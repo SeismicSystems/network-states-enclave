@@ -80,4 +80,6 @@ elif [ "$ARCH" = "arm64" ]; then
   cd $CURRENT_DIR
   cp package_macos_arm64/bin/prover ../virtual/virtual-prover
 fi
+cd $CURRENT_DIR
+cd ..
 rm -rf rapidsnark
