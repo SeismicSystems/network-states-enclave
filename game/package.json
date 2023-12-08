@@ -1,5 +1,5 @@
 {
-    "name": "game",
+    "name": "@seismic-systems/ns-fow-game",
     "type": "module",
     "version": "1.0.0",
     "main": "index.ts",
@@ -8,5 +8,8 @@
         "@darkforest_eth/hashing": "^6.7.29",
         "maci-crypto": "^1.1.2",
         "snarkjs": "^0.7.0"
+    },
+    "publishConfig": {
+        "access": "public"
     }
 }
