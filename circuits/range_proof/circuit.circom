@@ -7,8 +7,8 @@
 
 pragma circom 2.0.3;
 
-include "../node_modules/maci-circuits/node_modules/circomlib/circuits/comparators.circom";
-include "../node_modules/maci-circuits/node_modules/circomlib/circuits/bitify.circom";
+include "../node_modules/circomlib/circuits/comparators.circom";
+include "../node_modules/circomlib/circuits/bitify.circom";
 
 // NB: RangeProof is inclusive.
 // input: field element, whose abs is claimed to be <= than max_abs_value

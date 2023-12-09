@@ -7,7 +7,7 @@
 
 pragma circom 2.0.3;
 
-include "../node_modules/maci-circuits/node_modules/circomlib/circuits/comparators.circom";
+include "../node_modules/circomlib/circuits/comparators.circom";
 include "CalculateTotal.circom";
 
 template QuinSelector(choices) {
