@@ -6,6 +6,8 @@
     "license": "GPL-3.0",
     "dependencies": {
         "@darkforest_eth/hashing": "^6.7.29",
+        "circomlib": "https://github.com/weijiekoh/circomlib.git#24ed08eee0bb613b8c0135d66c1013bd9f78d50a",
+        "ffjavascript": "^0.2.62",
         "maci-crypto": "^1.1.2",
         "snarkjs": "^0.7.0"
     },
