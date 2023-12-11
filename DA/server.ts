@@ -2,7 +2,7 @@ import { io, Socket } from "socket.io-client";
 import { Pool } from "pg";
 import dotenv from "dotenv";
 dotenv.config({ path: "../.env" });
-import { ServerToClientEvents, ClientToServerEvents } from "../enclave/socket";
+import { ServerToClientEvents, ClientToServerEvents } from "../client/socket";
 
 /*
  * Using Socket.IO to manage communication with enclave.
