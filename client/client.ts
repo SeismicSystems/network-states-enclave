@@ -14,17 +14,17 @@ import { privateKeyToAccount } from "viem/accounts";
 import { foundry } from "viem/chains";
 import IWorldAbi from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "json" };
 import worlds from "../contracts/worlds.json" assert { type: "json" };
-import { ClientToServerEvents, ServerToClientEvents } from "../enclave/socket";
-import { TerrainUtils } from "../game";
-import { Board } from "../game/Board.js";
-import { Player } from "../game/Player.js";
-import { Tile } from "../game/Tile.js";
+import { ClientToServerEvents, ServerToClientEvents } from "./socket";
 import {
+    Board,
     Groth16ProofCalldata,
-    Location,
+    Player,
     ProverStatus,
+    TerrainUtils,
+    Tile,
     Utils,
-} from "../game/Utils.js";
+    Location
+} from "@seismic-systems/ns-fow-game";
 dotenv.config({ path: "../.env" });
 
 /*
@@ -90,7 +90,13 @@ let b: Board;
 /*
  * Cache for terrain
  */
-const terrainUtils = new TerrainUtils();
+const terrainUtils = new TerrainUtils(
+    Number(process.env.PERLIN_KEY),
+    Number(process.env.PERLIN_SCALE),
+    Number(process.env.PERLIN_THRESHOLD_BONUS_TROOPS),
+    Number(process.env.PERLIN_THRESHOLD_HILL),
+    Number(process.env.PERLIN_THRESHOLD_WATER)
+);
 
 /*
  * Whether player has been spawned in.

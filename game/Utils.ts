@@ -2,11 +2,10 @@
 import { groth16 } from "snarkjs";
 import { Signature } from "maci-crypto";
 import crypto from "crypto";
-import { BigNumber } from "ethers";
 /*
  * poseidonPerm is a modified version of iden3's poseidonPerm.js.
  */
-import poseidonPerm from "../game/poseidonPerm.js";
+import poseidonPerm from "./poseidonPerm";
 
 export type Location = {
     r: number;
@@ -137,13 +136,6 @@ export class Utils {
      */
     static poseidonExt(inputs: bigint[]) {
         return poseidonPerm([0n, ...inputs])[0];
-    }
-
-    /*
-     * Wrapper for turning string into type compatible with IncrementalQuinTree.
-     */
-    static hIntoBigNumber(hash: string): BigNumber {
-        return BigNumber.from(hash);
     }
 
     /*

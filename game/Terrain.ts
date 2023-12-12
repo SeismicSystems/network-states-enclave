@@ -3,16 +3,25 @@ import { Terrain, Location } from "./Utils.js";
 
 export class TerrainUtils {
     terrainMemo: Map<string, Terrain>;
-    perlinKey = Number(process.env.PERLIN_KEY);
-    perlinScale = Number(process.env.PERLIN_SCALE);
-    perlinThresholdBonusTroops = Number(
-        process.env.PERLIN_THRESHOLD_BONUS_TROOPS
-    );
-    perlinThresholdHill = Number(process.env.PERLIN_THRESHOLD_HILL);
-    perlinThresholdWater = Number(process.env.PERLIN_THRESHOLD_WATER);
+    perlinKey: number;
+    perlinScale: number;
+    perlinThresholdBonusTroops: number;
+    perlinThresholdHill: number;
+    perlinThresholdWater: number;
 
-    constructor() {
+    constructor(
+        perlinKey: number,
+        perlinScale: number,
+        perlinThresholdBonusTroops: number,
+        perlinThresholdHill: number,
+        perlinThresholdWater: number
+    ) {
         this.terrainMemo = new Map<string, Terrain>();
+        this.perlinKey = perlinKey;
+        this.perlinScale = perlinScale;
+        this.perlinThresholdBonusTroops = perlinThresholdBonusTroops;
+        this.perlinThresholdHill = perlinThresholdHill;
+        this.perlinThresholdWater = perlinThresholdWater;
     }
 
     static getKey(loc: Location) {
@@ -26,7 +35,7 @@ export class TerrainUtils {
             return cached;
         }
         const perlinValue = perlin(
-            { x: Number(loc.r), y: Number(loc.c) },
+            { x: loc.r, y: loc.c },
             {
                 key: this.perlinKey,
                 scale: this.perlinScale,

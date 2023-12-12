@@ -21,17 +21,21 @@ import { privateKeyToAccount } from "viem/accounts";
 import { foundry } from "viem/chains";
 import IWorldAbi from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "json" };
 import worlds from "../contracts/worlds.json" assert { type: "json" };
-import { Board } from "../game/Board.js";
-import { Player } from "../game/Player.js";
-import { TerrainUtils } from "../game/Terrain.js";
-import { Tile } from "../game/Tile.js";
-import { Location, ProverStatus, Utils } from "../game/Utils.js";
 import {
     ClientToServerEvents,
     InterServerEvents,
     ServerToClientEvents,
     SocketData,
-} from "./socket";
+} from "../client/socket";
+import {
+    Board,
+    Player,
+    ProverStatus,
+    TerrainUtils,
+    Tile,
+    Utils,
+    Location,
+} from "@seismic-systems/ns-fow-game";
 dotenv.config({ path: "../.env" });
 const exec = promisify(execCb);
 
@@ -111,7 +115,13 @@ let hRand: bigint;
 /*
  * Cache for terrain
  */
-const terrainUtils = new TerrainUtils();
+const terrainUtils = new TerrainUtils(
+    Number(process.env.PERLIN_KEY),
+    Number(process.env.PERLIN_SCALE),
+    Number(process.env.PERLIN_THRESHOLD_BONUS_TROOPS),
+    Number(process.env.PERLIN_THRESHOLD_HILL),
+    Number(process.env.PERLIN_THRESHOLD_WATER)
+);
 
 type ClaimedSpawn = {
     virtTile: Tile;
@@ -368,6 +378,8 @@ async function virtualZKP(virtTile: Tile, socketId: string) {
     let publicSignals;
     let proverStatus = ProverStatus.Incomplete;
     try {
+        // [TMP]: not compiling while dev environment is macOs
+        throw new Error("Rapidsnark is disabled");
         // Unique ID for proof-related files
         const proofId = socketId + "-" + inputs.hVirt;
 
@@ -387,6 +399,7 @@ async function virtualZKP(virtTile: Tile, socketId: string) {
         proof = JSON.parse(
             fs.readFileSync(`bin/proof-${proofId}.json`, "utf8")
         );
+        proof.curve = "bn128";
         publicSignals = JSON.parse(
             fs.readFileSync(`bin/public-${proofId}.json`, "utf8")
         );

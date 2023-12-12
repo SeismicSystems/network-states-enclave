@@ -4,12 +4,9 @@ import { genRandomSalt } from "maci-crypto";
 /*
  * poseidonPerm is a modified version of iden3's poseidonPerm.js.
  */
-import poseidonPerm from "../game/poseidonPerm.js";
+import poseidonPerm from "./poseidonPerm";
 
 export class Player {
-    static SPAWN_WASM: string = "../circuits/spawn/spawn.wasm";
-    static SPAWN_PROVKEY: string = "../circuits/spawn/spawn.zkey";
-
     symbol: string;
     address: string;
     blind: bigint;

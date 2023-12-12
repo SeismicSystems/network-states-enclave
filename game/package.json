@@ -1,18 +1,17 @@
 {
-    "name": "game",
+    "name": "@seismic-systems/ns-fow-game",
     "type": "module",
-    "version": "1.0.0",
+    "version": "1.0.2",
     "main": "index.ts",
     "license": "GPL-3.0",
     "dependencies": {
         "@darkforest_eth/hashing": "^6.7.29",
-        "@latticexyz/noise": "^2.0.0-next.12",
-        "@types/circomlibjs": "^0.1.2",
-        "circomlibjs": "^0.1.7",
-        "dotenv": "^16.3.1",
+        "circomlib": "https://github.com/weijiekoh/circomlib.git#24ed08eee0bb613b8c0135d66c1013bd9f78d50a",
+        "ffjavascript": "^0.2.62",
         "maci-crypto": "^1.1.2",
-        "maci-domainobjs": "^1.1.2",
-        "snarkjs": "^0.7.0",
-        "text-encoding-utf-8": "^1.0.2"
+        "snarkjs": "^0.7.0"
+    },
+    "publishConfig": {
+        "access": "public"
     }
 }

@@ -7,10 +7,10 @@
 
 pragma circom 2.0.3;
 
-include "../node_modules/maci-circuits/node_modules/circomlib/circuits/mimcsponge.circom";
-include "../node_modules/maci-circuits/node_modules/circomlib/circuits/comparators.circom";
-include "../node_modules/maci-circuits/node_modules/circomlib/circuits/sign.circom";
-include "../node_modules/maci-circuits/node_modules/circomlib/circuits/bitify.circom";
+include "../node_modules/circomlib/circuits/mimcsponge.circom";
+include "../node_modules/circomlib/circuits/comparators.circom";
+include "../node_modules/circomlib/circuits/sign.circom";
+include "../node_modules/circomlib/circuits/bitify.circom";
 include "../range_proof/circuit.circom";
 include "QuinSelector.circom";
 

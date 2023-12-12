@@ -3,18 +3,13 @@ import { groth16 } from "snarkjs";
 import { Utils, Location, Groth16Proof } from "./Utils.js";
 import { Player } from "./Player.js";
 import { Tile } from "./Tile.js";
-import dotenv from "dotenv";
 import { TerrainUtils } from "./Terrain.js";
-dotenv.config({ path: "../.env" });
 
 export class Board {
     static MOVE_WASM: string = "../circuits/move/move.wasm";
     static MOVE_PROVKEY: string = "../circuits/move/move.zkey";
     static PERIMETER: number[][] = [-1, 0, 1].flatMap((x) =>
         [-1, 0, 1].map((y) => [x, y])
-    );
-    static SNARK_FIELD_SIZE: number = Number(
-        <string>process.env.SNARK_FIELD_SIZE
     );
     static COORDINATE_MAX_VALUE: number = 2 ** 31;
 
@@ -331,11 +326,16 @@ export class Board {
     /*
      * Generates state transition, nullifier combo, and ZKP needed to move
      * troops from one tile to another. Moves all but one troop for development.
+     * 
+     * wasmPath is the relative path to move.wasm, and zkeyPath for move.zkey.
+     * The default values for these paths are ../circuits/move/move.(wasm/zkey)
      */
     public async moveZKP(
         from: Location,
         to: Location,
-        nStates: any
+        nStates: any,
+        wasmPath?: string,
+        zkeyPath?: string
     ): Promise<[Tile, Tile, Tile, Tile, Groth16Proof, any]> {
         const tFrom: Tile = this.getTile(from, 0n);
         const tTo: Tile = this.getTile(to, 0n);
@@ -388,6 +388,9 @@ export class Board {
         const capturedTile = uTo.owner.address != tTo.owner.address;
         const takingCity = tTo.isCityCenter() && capturedTile ? "1" : "0";
 
+        const wasm = wasmPath || Board.MOVE_WASM;
+        const zkey = zkeyPath || Board.MOVE_PROVKEY;
+
         const { proof, publicSignals } = await groth16.fullProve(
             {
                 currentWaterInterval: currentWaterInterval.toString(),
@@ -414,8 +417,8 @@ export class Board {
                 fromUpdatedTroops: fromUpdatedTroops.toString(),
                 toUpdatedTroops: toUpdatedTroops.toString(),
             },
-            Board.MOVE_WASM,
-            Board.MOVE_PROVKEY
+            wasm,
+            zkey
         );
 
         return [tFrom, tTo, uFrom, uTo, proof, publicSignals];

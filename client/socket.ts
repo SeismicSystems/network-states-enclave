@@ -1,4 +1,4 @@
-import { ProverStatus } from "../game/Utils";
+import { ProverStatus } from "@seismic-systems/ns-fow-game/Utils";
 
 interface ServerToClientEvents {
     loginResponse: (locs: string[]) => void;
