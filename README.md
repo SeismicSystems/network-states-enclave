@@ -8,7 +8,7 @@ anvil
 ### Compile circuit
 ```
 cd circuits/
-yarn dev:move
+pnpm dev:move
 # This takes a while: it compiles the circuit and runs a smoke test
 ```
 
@@ -24,12 +24,12 @@ bash forge_create_local.sh
 ### Run server
 ```
 cd enclave/
-yarn dev
+pnpm dev
 # Wait for "Server running..." log
 ```
 
 ### Run client
 ``` 
 cd client/
-yarn devA  # can also do {devB, devC}
+pnpm devA  # can also do {devB, devC}
 ```
