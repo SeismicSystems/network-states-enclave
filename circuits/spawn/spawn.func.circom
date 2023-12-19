@@ -48,11 +48,7 @@ template CheckCanSpawn(N_TL_ATRS, CITY_IDX, RSRC_IDX, TYPE_IDX, BARE_TYPE) {
     signal isBare <== IsEqual()([prevTile[TYPE_IDX], BARE_TYPE]);
     signal isNotBare <== NOT()(isBare);
 
-    signal zeroTroops <== IsEqual()([prevTile[RSRC_IDX], 0]);
-    signal nonzeroTroops <== NOT()(zeroTroops);
-
-    signal circuitCanSpawn <== BatchIsZero(3)([isOwned, isNotBare, 
-        nonzeroTroops]);
+    signal circuitCanSpawn <== BatchIsZero(2)([isOwned, isNotBare]);
         
     out <== IsEqual()([circuitCanSpawn, canSpawn]);
 }
@@ -85,7 +81,6 @@ template Spawn() {
     signal input blind;
 
     // Spawn tile must be correct
-    // [TODO]: constrain row and column
     signal spawnTileCorrect <== CheckSpawnTile(N_TL_ATRS, RSRC_IDX, CITY_IDX, 
         UPD_IDX, TYPE_IDX, START_RESOURCES, CITY_TYPE)(spawnCityId, 
         spawnTile);
@@ -106,6 +101,4 @@ template Spawn() {
         spawnTile[COL_IDX]]);
     signal hBlindLocCorrect <== IsEqual()([circuithBlindLoc, hBlindLoc]);
     hBlindLocCorrect === 1;
-
-    // [TODO] Constrain location
 }
