@@ -159,7 +159,14 @@ describe("Unit tests for CheckTileHashes()", () => {
     it("fails if canSpawn = 1 but tile is Owned", async () => {
         const w = await circuit.calculateWitness({
             canSpawn: "1",
-            prevTile: Tile.genOwned(new Player("A", ""), { r: 0, c: 0 }, 50, 2, 0, Tile.BARE_TILE).toCircuitInput()
+            prevTile: Tile.genOwned(
+                new Player("A", ""),
+                { r: 0, c: 0 },
+                50,
+                2,
+                0,
+                Tile.BARE_TILE
+            ).toCircuitInput(),
         });
         assert.equal(w[1], BigInt(0));
         await circuit.checkConstraints(w);
@@ -168,19 +175,23 @@ describe("Unit tests for CheckTileHashes()", () => {
     it("fails if canSpawn = 1 but tile is not bare", async () => {
         const w = await circuit.calculateWitness({
             canSpawn: "1",
-            prevTile: Tile.hill({ r: 0, c: 0 }, BigInt(0)).toCircuitInput()
+            prevTile: Tile.hill({ r: 0, c: 0 }, BigInt(0)).toCircuitInput(),
         });
         assert.equal(w[1], BigInt(0));
         await circuit.checkConstraints(w);
     });
 
     it("fails if canSpawn = 0 but tile is spawnable", async () => {
-        const prevTile = Tile.genVirtual({ r: 0, c: 0 }, BigInt(0), terrainUtils);
+        const prevTile = Tile.genVirtual(
+            { r: 0, c: 0 },
+            BigInt(0),
+            terrainUtils
+        );
         prevTile.tileType = Tile.BARE_TILE;
 
         const w = await circuit.calculateWitness({
             canSpawn: "0",
-            prevTile: prevTile.toCircuitInput()
+            prevTile: prevTile.toCircuitInput(),
         });
         assert.equal(w[1], BigInt(0));
         await circuit.checkConstraints(w);
