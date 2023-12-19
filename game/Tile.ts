@@ -1,10 +1,9 @@
 // @ts-ignore
 import { groth16 } from "snarkjs";
-import { Groth16Proof, Terrain } from "./Utils.js";
 import { genRandomSalt } from "maci-crypto";
-import { Player } from "./Player.js";
-import { Utils, Location } from "./Utils.js";
-import { TerrainUtils } from "./Terrain.js";
+import { Player } from "./Player";
+import { Utils, Location, Groth16Proof, Terrain } from "./Utils";
+import { TerrainUtils } from "./Terrain";
 
 export class Tile {
     static UNOWNED: Player = new Player("_", "");

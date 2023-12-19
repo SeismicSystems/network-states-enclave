@@ -1,9 +1,9 @@
 // @ts-ignore
 import { groth16 } from "snarkjs";
-import { Utils, Location, Groth16Proof } from "./Utils.js";
-import { Player } from "./Player.js";
-import { Tile } from "./Tile.js";
-import { TerrainUtils } from "./Terrain.js";
+import { Tile } from "./Tile";
+import { TerrainUtils } from "./Terrain";
+import { Utils, Location, Groth16Proof } from "./Utils";
+import { Player } from "./Player";
 
 export class Board {
     static MOVE_WASM: string = "../circuits/move/move.wasm";
@@ -70,7 +70,7 @@ export class Board {
     ) {
         this.assertBounds(l);
 
-        if (!this.getTile(l, 0n).isUnowned()) {
+        if (!this.getTile(l, BigInt(0)).isUnowned()) {
             console.error("Tried to spawn player on an owned tile.");
             return;
         }
@@ -101,7 +101,7 @@ export class Board {
     public printView(): void {
         for (let r = 0; r < 10; r++) {
             for (let c = 0; c < 10; c++) {
-                let tl: Tile = this.getTile({ r, c }, 0n);
+                let tl: Tile = this.getTile({ r, c }, BigInt(0));
                 let color;
                 const reset = "\x1b[0m";
                 if (tl.isBare() && tl.resources === 5 && tl.isUnowned()) {
@@ -169,7 +169,7 @@ export class Board {
      * Set location to new Tile value. Enclave-only func.
      */
     public setTile(tl: Tile) {
-        const oldTile = this.getTile(tl.loc, 0n);
+        const oldTile = this.getTile(tl.loc, BigInt(0));
         const oldOwner = oldTile.owner.address;
         const newOwner = tl.owner.address;
 
@@ -185,12 +185,12 @@ export class Board {
                 // Some type of capture happened: must update state
                 if (oldTile.isCityCenter()) {
                     // Change tile ownership
-                    for (let locString of this.cityTiles.get(oldTile.cityId)!) {
+                    this.cityTiles.get(oldTile.cityId).forEach((locString) => {
                         const loc = JSON.parse(locString);
                         if (loc) {
-                            this.getTile(loc, 0n).owner = tl.owner;
+                            this.getTile(loc, BigInt(0)).owner = tl.owner;
                         }
-                    }
+                    });
 
                     this.playerCities.get(oldOwner)?.delete(tl.cityId);
                     this.playerCities.get(newOwner)?.add(tl.cityId);
@@ -209,13 +209,13 @@ export class Board {
                 this.playerCities.delete(oldOwner);
             } else if (oldTile.isCityCenter()) {
                 // Change tile ownership
-                for (let locString of this.cityTiles.get(oldTile.cityId)!) {
+                this.cityTiles.get(oldTile.cityId).forEach((locString) => {
                     const tile = this.t.get(locString);
                     if (tile) {
                         tile.owner = oldTile.owner;
                         this.t.set(locString, tile);
                     }
-                }
+                });
 
                 this.playerCities.get(oldOwner)?.delete(tl.cityId);
                 this.playerCities.get(newOwner)?.add(tl.cityId);
@@ -326,7 +326,7 @@ export class Board {
     /*
      * Generates state transition, nullifier combo, and ZKP needed to move
      * troops from one tile to another. Moves all but one troop for development.
-     * 
+     *
      * wasmPath is the relative path to move.wasm, and zkeyPath for move.zkey.
      * The default values for these paths are ../circuits/move/move.(wasm/zkey)
      */
@@ -337,8 +337,8 @@ export class Board {
         wasmPath?: string,
         zkeyPath?: string
     ): Promise<[Tile, Tile, Tile, Tile, Groth16Proof, any]> {
-        const tFrom: Tile = this.getTile(from, 0n);
-        const tTo: Tile = this.getTile(to, 0n);
+        const tFrom: Tile = this.getTile(from, BigInt(0));
+        const tTo: Tile = this.getTile(to, BigInt(0));
 
         const currentWaterInterval = await nStates.read.getCurrentInterval();
 

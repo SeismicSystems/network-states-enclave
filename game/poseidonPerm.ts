@@ -8,7 +8,7 @@
 import assert from "assert";
 import { Scalar, ZqField, utils } from "ffjavascript";
 const { unstringifyBigInts } = utils;
-import constants from "circomlib/src/poseidon_constants.json" assert { type: "json" };
+import constants from "circomlib/src/poseidon_constants.json";
 
 // Prime 0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001
 const F = new ZqField(
