@@ -1,7 +1,7 @@
 const { wasm } = require("circom_tester");
 import { assert } from "chai";
 
-import { TerrainUtils, Tile } from "../../game";
+import { Player, TerrainUtils, Tile } from "../../game";
 
 let terrainUtils = new TerrainUtils(2, 2, 19, 18, 17);
 
@@ -13,13 +13,13 @@ describe("Unit tests for CheckTileHash()", () => {
     });
 
     it("fails if tile and tile hash do not correspond", async () => {
-        const t = Tile.water({ r: 0, c: 0 }, BigInt("0"));
-        
+        const t = Tile.water({ r: 0, c: 0 }, BigInt(0));
+
         const w = await circuit.calculateWitness({
             tileHash: "0",
-            tile: t.toCircuitInput()
+            tile: t.toCircuitInput(),
         });
-        assert.equal(w[1], BigInt("0"));
+        assert.equal(w[1], BigInt(0));
         await circuit.checkConstraints(w);
     });
 
@@ -28,1335 +28,1049 @@ describe("Unit tests for CheckTileHash()", () => {
 
         const w = await circuit.calculateWitness({
             tileHash: t.hash(),
-            tile: t.toCircuitInput()
+            tile: t.toCircuitInput(),
         });
-        assert.equal(w[1], BigInt("1"));
+        assert.equal(w[1], BigInt(1));
         await circuit.checkConstraints(w);
     });
 });
 
-// describe("Unit tests for CheckStep()", () => {
-//     let circuit;
-
-//     beforeEach(async () => {
-//         circuit = await wasm("test/circuits/test_check_step.circom");
-//     });
-
-//     it("fails if tFrom.r != uFrom.r", async () => {
-
-//     });
-
-//     it("fails if tFrom.c != uFrom.c", async () => {
-
-//     });
-
-//     it("fails if tTo.r != uTo.r", async () => {
-
-//     });
-
-//     it("fails if tTo.c != uTo.c", async () => {
-
-//     });
-
-//     it("fails if tFrom and tTo are not 1 tile away", async () => {
-
-//     });
-
-//     it("fails if tTo is a hill tile", async () => {
-
-//     });
-
-//     it("passes if tFrom to uTo is a valid step", async () => {
-
-//     });
-// });
-
-// describe("Unit tests for CheckRsrc()", () => {
-//     let circuit;
-
-//     beforeEach(async () => {
-//         circuit = await wasm("test/circuits/test_check_rsrc.circom");
-//     });
-
-//     it("fails if all troops are moved", async () => {
-
-//     });
-
-//     it("fails if more troops are moved than available", async () => {
-
-//     });
-
-//     it("passes if an allowable number of troops are moved", async () => {
-
-//     });
-// });
-
-// describe("Unit tests for CheckTroopUpdates()", () => {
-//     let circuit;
-
-//     beforeEach(async () => {
-//         circuit = await wasm("test/circuits/test_check_trp_updates.circom");
-//     });
-
-//     it("fails if bare tile loses troops over time", async () => {
-
-//     });
-
-//     it("fails if bare tile gains troops over time", async () => {
-
-//     });
-
-//     it("fails if water tile loses incorrect number of troops", async () => {
-
-//     });
-
-//     it("passes if bare tile loses no troops over time", async () => {
-
-//     });
-
-//     it("passes if water tile loses appropriate number of troops", async () => {
-
-//     });
-// });
-
-// describe("Unit tests for CheckRsrcCases()", () => {
-//     let circuit;
-
-//     beforeEach(async () => {
-//         circuit = await wasm("test/circuits/test_check_rsrc_cases.circom");
-//     });
-
-//     it("fails if rsrc management doesn't hold (onto enemy + less rsrcs)", async () => {
-
-//     });
-
-//     it("fails if rsrc management doesn't hold (onto enemy + more/eq. rsrcs)", async () => {
-
-//     });
-
-//     it("fails if rsrc management doesn't hold (onto self or unowned)", async () => {
-
-//     });
-
-//     it("passes if rsrc management holds (onto enemy + less rsrcs)", async () => {
-
-//     });
-
-//     it("passes if rsrc management holds (onto enemy + more/eq. rsrcs)", async () => {
-
-//     });
-
-//     it("passes if rsrc management holds (onto self or unowned)", async () => {
-
-//     });
-// });
-
-// describe("Unit tests for CheckCityIdCases()", () => {
-//     let circuit;
-
-//     beforeEach(async () => {
-//         circuit = await wasm("test/circuits/test_check_city_ids.circom");
-//     });
-
-//     it("fails if from tile changes city ID", async () => {
-
-//     });
-
-//     it("fails if city ID changes when to tile is a city center", async () => {
-
-//     });
-
-//     it("fails if city ID changes when moving into a different, self-owned city", async () => {
-
-//     });
-
-//     it("fails if city ID changes when moving onto an enemy with more/eq. rsrcs", async () => {
-
-//     });
-
-//     it("passes if from tile keeps city ID", async () => {
-
-//     });
-
-//     it("passes if city ID remains the same when to tile is a city center", async () => {
-
-//     });
-
-//     it("passes if city ID remains the same when moving into a self-owned city", async () => {
-
-//     });
-
-//     it("passes if city ID remains the same when moving onto an enemy with more/eq. rsrcs", async () => {
-
-//     });
-
-//     it("passes if city ID changes when taking enemy tile", async () => {
-
-//     });
-
-//     it("passes if city ID changes when taking unowned tile", async () => {
-
-//     });
-// });
-
-// describe("Unit tests for CheckStep()", () => {
-//     let circuit;
-
-//     beforeEach(async () => {
-//         circuit = await wasm("test/circuits/test_check_step.circom");
-//     });
-
-//     it("fails if player tries to move diagonally", async () => {
-//         const t1 = Tile.genVirtual({ r: 0, c: 0 }, BigInt("0"), terrainUtils);
-//         const t2 = Tile.genVirtual({ r: 1, c: 1 }, BigInt("0"), terrainUtils);
-
-//         const u1 = Tile.genVirtual({ r: 0, c: 0 }, BigInt("0"), terrainUtils);
-//         const u2 = Tile.genVirtual({ r: 1, c: 1 }, BigInt("0"), terrainUtils);
-
-//         const w = await circuit.calculateWitness(
-//             {
-//                 tFrom: t1.toCircuitInput(),
-//                 tTo: t2.toCircuitInput(),
-//                 uFrom: u1.toCircuitInput(),
-//                 uTo: u2.toCircuitInput(),
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("0"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("fails if player swaps locations during update", async () => {
-//         const t1 = Tile.genVirtual({ r: 81, c: 30 }, BigInt("0"), terrainUtils);
-//         const t2 = Tile.genVirtual({ r: 81, c: 29 }, BigInt("0"), terrainUtils);
-
-//         const u1 = Tile.genVirtual({ r: 5, c: 5 }, BigInt("0"), terrainUtils);
-//         const u2 = Tile.genVirtual({ r: 81, c: 29 }, BigInt("0"), terrainUtils);
-
-//         const w = await circuit.calculateWitness(
-//             {
-//                 tFrom: t1.toCircuitInput(),
-//                 tTo: t2.toCircuitInput(),
-//                 uFrom: u1.toCircuitInput(),
-//                 uTo: u2.toCircuitInput(),
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("0"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("fails if player tries to move in place", async () => {
-//         const t1 = Tile.genVirtual({ r: 0, c: 0 }, BigInt("0"), terrainUtils);
-//         const t2 = Tile.genVirtual({ r: 0, c: 0 }, BigInt("0"), terrainUtils);
-
-//         const u1 = Tile.genVirtual({ r: 0, c: 0 }, BigInt("0"), terrainUtils);
-//         const u2 = Tile.genVirtual({ r: 0, c: 0 }, BigInt("0"), terrainUtils);
-
-//         const w = await circuit.calculateWitness(
-//             {
-//                 tFrom: t1.toCircuitInput(),
-//                 tTo: t2.toCircuitInput(),
-//                 uFrom: u1.toCircuitInput(),
-//                 uTo: u2.toCircuitInput(),
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("0"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("fails if player tries to move onto a hill tile", async () => {
-//         const t1 = Tile.genVirtual({ r: 12, c: 15 }, BigInt("0"), terrainUtils);
-//         const t2 = Tile.hill({ r: 11, c: 15 }, BigInt("0"));
-
-//         const u1 = Tile.genVirtual({ r: 12, c: 15 }, BigInt("0"), terrainUtils);
-//         const u2 = Tile.genVirtual({ r: 11, c: 15 }, BigInt("0"), terrainUtils);
-
-//         const w = await circuit.calculateWitness(
-//             {
-//                 tFrom: t1.toCircuitInput(),
-//                 tTo: t2.toCircuitInput(),
-//                 uFrom: u1.toCircuitInput(),
-//                 uTo: u2.toCircuitInput(),
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("0"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("passes if state updated in unit cardinal plane", async () => {
-//         const t1 = Tile.genVirtual({ r: 12, c: 15 }, BigInt("0"), terrainUtils);
-//         const t2 = Tile.genVirtual({ r: 11, c: 15 }, BigInt("0"), terrainUtils);
-
-//         const u1 = Tile.genVirtual({ r: 12, c: 15 }, BigInt("0"), terrainUtils);
-//         const u2 = Tile.genVirtual({ r: 11, c: 15 }, BigInt("0"), terrainUtils);
-
-//         const w = await circuit.calculateWitness(
-//             {
-//                 tFrom: t1.toCircuitInput(),
-//                 tTo: t2.toCircuitInput(),
-//                 uFrom: u1.toCircuitInput(),
-//                 uTo: u2.toCircuitInput(),
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("1"));
-//         await circuit.checkConstraints(w);
-//     });
-// });
-
-// describe("Unit tests for CheckRsrc()", () => {
-//     let circuit;
-
-//     beforeEach(async () => {
-//         circuit = await wasm("test/circuits/test_check_rsrc.circom");
-//     });
-
-//     it("fails if player moves all troops out of a tile", async () => {
-//         const p = new Player("A", "");
-//         const t1 = Tile.genOwned(
-//             p,
-//             { r: 123, c: 321 },
-//             9,
-//             1,
-//             0,
-//             Tile.BARE_TILE
-//         );
-//         const t2 = Tile.genVirtual({ r: 124, c: 321 }, BigInt("0"), terrainUtils);
-//         const u1 = Tile.genOwned(
-//             p,
-//             { r: 123, c: 321 },
-//             0,
-//             1,
-//             0,
-//             Tile.BARE_TILE
-//         );
-//         const u2 = Tile.genOwned(
-//             p,
-//             { r: 124, c: 321 },
-//             9,
-//             1,
-//             0,
-//             Tile.BARE_TILE
-//         );
-
-//         const w = await circuit.calculateWitness(
-//             {
-//                 currentTroopInterval: "0",
-//                 currentWaterInterval: "0",
-//                 ontoSelfOrUnowned: "1",
-//                 tFrom: t1.toCircuitInput(),
-//                 tTo: t2.toCircuitInput(),
-//                 uFrom: u1.toCircuitInput(),
-//                 uTo: u2.toCircuitInput(),
-//                 fromUpdatedTroops: "9",
-//                 toUpdatedTroops: "0",
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("0"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("fails if player invents troops out of thin air, case 1", async () => {
-//         const p = new Player("A", "");
-//         const t1 = Tile.genOwned(
-//             p,
-//             { r: 123, c: 321 },
-//             3,
-//             1,
-//             0,
-//             Tile.BARE_TILE
-//         );
-//         const t2 = Tile.genVirtual({ r: 124, c: 321 }, BigInt("0"), terrainUtils);
-//         const u1 = Tile.genOwned(
-//             p,
-//             { r: 123, c: 321 },
-//             3,
-//             1,
-//             0,
-//             Tile.BARE_TILE
-//         );
-//         const u2 = Tile.genOwned(
-//             p,
-//             { r: 124, c: 321 },
-//             2,
-//             1,
-//             0,
-//             Tile.BARE_TILE
-//         );
-
-//         const w = await circuit.calculateWitness(
-//             {
-//                 currentTroopInterval: "0",
-//                 currentWaterInterval: "0",
-//                 ontoSelfOrUnowned: "1",
-//                 tFrom: t1.toCircuitInput(),
-//                 tTo: t2.toCircuitInput(),
-//                 uFrom: u1.toCircuitInput(),
-//                 uTo: u2.toCircuitInput(),
-//                 fromUpdatedTroops: "3",
-//                 toUpdatedTroops: "0",
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("0"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("fails if player invents troops out of thin air, case 2", async () => {
-//         const p1 = new Player("A", "");
-//         const p2 = new Player("B", "");
-//         const t1 = Tile.genOwned(
-//             p1,
-//             { r: 123, c: 321 },
-//             9,
-//             1,
-//             0,
-//             Tile.BARE_TILE
-//         );
-//         const t2 = Tile.genOwned(
-//             p2,
-//             { r: 124, c: 321 },
-//             3,
-//             2,
-//             0,
-//             Tile.BARE_TILE
-//         );
-//         const u1 = Tile.genOwned(
-//             p1,
-//             { r: 123, c: 321 },
-//             1,
-//             1,
-//             0,
-//             Tile.BARE_TILE
-//         );
-//         const u2 = Tile.genOwned(
-//             p1,
-//             { r: 124, c: 321 },
-//             11,
-//             1,
-//             0,
-//             Tile.BARE_TILE
-//         );
-
-//         const w = await circuit.calculateWitness(
-//             {
-//                 currentTroopInterval: "0",
-//                 currentWaterInterval: "0",
-//                 ontoSelfOrUnowned: "0",
-//                 tFrom: t1.toCircuitInput(),
-//                 tTo: t2.toCircuitInput(),
-//                 uFrom: u1.toCircuitInput(),
-//                 uTo: u2.toCircuitInput(),
-//                 fromUpdatedTroops: "9",
-//                 toUpdatedTroops: "3",
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("0"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("fails if player claims to capture with fewer resources", async () => {
-//         const p1 = new Player("A", "");
-//         const p2 = new Player("B", "");
-//         const t1 = Tile.genOwned(
-//             p1,
-//             { r: 123, c: 321 },
-//             3,
-//             1,
-//             0,
-//             Tile.BARE_TILE
-//         );
-//         const t2 = Tile.genOwned(
-//             p2,
-//             { r: 124, c: 321 },
-//             9,
-//             2,
-//             0,
-//             Tile.BARE_TILE
-//         );
-//         const u1 = Tile.genOwned(
-//             p1,
-//             { r: 123, c: 321 },
-//             1,
-//             1,
-//             0,
-//             Tile.BARE_TILE
-//         );
-//         const u2 = Tile.genOwned(
-//             p1,
-//             { r: 124, c: 321 },
-//             2,
-//             1,
-//             0,
-//             Tile.BARE_TILE
-//         );
-
-//         const w = await circuit.calculateWitness(
-//             {
-//                 currentTroopInterval: "0",
-//                 currentWaterInterval: "0",
-//                 ontoSelfOrUnowned: "0",
-//                 tFrom: t1.toCircuitInput(),
-//                 tTo: t2.toCircuitInput(),
-//                 uFrom: u1.toCircuitInput(),
-//                 uTo: u2.toCircuitInput(),
-//                 fromUpdatedTroops: "3",
-//                 toUpdatedTroops: "9",
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("0"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("fails if player doesn't capture unowned tile when they should", async () => {
-//         const p1 = new Player("A", "");
-//         const t1 = Tile.genOwned(
-//             p1,
-//             { r: 123, c: 321 },
-//             5,
-//             1,
-//             0,
-//             Tile.BARE_TILE
-//         );
-//         const t2 = Tile.genVirtual({ r: 124, c: 321 }, BigInt("0"), terrainUtils);
-//         const u1 = Tile.genOwned(
-//             p1,
-//             { r: 123, c: 321 },
-//             2,
-//             1,
-//             0,
-//             Tile.BARE_TILE
-//         );
-//         const u2 = Tile.genVirtual({ r: 124, c: 321 }, BigInt("0"), terrainUtils);
-
-//         const w = await circuit.calculateWitness(
-//             {
-//                 currentTroopInterval: "0",
-//                 currentWaterInterval: "0",
-//                 ontoSelfOrUnowned: "1",
-//                 tFrom: t1.toCircuitInput(),
-//                 tTo: t2.toCircuitInput(),
-//                 uFrom: u1.toCircuitInput(),
-//                 uTo: u2.toCircuitInput(),
-//                 fromUpdatedTroops: "5",
-//                 toUpdatedTroops: "0",
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("0"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("fails if player doesn't capture enemy tile when they should", async () => {
-//         const p1 = new Player("A", "");
-//         const p2 = new Player("B", "");
-//         const t1 = Tile.genOwned(
-//             p1,
-//             { r: 123, c: 321 },
-//             5,
-//             1,
-//             0,
-//             Tile.BARE_TILE
-//         );
-//         const t2 = Tile.genOwned(
-//             p2,
-//             { r: 124, c: 321 },
-//             2,
-//             2,
-//             0,
-//             Tile.BARE_TILE
-//         );
-//         const u1 = Tile.genOwned(
-//             p1,
-//             { r: 123, c: 321 },
-//             2,
-//             1,
-//             0,
-//             Tile.BARE_TILE
-//         );
-//         const u2 = Tile.genOwned(
-//             p2,
-//             { r: 124, c: 321 },
-//             1,
-//             2,
-//             0,
-//             Tile.BARE_TILE
-//         );
-
-//         const w = await circuit.calculateWitness(
-//             {
-//                 currentTroopInterval: "0",
-//                 currentWaterInterval: "0",
-//                 ontoSelfOrUnowned: "0",
-//                 tFrom: t1.toCircuitInput(),
-//                 tTo: t2.toCircuitInput(),
-//                 uFrom: u1.toCircuitInput(),
-//                 uTo: u2.toCircuitInput(),
-//                 fromUpdatedTroops: "5",
-//                 toUpdatedTroops: "2",
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("0"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("passes if resource management rules hold, taking unowned", async () => {
-//         const p = new Player("A", "");
-//         const t1 = Tile.genOwned(
-//             p,
-//             { r: 123, c: 321 },
-//             9,
-//             1,
-//             0,
-//             Tile.BARE_TILE
-//         );
-//         const t2 = Tile.genVirtual({ r: 124, c: 321 }, BigInt("0"), terrainUtils);
-//         const u1 = Tile.genOwned(
-//             p,
-//             { r: 123, c: 321 },
-//             2,
-//             1,
-//             0,
-//             Tile.BARE_TILE
-//         );
-//         const u2 = Tile.genOwned(
-//             p,
-//             { r: 124, c: 321 },
-//             7,
-//             1,
-//             0,
-//             Tile.BARE_TILE
-//         );
-
-//         const w = await circuit.calculateWitness(
-//             {
-//                 currentTroopInterval: "0",
-//                 currentWaterInterval: "0",
-//                 ontoSelfOrUnowned: "1",
-//                 tFrom: t1.toCircuitInput(),
-//                 tTo: t2.toCircuitInput(),
-//                 uFrom: u1.toCircuitInput(),
-//                 uTo: u2.toCircuitInput(),
-//                 fromUpdatedTroops: "9",
-//                 toUpdatedTroops: "0",
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("1"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("passes if resource management rules hold, battling enemy", async () => {
-//         const p1 = new Player("A", "");
-//         const p2 = new Player("B", "");
-//         const t1 = Tile.genOwned(
-//             p1,
-//             { r: 123, c: 321 },
-//             15,
-//             1,
-//             0,
-//             Tile.BARE_TILE
-//         );
-//         const t2 = Tile.genOwned(
-//             p2,
-//             { r: 124, c: 321 },
-//             33,
-//             2,
-//             0,
-//             Tile.BARE_TILE
-//         );
-//         const u1 = Tile.genOwned(
-//             p1,
-//             { r: 123, c: 321 },
-//             10,
-//             1,
-//             0,
-//             Tile.BARE_TILE
-//         );
-//         const u2 = Tile.genOwned(
-//             p2,
-//             { r: 124, c: 321 },
-//             28,
-//             2,
-//             0,
-//             Tile.BARE_TILE
-//         );
-
-//         const w = await circuit.calculateWitness(
-//             {
-//                 currentTroopInterval: "0",
-//                 currentWaterInterval: "0",
-//                 ontoSelfOrUnowned: "0",
-//                 tFrom: t1.toCircuitInput(),
-//                 tTo: t2.toCircuitInput(),
-//                 uFrom: u1.toCircuitInput(),
-//                 uTo: u2.toCircuitInput(),
-//                 fromUpdatedTroops: "15",
-//                 toUpdatedTroops: "33",
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("1"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("passes if resource management rules hold, taking enemy", async () => {
-//         const p1 = new Player("A", "");
-//         const p2 = new Player("B", "");
-//         const t1 = Tile.genOwned(
-//             p1,
-//             { r: 123, c: 321 },
-//             33,
-//             1,
-//             0,
-//             Tile.BARE_TILE
-//         );
-//         const t2 = Tile.genOwned(
-//             p2,
-//             { r: 124, c: 321 },
-//             15,
-//             2,
-//             0,
-//             Tile.BARE_TILE
-//         );
-//         const u1 = Tile.genOwned(
-//             p1,
-//             { r: 123, c: 321 },
-//             3,
-//             1,
-//             0,
-//             Tile.BARE_TILE
-//         );
-//         const u2 = Tile.genOwned(
-//             p1,
-//             { r: 124, c: 321 },
-//             15,
-//             1,
-//             0,
-//             Tile.BARE_TILE
-//         );
-
-//         const w = await circuit.calculateWitness(
-//             {
-//                 currentTroopInterval: "0",
-//                 currentWaterInterval: "0",
-//                 ontoSelfOrUnowned: "0",
-//                 tFrom: t1.toCircuitInput(),
-//                 tTo: t2.toCircuitInput(),
-//                 uFrom: u1.toCircuitInput(),
-//                 uTo: u2.toCircuitInput(),
-//                 fromUpdatedTroops: "33",
-//                 toUpdatedTroops: "15",
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("1"));
-//         await circuit.checkConstraints(w);
-//     });
-// });
-
-// describe("Unit tests for CheckTroopUpdates()", () => {
-//     let circuit;
-
-//     beforeEach(async () => {
-//         circuit = await wasm("test/circuits/test_check_trp_updates.circom");
-//     });
-
-//     it("fails if player adds troops when they do not deserve to", async () => {
-//         const w = await circuit.calculateWitness(
-//             {
-//                 currentTroopInterval: "1",
-//                 tTroops: "10",
-//                 isSelfOrEnemy: "1",
-//                 tLatestUpdate: "1",
-//                 uLatestUpdate: "1",
-//                 updatedTroops: "20",
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("0"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("fails if player does not add more troops during a troop updates", async () => {
-//         const w = await circuit.calculateWitness(
-//             {
-//                 currentTroopInterval: "5",
-//                 tTroops: "10",
-//                 isSelfOrEnemy: "1",
-//                 tLatestUpdate: "1",
-//                 uLatestUpdate: "5",
-//                 updatedTroops: "10",
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("0"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("fails if player does not update their latest troop update interval", async () => {
-//         const w = await circuit.calculateWitness(
-//             {
-//                 currentTroopInterval: "5",
-//                 tTroops: "10",
-//                 isSelfOrEnemy: "1",
-//                 tLatestUpdate: "1",
-//                 uLatestUpdate: "1",
-//                 updatedTroops: "14",
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("0"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("fails if player only updates their troops partway", async () => {
-//         const w = await circuit.calculateWitness(
-//             {
-//                 currentTroopInterval: "5",
-//                 tTroops: "10",
-//                 isSelfOrEnemy: "1",
-//                 tLatestUpdate: "1",
-//                 uLatestUpdate: "5",
-//                 updatedTroops: "11",
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("0"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("fails if unowned tile gets troops", async () => {
-//         const w = await circuit.calculateWitness(
-//             {
-//                 currentTroopInterval: "5",
-//                 tTroops: "0",
-//                 isSelfOrEnemy: "0",
-//                 tLatestUpdate: "1",
-//                 uLatestUpdate: "5",
-//                 updatedTroops: "4",
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("0"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("passes if player gains the correct number of troops after troop update", async () => {
-//         const w = await circuit.calculateWitness(
-//             {
-//                 currentTroopInterval: "5",
-//                 tTroops: "10",
-//                 isSelfOrEnemy: "1",
-//                 tLatestUpdate: "1",
-//                 uLatestUpdate: "5",
-//                 updatedTroops: "14",
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("1"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("passes if unowned tile gets no troops", async () => {
-//         const w = await circuit.calculateWitness(
-//             {
-//                 currentTroopInterval: "5",
-//                 tTroops: "0",
-//                 isSelfOrEnemy: "0",
-//                 tLatestUpdate: "1",
-//                 uLatestUpdate: "5",
-//                 updatedTroops: "0",
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("1"));
-//         await circuit.checkConstraints(w);
-//     });
-// });
-
-// describe("Unit tests for CheckWaterUpdates()", () => {
-//     let circuit;
-
-//     beforeEach(async () => {
-//         circuit = await wasm("test/circuits/test_check_water.circom");
-//     });
-
-//     it("fails if player does not lose troops when they should", async () => {
-//         const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, Tile.WATER_TILE);
-//         const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 1, Tile.WATER_TILE);
-
-//         const w = await circuit.calculateWitness(
-//             {
-//                 currentWaterInterval: "1",
-//                 tTile: t1.toCircuitInput(),
-//                 uTile: u1.toCircuitInput(),
-//                 updatedTroops: "10",
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("0"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("fails if player loses troops on a non-water tile", async () => {
-//         const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, Tile.BARE_TILE);
-//         const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 1, Tile.BARE_TILE);
-
-//         const w = await circuit.calculateWitness(
-//             {
-//                 currentWaterInterval: "1",
-//                 tTile: t1.toCircuitInput(),
-//                 uTile: u1.toCircuitInput(),
-//                 updatedTroops: "9",
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("0"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("fails if player loses less troops than they should", async () => {
-//         const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, Tile.WATER_TILE);
-//         const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 2, Tile.WATER_TILE);
-
-//         const w = await circuit.calculateWitness(
-//             {
-//                 currentWaterInterval: "2",
-//                 tTile: t1.toCircuitInput(),
-//                 uTile: u1.toCircuitInput(),
-//                 updatedTroops: "9",
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("0"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("fails if player loses more troops than they should", async () => {
-//         const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, Tile.WATER_TILE);
-//         const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 2, Tile.WATER_TILE);
-
-//         const w = await circuit.calculateWitness(
-//             {
-//                 currentWaterInterval: "2",
-//                 tTile: t1.toCircuitInput(),
-//                 uTile: u1.toCircuitInput(),
-//                 updatedTroops: "7",
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("0"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("fails if player loses more than all of their troops", async () => {
-//         const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, Tile.WATER_TILE);
-//         const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 11, Tile.WATER_TILE);
-
-//         const w = await circuit.calculateWitness(
-//             {
-//                 currentWaterInterval: "11",
-//                 tTile: t1.toCircuitInput(),
-//                 uTile: u1.toCircuitInput(),
-//                 updatedTroops: "21888242871839275222246405745257275088548364400416034343698204186575808495616",
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("0"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("fails if player does not update latestWaterUpdateInterval", async () => {
-//         const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, Tile.WATER_TILE);
-//         const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, Tile.WATER_TILE);
-
-//         const w = await circuit.calculateWitness(
-//             {
-//                 currentWaterInterval: "1",
-//                 tTile: t1.toCircuitInput(),
-//                 uTile: u1.toCircuitInput(),
-//                 updatedTroops: "9",
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("0"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("passes if player's troop count is correct on water (case 1)", async () => {
-//         const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, Tile.WATER_TILE);
-//         const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, Tile.WATER_TILE);
-
-//         const w = await circuit.calculateWitness(
-//             {
-//                 currentWaterInterval: "0",
-//                 tTile: t1.toCircuitInput(),
-//                 uTile: u1.toCircuitInput(),
-//                 updatedTroops: "10",
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("1"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("passes if player's troop count is correct on water (case 2)", async () => {
-//         const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, Tile.WATER_TILE);
-//         const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 1, Tile.WATER_TILE);
-
-//         const w = await circuit.calculateWitness(
-//             {
-//                 currentWaterInterval: "1",
-//                 tTile: t1.toCircuitInput(),
-//                 uTile: u1.toCircuitInput(),
-//                 updatedTroops: "9",
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("1"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("passes if player's troop count is correct on water (case 3)", async () => {
-//         const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, Tile.WATER_TILE);
-//         const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 11, Tile.WATER_TILE);
-
-//         const w = await circuit.calculateWitness(
-//             {
-//                 currentWaterInterval: "11",
-//                 tTile: t1.toCircuitInput(),
-//                 uTile: u1.toCircuitInput(),
-//                 updatedTroops: "0",
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("1"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("passes if player keeps troops on a non-water tile", async () => {
-//         const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, Tile.BARE_TILE);
-//         const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 1, Tile.BARE_TILE);
-
-//         const w = await circuit.calculateWitness(
-//             {
-//                 currentWaterInterval: "1",
-//                 tTile: t1.toCircuitInput(),
-//                 uTile: u1.toCircuitInput(),
-//                 updatedTroops: "10",
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("1"));
-//         await circuit.checkConstraints(w);
-//     });
-// });
-
-// describe("Unit tests for CheckRsrcCases()", () => {
-//     let circuit;
-
-//     beforeEach(async () => {
-//         circuit = await wasm("test/circuits/test_check_rsrc_cases.circom");
-//     });
-
-//     it("fails (case 1)", async () => {
-//         const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 20, 0, 0, Tile.BARE_TILE);
-//         const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, Tile.BARE_TILE);
-
-//         const w = await circuit.calculateWitness(
-//             {
-//                 uFrom: u1.toCircuitInput(),
-//                 uTo: u2.toCircuitInput(),
-//                 fromUpdatedTroops: "20",
-//                 toUpdatedTroops: "5",
-//                 ontoSelfOrUnowned: "0",
-//                 ontoMoreOrEq: "0",
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("0"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("fails (case 2)", async () => {
-//         const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, Tile.BARE_TILE);
-//         const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, Tile.BARE_TILE);
-
-//         const w = await circuit.calculateWitness(
-//             {
-//                 uFrom: u1.toCircuitInput(),
-//                 uTo: u2.toCircuitInput(),
-//                 fromUpdatedTroops: "10",
-//                 toUpdatedTroops: "20",
-//                 ontoSelfOrUnowned: "0",
-//                 ontoMoreOrEq: "1",
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("0"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("fails (case 3, onto less resources)", async () => {
-//         const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, Tile.BARE_TILE);
-//         const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, Tile.BARE_TILE);
-
-//         const w = await circuit.calculateWitness(
-//             {
-//                 uFrom: u1.toCircuitInput(),
-//                 uTo: u2.toCircuitInput(),
-//                 fromUpdatedTroops: "10",
-//                 toUpdatedTroops: "0",
-//                 ontoSelfOrUnowned: "1",
-//                 ontoMoreOrEq: "0",
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("0"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("fails (case 3, onto more or equal resources)", async () => {
-//         const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, Tile.BARE_TILE);
-//         const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 1, 0, 0, Tile.BARE_TILE);
-
-//         const w = await circuit.calculateWitness(
-//             {
-//                 uFrom: u1.toCircuitInput(),
-//                 uTo: u2.toCircuitInput(),
-//                 fromUpdatedTroops: "10",
-//                 toUpdatedTroops: "20",
-//                 ontoSelfOrUnowned: "1",
-//                 ontoMoreOrEq: "1",
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("0"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("passes (case 1)", async () => {
-//         const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 10, 0, 0, Tile.BARE_TILE);
-//         const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, Tile.BARE_TILE);
-
-//         const w = await circuit.calculateWitness(
-//             {
-//                 uFrom: u1.toCircuitInput(),
-//                 uTo: u2.toCircuitInput(),
-//                 fromUpdatedTroops: "20",
-//                 toUpdatedTroops: "5",
-//                 ontoSelfOrUnowned: "0",
-//                 ontoMoreOrEq: "0",
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("1"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("passes (case 2)", async () => {
-//         const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, Tile.BARE_TILE);
-//         const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 15, 0, 0, Tile.BARE_TILE);
-
-//         const w = await circuit.calculateWitness(
-//             {
-//                 uFrom: u1.toCircuitInput(),
-//                 uTo: u2.toCircuitInput(),
-//                 fromUpdatedTroops: "10",
-//                 toUpdatedTroops: "20",
-//                 ontoSelfOrUnowned: "0",
-//                 ontoMoreOrEq: "1",
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("1"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("passes (case 3, onto less resources)", async () => {
-//         const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, Tile.BARE_TILE);
-//         const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, Tile.BARE_TILE);
-
-//         const w = await circuit.calculateWitness(
-//             {
-//                 uFrom: u1.toCircuitInput(),
-//                 uTo: u2.toCircuitInput(),
-//                 fromUpdatedTroops: "10",
-//                 toUpdatedTroops: "0",
-//                 ontoSelfOrUnowned: "1",
-//                 ontoMoreOrEq: "0",
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("1"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("passes (case 3, onto more or equal resources)", async () => {
-//         const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 5, 0, 0, Tile.BARE_TILE);
-//         const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 25, 0, 0, Tile.BARE_TILE);
-
-//         const w = await circuit.calculateWitness(
-//             {
-//                 uFrom: u1.toCircuitInput(),
-//                 uTo: u2.toCircuitInput(),
-//                 fromUpdatedTroops: "10",
-//                 toUpdatedTroops: "20",
-//                 ontoSelfOrUnowned: "1",
-//                 ontoMoreOrEq: "1",
-//             },
-//             true
-//         );
-//         assert.equal(w[1], BigInt("1"));
-//         await circuit.checkConstraints(w);
-//     });
-// });
-
-// describe("Unit tests for CheckCityIdCases()", () => {
-//     let circuit;
-
-//     beforeEach(async () => {
-//         circuit = await wasm("test/circuits/test_check_city_ids.circom");
-//     });
-
-//     it("fails if 'from' tile's city changes", async () => {
-//         const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, Tile.BARE_TILE);
-//         const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 0, 0, Tile.BARE_TILE);
-//         const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 2, 0, Tile.BARE_TILE);
-//         const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 0, 0, Tile.BARE_TILE);
-
-//         const w = await circuit.calculateWitness({
-//             tFrom: t1.toCircuitInput(),
-//             tTo: t2.toCircuitInput(),
-//             uFrom: u1.toCircuitInput(),
-//             uTo: u2.toCircuitInput(),
-//             ontoSelf: "0",
-//             ontoEnemy: "0",
-//             ontoMoreOrEq: "0",
-//         });
-//         assert.equal(w[1], BigInt("0"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("fails if city ID changes when moving onto enemy city", async () => {
-//         const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, Tile.BARE_TILE);
-//         const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 2, 0, Tile.CITY_TILE);
-//         const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, Tile.BARE_TILE);
-//         const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, Tile.CITY_TILE);
-
-//         const w = await circuit.calculateWitness({
-//             tFrom: t1.toCircuitInput(),
-//             tTo: t2.toCircuitInput(),
-//             uFrom: u1.toCircuitInput(),
-//             uTo: u2.toCircuitInput(),
-//             ontoSelf: "0",
-//             ontoEnemy: "1",
-//             ontoMoreOrEq: "0",
-//         });
-//         assert.equal(w[1], BigInt("0"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("fails if city ID changes when moving into a different city", async () => {
-//         const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, Tile.BARE_TILE);
-//         const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 2, 0, Tile.BARE_TILE);
-//         const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, Tile.BARE_TILE);
-//         const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, Tile.BARE_TILE);
-
-//         const w = await circuit.calculateWitness({
-//             tFrom: t1.toCircuitInput(),
-//             tTo: t2.toCircuitInput(),
-//             uFrom: u1.toCircuitInput(),
-//             uTo: u2.toCircuitInput(),
-//             ontoSelf: "1",
-//             ontoEnemy: "0",
-//             ontoMoreOrEq: "0",
-//         });
-//         assert.equal(w[1], BigInt("0"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("fails if city ID changes when moving in the same city", async () => {
-//         const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, Tile.BARE_TILE);
-//         const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, Tile.BARE_TILE);
-//         const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, Tile.BARE_TILE);
-//         const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 2, 0, Tile.BARE_TILE);
-
-//         const w = await circuit.calculateWitness({
-//             tFrom: t1.toCircuitInput(),
-//             tTo: t2.toCircuitInput(),
-//             uFrom: u1.toCircuitInput(),
-//             uTo: u2.toCircuitInput(),
-//             ontoSelf: "1",
-//             ontoEnemy: "0",
-//             ontoMoreOrEq: "0",
-//         });
-//         assert.equal(w[1], BigInt("0"));
-//         await circuit.checkConstraints(w);  
-//     });
-
-//     it("fails if city ID changes when failing to take an enemy", async () => {
-//         const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, Tile.BARE_TILE);
-//         const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 2, 0, Tile.BARE_TILE);
-//         const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, Tile.BARE_TILE);
-//         const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, Tile.BARE_TILE);
-
-//         const w = await circuit.calculateWitness({
-//             tFrom: t1.toCircuitInput(),
-//             tTo: t2.toCircuitInput(),
-//             uFrom: u1.toCircuitInput(),
-//             uTo: u2.toCircuitInput(),
-//             ontoSelf: "0",
-//             ontoEnemy: "1",
-//             ontoMoreOrEq: "1",
-//         });
-//         assert.equal(w[1], BigInt("0"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("fails if city ID stays the same taking unowned", async () => {
-//         const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, Tile.BARE_TILE);
-//         const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 0, 0, Tile.BARE_TILE);
-//         const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, Tile.BARE_TILE);
-//         const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 0, 0, Tile.BARE_TILE);
-
-//         const w = await circuit.calculateWitness({
-//             tFrom: t1.toCircuitInput(),
-//             tTo: t2.toCircuitInput(),
-//             uFrom: u1.toCircuitInput(),
-//             uTo: u2.toCircuitInput(),
-//             ontoSelf: "0",
-//             ontoEnemy: "0",
-//             ontoMoreOrEq: "0",
-//         });
-//         assert.equal(w[1], BigInt("0"));
-//         await circuit.checkConstraints(w);
-//     });
-
-//     it("fails if city ID stays the same taking enemy non-city", async () => {
-//         const t1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, Tile.BARE_TILE);
-//         const t2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 2, 0, Tile.BARE_TILE);
-//         const u1 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 1, 0, Tile.BARE_TILE);
-//         const u2 = Tile.genOwned(Tile.UNOWNED, { r: 0, c: 0 }, 0, 2, 0, Tile.BARE_TILE);
-
-//         const w = await circuit.calculateWitness({
-//             tFrom: t1.toCircuitInput(),
-//             tTo: t2.toCircuitInput(),
-//             uFrom: u1.toCircuitInput(),
-//             uTo: u2.toCircuitInput(),
-//             ontoSelf: "0",
-//             ontoEnemy: "1",
-//             ontoMoreOrEq: "0",
-//         });
-//         assert.equal(w[1], BigInt("0"));
-//         await circuit.checkConstraints(w);
-//     });
-// });
+describe("Unit tests for CheckStep()", () => {
+    let circuit;
+
+    beforeEach(async () => {
+        circuit = await wasm("test/circuits/test_check_step.circom");
+    });
+
+    it("fails if tFrom.r != uFrom.r", async () => {
+        const tFrom = Tile.genVirtual(
+            { r: 10, c: 10 },
+            BigInt(0),
+            terrainUtils
+        );
+        const tTo = Tile.genVirtual({ r: 10, c: 11 }, BigInt(0), terrainUtils);
+        const uFrom = Tile.genVirtual({ r: 9, c: 10 }, BigInt(0), terrainUtils);
+        const uTo = Tile.genVirtual({ r: 10, c: 11 }, BigInt(0), terrainUtils);
+
+        const w = await circuit.calculateWitness({
+            tFrom: tFrom.toCircuitInput(),
+            tTo: tTo.toCircuitInput(),
+            uFrom: uFrom.toCircuitInput(),
+            uTo: uTo.toCircuitInput(),
+        });
+        assert.equal(w[1], BigInt(0));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails if tFrom.c != uFrom.c", async () => {
+        const tFrom = Tile.genVirtual(
+            { r: 10, c: 10 },
+            BigInt(0),
+            terrainUtils
+        );
+        const tTo = Tile.genVirtual({ r: 10, c: 11 }, BigInt(0), terrainUtils);
+        const uFrom = Tile.genVirtual({ r: 10, c: 9 }, BigInt(0), terrainUtils);
+        const uTo = Tile.genVirtual({ r: 10, c: 11 }, BigInt(0), terrainUtils);
+
+        const w = await circuit.calculateWitness({
+            tFrom: tFrom.toCircuitInput(),
+            tTo: tTo.toCircuitInput(),
+            uFrom: uFrom.toCircuitInput(),
+            uTo: uTo.toCircuitInput(),
+        });
+        assert.equal(w[1], BigInt(0));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails if tTo.r != uTo.r", async () => {
+        const tFrom = Tile.genVirtual(
+            { r: 10, c: 10 },
+            BigInt(0),
+            terrainUtils
+        );
+        const tTo = Tile.genVirtual({ r: 10, c: 11 }, BigInt(0), terrainUtils);
+        const uFrom = Tile.genVirtual(
+            { r: 10, c: 10 },
+            BigInt(0),
+            terrainUtils
+        );
+        const uTo = Tile.genVirtual({ r: 9, c: 11 }, BigInt(0), terrainUtils);
+
+        const w = await circuit.calculateWitness({
+            tFrom: tFrom.toCircuitInput(),
+            tTo: tTo.toCircuitInput(),
+            uFrom: uFrom.toCircuitInput(),
+            uTo: uTo.toCircuitInput(),
+        });
+        assert.equal(w[1], BigInt(0));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails if tTo.c != uTo.c", async () => {
+        const tFrom = Tile.genVirtual(
+            { r: 10, c: 10 },
+            BigInt(0),
+            terrainUtils
+        );
+        const tTo = Tile.genVirtual({ r: 10, c: 11 }, BigInt(0), terrainUtils);
+        const uFrom = Tile.genVirtual(
+            { r: 10, c: 10 },
+            BigInt(0),
+            terrainUtils
+        );
+        const uTo = Tile.genVirtual({ r: 10, c: 12 }, BigInt(0), terrainUtils);
+
+        const w = await circuit.calculateWitness({
+            tFrom: tFrom.toCircuitInput(),
+            tTo: tTo.toCircuitInput(),
+            uFrom: uFrom.toCircuitInput(),
+            uTo: uTo.toCircuitInput(),
+        });
+        assert.equal(w[1], BigInt(0));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails if tFrom and tTo are not 1 tile away", async () => {
+        const tFrom = Tile.genVirtual(
+            { r: 10, c: 10 },
+            BigInt(0),
+            terrainUtils
+        );
+        const tTo = Tile.genVirtual({ r: 10, c: 12 }, BigInt(0), terrainUtils);
+        const uFrom = Tile.genVirtual(
+            { r: 10, c: 10 },
+            BigInt(0),
+            terrainUtils
+        );
+        const uTo = Tile.genVirtual({ r: 10, c: 12 }, BigInt(0), terrainUtils);
+
+        const w = await circuit.calculateWitness({
+            tFrom: tFrom.toCircuitInput(),
+            tTo: tTo.toCircuitInput(),
+            uFrom: uFrom.toCircuitInput(),
+            uTo: uTo.toCircuitInput(),
+        });
+        assert.equal(w[1], BigInt(0));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails if tTo is a hill tile", async () => {
+        const tFrom = Tile.genVirtual(
+            { r: 10, c: 10 },
+            BigInt(0),
+            terrainUtils
+        );
+        const tTo = Tile.hill({ r: 10, c: 11 }, BigInt(0));
+        const uFrom = Tile.genVirtual(
+            { r: 10, c: 10 },
+            BigInt(0),
+            terrainUtils
+        );
+        const uTo = Tile.hill({ r: 10, c: 11 }, BigInt(0));
+
+        const w = await circuit.calculateWitness({
+            tFrom: tFrom.toCircuitInput(),
+            tTo: tTo.toCircuitInput(),
+            uFrom: uFrom.toCircuitInput(),
+            uTo: uTo.toCircuitInput(),
+        });
+        assert.equal(w[1], BigInt(0));
+        await circuit.checkConstraints(w);
+    });
+
+    it("passes if tFrom to uTo is a valid step", async () => {
+        const tFrom = Tile.genVirtual(
+            { r: 10, c: 10 },
+            BigInt(0),
+            terrainUtils
+        );
+        const tTo = Tile.genVirtual({ r: 10, c: 11 }, BigInt(0), terrainUtils);
+        const uFrom = Tile.genVirtual(
+            { r: 10, c: 10 },
+            BigInt(0),
+            terrainUtils
+        );
+        const uTo = Tile.genVirtual({ r: 10, c: 11 }, BigInt(0), terrainUtils);
+
+        const w = await circuit.calculateWitness({
+            tFrom: tFrom.toCircuitInput(),
+            tTo: tTo.toCircuitInput(),
+            uFrom: uFrom.toCircuitInput(),
+            uTo: uTo.toCircuitInput(),
+        });
+        assert.equal(w[1], BigInt(1));
+        await circuit.checkConstraints(w);
+    });
+});
+
+describe("Unit tests for CheckRsrc()", () => {
+    let circuit;
+
+    beforeEach(async () => {
+        circuit = await wasm("test/circuits/test_check_rsrc.circom");
+    });
+
+    it("fails if all troops are moved", async () => {
+        const p1 = new Player("A", "");
+        const l1 = { r: 0, c: 0 };
+        const p2 = new Player("B", "");
+        const l2 = { r: 1, c: 0 };
+
+        const w = await circuit.calculateWitness({
+            currentWaterInterval: "0",
+            ontoSelfOrUnowned: "0",
+            fromCityTroops: "10",
+            toCityTroops: "5",
+            tFrom: new Tile(
+                p1,
+                l1,
+                10,
+                BigInt(0),
+                1,
+                0,
+                Tile.BARE_TILE
+            ).toCircuitInput(),
+            tTo: new Tile(
+                p2,
+                l2,
+                5,
+                BigInt(0),
+                2,
+                0,
+                Tile.BARE_TILE
+            ).toCircuitInput(),
+            uFrom: new Tile(
+                p1,
+                l1,
+                0,
+                BigInt(0),
+                1,
+                0,
+                Tile.BARE_TILE
+            ).toCircuitInput(),
+            uTo: new Tile(
+                p2,
+                l2,
+                5,
+                BigInt(0),
+                1,
+                0,
+                Tile.BARE_TILE
+            ).toCircuitInput(),
+            fromUpdatedTroops: "10",
+            toUpdatedTroops: "5",
+            ontoMoreOrEq: "0",
+        });
+        assert.equal(w[1], BigInt(0));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails if more troops are moved than available", async () => {
+        const p1 = new Player("A", "");
+        const l1 = { r: 0, c: 0 };
+        const p2 = new Player("B", "");
+        const l2 = { r: 1, c: 0 };
+
+        const w = await circuit.calculateWitness({
+            currentWaterInterval: "0",
+            ontoSelfOrUnowned: "0",
+            fromCityTroops: "10",
+            toCityTroops: "5",
+            tFrom: new Tile(
+                p1,
+                l1,
+                10,
+                BigInt(0),
+                1,
+                0,
+                Tile.BARE_TILE
+            ).toCircuitInput(),
+            tTo: new Tile(
+                p2,
+                l2,
+                5,
+                BigInt(0),
+                2,
+                0,
+                Tile.BARE_TILE
+            ).toCircuitInput(),
+            uFrom: new Tile(
+                p1,
+                l1,
+                0,
+                BigInt(0),
+                1,
+                0,
+                Tile.BARE_TILE
+            ).toCircuitInput(),
+            uTo: new Tile(
+                p2,
+                l2,
+                20,
+                BigInt(0),
+                1,
+                0,
+                Tile.BARE_TILE
+            ).toCircuitInput(),
+            fromUpdatedTroops: "10",
+            toUpdatedTroops: "5",
+            ontoMoreOrEq: "0",
+        });
+        assert.equal(w[1], BigInt(0));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails if tFrom and uFrom have different terrain types", async () => {
+        const p1 = new Player("A", "");
+        const l1 = { r: 0, c: 0 };
+        const p2 = new Player("B", "");
+        const l2 = { r: 1, c: 0 };
+
+        const w = await circuit.calculateWitness({
+            currentWaterInterval: "0",
+            ontoSelfOrUnowned: "0",
+            fromCityTroops: "10",
+            toCityTroops: "5",
+            tFrom: new Tile(
+                p1,
+                l1,
+                10,
+                BigInt(0),
+                1,
+                0,
+                Tile.BARE_TILE
+            ).toCircuitInput(),
+            tTo: new Tile(
+                p2,
+                l2,
+                5,
+                BigInt(0),
+                2,
+                0,
+                Tile.BARE_TILE
+            ).toCircuitInput(),
+            uFrom: new Tile(
+                p1,
+                l1,
+                9,
+                BigInt(0),
+                1,
+                0,
+                Tile.WATER_TILE
+            ).toCircuitInput(),
+            uTo: new Tile(
+                p2,
+                l2,
+                4,
+                BigInt(0),
+                1,
+                0,
+                Tile.BARE_TILE
+            ).toCircuitInput(),
+            fromUpdatedTroops: "10",
+            toUpdatedTroops: "5",
+            ontoMoreOrEq: "0",
+        });
+        assert.equal(w[1], BigInt(0));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails if tTo and uTo have different terrain types", async () => {
+        const p1 = new Player("A", "");
+        const l1 = { r: 0, c: 0 };
+        const p2 = new Player("B", "");
+        const l2 = { r: 1, c: 0 };
+
+        const w = await circuit.calculateWitness({
+            currentWaterInterval: "0",
+            ontoSelfOrUnowned: "0",
+            fromCityTroops: "10",
+            toCityTroops: "5",
+            tFrom: new Tile(
+                p1,
+                l1,
+                10,
+                BigInt(0),
+                1,
+                0,
+                Tile.BARE_TILE
+            ).toCircuitInput(),
+            tTo: new Tile(
+                p2,
+                l2,
+                5,
+                BigInt(0),
+                2,
+                0,
+                Tile.BARE_TILE
+            ).toCircuitInput(),
+            uFrom: new Tile(
+                p1,
+                l1,
+                9,
+                BigInt(0),
+                1,
+                0,
+                Tile.BARE_TILE
+            ).toCircuitInput(),
+            uTo: new Tile(
+                p2,
+                l2,
+                4,
+                BigInt(0),
+                1,
+                0,
+                Tile.WATER_TILE
+            ).toCircuitInput(),
+            fromUpdatedTroops: "10",
+            toUpdatedTroops: "5",
+            ontoMoreOrEq: "0",
+        });
+        assert.equal(w[1], BigInt(0));
+        await circuit.checkConstraints(w);
+    });
+
+    it("passes if an allowable number of troops are moved", async () => {
+        const p1 = new Player("A", "");
+        const l1 = { r: 0, c: 0 };
+        const p2 = new Player("B", "");
+        const l2 = { r: 1, c: 0 };
+
+        const w = await circuit.calculateWitness({
+            currentWaterInterval: "0",
+            ontoSelfOrUnowned: "0",
+            fromCityTroops: "10",
+            toCityTroops: "5",
+            tFrom: new Tile(
+                p1,
+                l1,
+                10,
+                BigInt(0),
+                1,
+                0,
+                Tile.BARE_TILE
+            ).toCircuitInput(),
+            tTo: new Tile(
+                p2,
+                l2,
+                5,
+                BigInt(0),
+                2,
+                0,
+                Tile.BARE_TILE
+            ).toCircuitInput(),
+            uFrom: new Tile(
+                p1,
+                l1,
+                9,
+                BigInt(0),
+                1,
+                0,
+                Tile.BARE_TILE
+            ).toCircuitInput(),
+            uTo: new Tile(
+                p2,
+                l2,
+                4,
+                BigInt(0),
+                2,
+                0,
+                Tile.BARE_TILE
+            ).toCircuitInput(),
+            fromUpdatedTroops: "10",
+            toUpdatedTroops: "5",
+            ontoMoreOrEq: "1",
+        });
+        assert.equal(w[1], BigInt(1));
+        await circuit.checkConstraints(w);
+    });
+});
+
+describe("Unit tests for CheckTroopUpdates()", () => {
+    let circuit;
+
+    beforeEach(async () => {
+        circuit = await wasm("test/circuits/test_check_trp_updates.circom");
+    });
+
+    it("fails if bare tile loses troops over time", async () => {
+        const tTile = new Tile(
+            new Player("A", ""),
+            { r: 0, c: 0 },
+            10,
+            BigInt(0),
+            1,
+            5,
+            Tile.BARE_TILE
+        );
+        const uTile = new Tile(
+            new Player("A", ""),
+            { r: 0, c: 0 },
+            5,
+            BigInt(0),
+            1,
+            10,
+            Tile.BARE_TILE
+        );
+
+        const w = await circuit.calculateWitness({
+            currentWaterInterval: 10,
+            cityTroops: 10,
+            tTile: tTile.toCircuitInput(),
+            uTile: uTile.toCircuitInput(),
+            updatedTroops: 5,
+        });
+        assert.equal(w[1], BigInt(0));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails if bare tile gains troops over time", async () => {
+        const tTile = new Tile(
+            new Player("A", ""),
+            { r: 0, c: 0 },
+            10,
+            BigInt(0),
+            1,
+            5,
+            Tile.BARE_TILE
+        );
+        const uTile = new Tile(
+            new Player("A", ""),
+            { r: 0, c: 0 },
+            15,
+            BigInt(0),
+            1,
+            10,
+            Tile.BARE_TILE
+        );
+
+        const w = await circuit.calculateWitness({
+            currentWaterInterval: 10,
+            cityTroops: 10,
+            tTile: tTile.toCircuitInput(),
+            uTile: uTile.toCircuitInput(),
+            updatedTroops: 15,
+        });
+        assert.equal(w[1], BigInt(0));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails if water tile loses incorrect number of troops", async () => {
+        const tTile = new Tile(
+            new Player("A", ""),
+            { r: 0, c: 0 },
+            10,
+            BigInt(0),
+            1,
+            5,
+            Tile.WATER_TILE
+        );
+        const uTile = new Tile(
+            new Player("A", ""),
+            { r: 0, c: 0 },
+            6,
+            BigInt(0),
+            1,
+            10,
+            Tile.WATER_TILE
+        );
+
+        const w = await circuit.calculateWitness({
+            currentWaterInterval: 10,
+            cityTroops: 10,
+            tTile: tTile.toCircuitInput(),
+            uTile: uTile.toCircuitInput(),
+            updatedTroops: 6,
+        });
+        assert.equal(w[1], BigInt(0));
+        await circuit.checkConstraints(w);
+    });
+
+    it("passes if bare tile loses no troops over time", async () => {
+        const tTile = new Tile(
+            new Player("A", ""),
+            { r: 0, c: 0 },
+            10,
+            BigInt(0),
+            1,
+            5,
+            Tile.BARE_TILE
+        );
+        const uTile = new Tile(
+            new Player("A", ""),
+            { r: 0, c: 0 },
+            10,
+            BigInt(0),
+            1,
+            10,
+            Tile.BARE_TILE
+        );
+
+        const w = await circuit.calculateWitness({
+            currentWaterInterval: 10,
+            cityTroops: 10,
+            tTile: tTile.toCircuitInput(),
+            uTile: uTile.toCircuitInput(),
+            updatedTroops: 10,
+        });
+        assert.equal(w[1], BigInt(1));
+        await circuit.checkConstraints(w);
+    });
+
+    it("passes if water tile loses appropriate number of troops", async () => {
+        const tTile = new Tile(
+            new Player("A", ""),
+            { r: 0, c: 0 },
+            10,
+            BigInt(0),
+            1,
+            5,
+            Tile.WATER_TILE
+        );
+        const uTile = new Tile(
+            new Player("A", ""),
+            { r: 0, c: 0 },
+            5,
+            BigInt(0),
+            1,
+            10,
+            Tile.WATER_TILE
+        );
+
+        const w = await circuit.calculateWitness({
+            currentWaterInterval: 10,
+            cityTroops: 10,
+            tTile: tTile.toCircuitInput(),
+            uTile: uTile.toCircuitInput(),
+            updatedTroops: 5,
+        });
+        assert.equal(w[1], BigInt(1));
+        await circuit.checkConstraints(w);
+    });
+});
+
+describe("Unit tests for CheckRsrcCases()", () => {
+    let circuit;
+
+    beforeEach(async () => {
+        circuit = await wasm("test/circuits/test_check_rsrc_cases.circom");
+    });
+
+    it("fails if rsrc management doesn't hold (onto enemy + less rsrcs)", async () => {
+        const uFrom = Tile.genOwned(
+            new Player("A", ""),
+            { r: 0, c: 0 },
+            10,
+            1,
+            0,
+            Tile.BARE_TILE
+        );
+        const uTo = Tile.genOwned(
+            new Player("A", ""),
+            { r: 1, c: 0 },
+            20,
+            2,
+            0,
+            Tile.BARE_TILE
+        );
+
+        const w = await circuit.calculateWitness({
+            fromUpdatedTroops: "10",
+            toUpdatedTroops: "5",
+            uFrom: uFrom.toCircuitInput(),
+            uTo: uTo.toCircuitInput(),
+            ontoSelfOrUnowned: "0",
+            ontoMoreOrEq: "0",
+        });
+        assert.equal(w[1], BigInt(0));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails if rsrc management doesn't hold (onto enemy + more/eq. rsrcs)", async () => {
+        const uFrom = Tile.genOwned(
+            new Player("A", ""),
+            { r: 0, c: 0 },
+            5,
+            1,
+            0,
+            Tile.BARE_TILE
+        );
+        const uTo = Tile.genOwned(
+            new Player("A", ""),
+            { r: 1, c: 0 },
+            10,
+            2,
+            0,
+            Tile.BARE_TILE
+        );
+
+        const w = await circuit.calculateWitness({
+            fromUpdatedTroops: "10",
+            toUpdatedTroops: "20",
+            uFrom: uFrom.toCircuitInput(),
+            uTo: uTo.toCircuitInput(),
+            ontoSelfOrUnowned: "0",
+            ontoMoreOrEq: "1",
+        });
+        assert.equal(w[1], BigInt(0));
+        await circuit.checkConstraints(w);
+    });
+
+    it("fails if rsrc management doesn't hold (onto self or unowned)", async () => {
+        const uFrom = Tile.genOwned(
+            new Player("A", ""),
+            { r: 0, c: 0 },
+            5,
+            1,
+            0,
+            Tile.BARE_TILE
+        );
+        const uTo = Tile.genOwned(
+            new Player("A", ""),
+            { r: 1, c: 0 },
+            15,
+            2,
+            0,
+            Tile.BARE_TILE
+        );
+
+        const w = await circuit.calculateWitness({
+            fromUpdatedTroops: "10",
+            toUpdatedTroops: "5",
+            uFrom: uFrom.toCircuitInput(),
+            uTo: uTo.toCircuitInput(),
+            ontoSelfOrUnowned: "1",
+            ontoMoreOrEq: "1",
+        });
+        assert.equal(w[1], BigInt(0));
+        await circuit.checkConstraints(w);
+    });
+
+    it("passes if rsrc management holds (onto enemy + less rsrcs)", async () => {
+        const uFrom = Tile.genOwned(
+            new Player("A", ""),
+            { r: 0, c: 0 },
+            3,
+            1,
+            0,
+            Tile.BARE_TILE
+        );
+        const uTo = Tile.genOwned(
+            new Player("A", ""),
+            { r: 1, c: 0 },
+            2,
+            1,
+            0,
+            Tile.BARE_TILE
+        );
+
+        const w = await circuit.calculateWitness({
+            fromUpdatedTroops: "10",
+            toUpdatedTroops: "5",
+            uFrom: uFrom.toCircuitInput(),
+            uTo: uTo.toCircuitInput(),
+            ontoSelfOrUnowned: "0",
+            ontoMoreOrEq: "0",
+        });
+        assert.equal(w[1], BigInt(1));
+        await circuit.checkConstraints(w);
+    });
+
+    it("passes if rsrc management holds (onto enemy + more/eq. rsrcs)", async () => {
+        const uFrom = Tile.genOwned(
+            new Player("A", ""),
+            { r: 0, c: 0 },
+            5,
+            1,
+            0,
+            Tile.BARE_TILE
+        );
+        const uTo = Tile.genOwned(
+            new Player("A", ""),
+            { r: 1, c: 0 },
+            15,
+            2,
+            0,
+            Tile.BARE_TILE
+        );
+
+        const w = await circuit.calculateWitness({
+            fromUpdatedTroops: "10",
+            toUpdatedTroops: "20",
+            uFrom: uFrom.toCircuitInput(),
+            uTo: uTo.toCircuitInput(),
+            ontoSelfOrUnowned: "0",
+            ontoMoreOrEq: "1",
+        });
+        assert.equal(w[1], BigInt(1));
+        await circuit.checkConstraints(w);
+    });
+
+    it("passes if rsrc management holds (onto self or unowned)", async () => {
+        const uFrom = Tile.genOwned(
+            new Player("A", ""),
+            { r: 0, c: 0 },
+            5,
+            1,
+            0,
+            Tile.BARE_TILE
+        );
+        const uTo = Tile.genOwned(
+            new Player("A", ""),
+            { r: 1, c: 0 },
+            5,
+            2,
+            0,
+            Tile.BARE_TILE
+        );
+
+        const w = await circuit.calculateWitness({
+            fromUpdatedTroops: "10",
+            toUpdatedTroops: "0",
+            uFrom: uFrom.toCircuitInput(),
+            uTo: uTo.toCircuitInput(),
+            ontoSelfOrUnowned: "1",
+            ontoMoreOrEq: "0",
+        });
+        assert.equal(w[1], BigInt(1));
+        await circuit.checkConstraints(w);
+    });
+});
+
+describe("Unit tests for CheckCityIdCases()", () => {
+    let circuit;
+
+    beforeEach(async () => {
+        circuit = await wasm("test/circuits/test_check_city_ids.circom");
+    });
+
+    it("fails if from tile changes city ID", async () => {
+        const p1 = new Player("A", "");
+        const l1 = { r: 0, c: 0 };
+        const p2 = new Player("B", "");
+        const l2 = { r: 1, c: 0 };
+
+        const tFrom = Tile.genOwned(p1, l1, 10, 1, 0, Tile.BARE_TILE);
+        const tTo = Tile.genOwned(p2, l2, 5, 2, 0, Tile.BARE_TILE);
+        const uFrom = Tile.genOwned(p1, l1, 9, 3, 0, Tile.BARE_TILE);
+        const uTo = Tile.genOwned(p2, l2, 4, 2, 0, Tile.BARE_TILE);
+
+        const w = await circuit.calculateWitness({
+            tFrom: tFrom.toCircuitInput(),
+            tTo: tTo.toCircuitInput(),
+            uFrom: uFrom.toCircuitInput(),
+            uTo: uTo.toCircuitInput(),
+            ontoSelf: "0",
+            ontoEnemy: "1",
+            ontoMoreOrEq: "0",
+        });
+        assert.equal(w[1], BigInt(0));
+    });
+
+    it("fails if city ID changes when to tile is a city center", async () => {
+        const p1 = new Player("A", "");
+        const l1 = { r: 0, c: 0 };
+        const p2 = new Player("B", "");
+        const l2 = { r: 1, c: 0 };
+
+        const tFrom = Tile.genOwned(p1, l1, 10, 1, 0, Tile.BARE_TILE);
+        const tTo = Tile.genOwned(p2, l2, 5, 2, 0, Tile.CITY_TILE);
+        const uFrom = Tile.genOwned(p1, l1, 9, 1, 0, Tile.BARE_TILE);
+        const uTo = Tile.genOwned(p2, l2, 4, 3, 0, Tile.CITY_TILE);
+
+        const w = await circuit.calculateWitness({
+            tFrom: tFrom.toCircuitInput(),
+            tTo: tTo.toCircuitInput(),
+            uFrom: uFrom.toCircuitInput(),
+            uTo: uTo.toCircuitInput(),
+            ontoSelf: "0",
+            ontoEnemy: "1",
+            ontoMoreOrEq: "0",
+        });
+        assert.equal(w[1], BigInt(0));
+    });
+
+    it("fails if city ID changes when moving into a different, self-owned city", async () => {
+        const p1 = new Player("A", "");
+        const l1 = { r: 0, c: 0 };
+        const p2 = new Player("B", "");
+        const l2 = { r: 1, c: 0 };
+
+        const tFrom = Tile.genOwned(p1, l1, 10, 1, 0, Tile.BARE_TILE);
+        const tTo = Tile.genOwned(p1, l2, 5, 2, 0, Tile.BARE_TILE);
+        const uFrom = Tile.genOwned(p1, l1, 9, 1, 0, Tile.BARE_TILE);
+        const uTo = Tile.genOwned(p1, l2, 6, 1, 0, Tile.BARE_TILE);
+
+        const w = await circuit.calculateWitness({
+            tFrom: tFrom.toCircuitInput(),
+            tTo: tTo.toCircuitInput(),
+            uFrom: uFrom.toCircuitInput(),
+            uTo: uTo.toCircuitInput(),
+            ontoSelf: "1",
+            ontoEnemy: "0",
+            ontoMoreOrEq: "0",
+        });
+        assert.equal(w[1], BigInt(0));
+    });
+
+    it("fails if city ID changes when moving onto an enemy with more/eq. rsrcs", async () => {
+        const p1 = new Player("A", "");
+        const l1 = { r: 0, c: 0 };
+        const p2 = new Player("B", "");
+        const l2 = { r: 1, c: 0 };
+
+        const tFrom = Tile.genOwned(p1, l1, 10, 1, 0, Tile.BARE_TILE);
+        const tTo = Tile.genOwned(p2, l2, 15, 2, 0, Tile.BARE_TILE);
+        const uFrom = Tile.genOwned(p1, l1, 9, 1, 0, Tile.BARE_TILE);
+        const uTo = Tile.genOwned(p2, l2, 14, 1, 0, Tile.BARE_TILE);
+
+        const w = await circuit.calculateWitness({
+            tFrom: tFrom.toCircuitInput(),
+            tTo: tTo.toCircuitInput(),
+            uFrom: uFrom.toCircuitInput(),
+            uTo: uTo.toCircuitInput(),
+            ontoSelf: "0",
+            ontoEnemy: "1",
+            ontoMoreOrEq: "1",
+        });
+        assert.equal(w[1], BigInt(0));
+    });
+
+    it("passes if from tile keeps city ID", async () => {
+        const p1 = new Player("A", "");
+        const l1 = { r: 0, c: 0 };
+        const p2 = new Player("B", "");
+        const l2 = { r: 1, c: 0 };
+
+        const tFrom = Tile.genOwned(p1, l1, 10, 1, 0, Tile.BARE_TILE);
+        const tTo = Tile.genOwned(p2, l2, 5, 2, 0, Tile.BARE_TILE);
+        const uFrom = Tile.genOwned(p1, l1, 9, 1, 0, Tile.BARE_TILE);
+        const uTo = Tile.genOwned(p2, l2, 4, 2, 0, Tile.BARE_TILE);
+
+        const w = await circuit.calculateWitness({
+            tFrom: tFrom.toCircuitInput(),
+            tTo: tTo.toCircuitInput(),
+            uFrom: uFrom.toCircuitInput(),
+            uTo: uTo.toCircuitInput(),
+            ontoSelf: "0",
+            ontoEnemy: "1",
+            ontoMoreOrEq: "1",
+        });
+        assert.equal(w[1], BigInt(1));
+    });
+
+    it("passes if city ID remains the same when to tile is a city center", async () => {
+        const p1 = new Player("A", "");
+        const l1 = { r: 0, c: 0 };
+        const p2 = new Player("B", "");
+        const l2 = { r: 1, c: 0 };
+
+        const tFrom = Tile.genOwned(p1, l1, 10, 1, 0, Tile.BARE_TILE);
+        const tTo = Tile.genOwned(p2, l2, 5, 2, 0, Tile.CITY_TILE);
+        const uFrom = Tile.genOwned(p1, l1, 4, 1, 0, Tile.BARE_TILE);
+        const uTo = Tile.genOwned(p1, l2, 1, 2, 0, Tile.CITY_TILE);
+
+        const w = await circuit.calculateWitness({
+            tFrom: tFrom.toCircuitInput(),
+            tTo: tTo.toCircuitInput(),
+            uFrom: uFrom.toCircuitInput(),
+            uTo: uTo.toCircuitInput(),
+            ontoSelf: "0",
+            ontoEnemy: "1",
+            ontoMoreOrEq: "0",
+        });
+        assert.equal(w[1], BigInt(1));
+    });
+
+    it("passes if city ID remains the same when moving into a self-owned city", async () => {
+        const p1 = new Player("A", "");
+        const l1 = { r: 0, c: 0 };
+        const p2 = new Player("B", "");
+        const l2 = { r: 1, c: 0 };
+
+        const tFrom = Tile.genOwned(p1, l1, 10, 1, 0, Tile.BARE_TILE);
+        const tTo = Tile.genOwned(p1, l2, 5, 2, 0, Tile.BARE_TILE);
+        const uFrom = Tile.genOwned(p1, l1, 9, 1, 0, Tile.BARE_TILE);
+        const uTo = Tile.genOwned(p1, l2, 6, 2, 0, Tile.BARE_TILE);
+
+        const w = await circuit.calculateWitness({
+            tFrom: tFrom.toCircuitInput(),
+            tTo: tTo.toCircuitInput(),
+            uFrom: uFrom.toCircuitInput(),
+            uTo: uTo.toCircuitInput(),
+            ontoSelf: "1",
+            ontoEnemy: "0",
+            ontoMoreOrEq: "0",
+        });
+        assert.equal(w[1], BigInt(1));
+    });
+
+    it("passes if city ID remains the same when moving onto an enemy with more/eq. rsrcs", async () => {
+        const p1 = new Player("A", "");
+        const l1 = { r: 0, c: 0 };
+        const p2 = new Player("B", "");
+        const l2 = { r: 1, c: 0 };
+
+        const tFrom = Tile.genOwned(p1, l1, 10, 1, 0, Tile.BARE_TILE);
+        const tTo = Tile.genOwned(p2, l2, 15, 2, 0, Tile.BARE_TILE);
+        const uFrom = Tile.genOwned(p1, l1, 9, 1, 0, Tile.BARE_TILE);
+        const uTo = Tile.genOwned(p2, l2, 14, 2, 0, Tile.BARE_TILE);
+
+        const w = await circuit.calculateWitness({
+            tFrom: tFrom.toCircuitInput(),
+            tTo: tTo.toCircuitInput(),
+            uFrom: uFrom.toCircuitInput(),
+            uTo: uTo.toCircuitInput(),
+            ontoSelf: "0",
+            ontoEnemy: "1",
+            ontoMoreOrEq: "1",
+        });
+        assert.equal(w[1], BigInt(1));
+    });
+
+    it("passes if city ID changes when taking enemy tile", async () => {
+        const p1 = new Player("A", "");
+        const l1 = { r: 0, c: 0 };
+        const p2 = new Player("B", "");
+        const l2 = { r: 1, c: 0 };
+
+        const tFrom = Tile.genOwned(p1, l1, 10, 1, 0, Tile.BARE_TILE);
+        const tTo = Tile.genOwned(p2, l2, 5, 2, 0, Tile.BARE_TILE);
+        const uFrom = Tile.genOwned(p1, l1, 3, 1, 0, Tile.BARE_TILE);
+        const uTo = Tile.genOwned(p2, l2, 2, 1, 0, Tile.BARE_TILE);
+
+        const w = await circuit.calculateWitness({
+            tFrom: tFrom.toCircuitInput(),
+            tTo: tTo.toCircuitInput(),
+            uFrom: uFrom.toCircuitInput(),
+            uTo: uTo.toCircuitInput(),
+            ontoSelf: "0",
+            ontoEnemy: "1",
+            ontoMoreOrEq: "0",
+        });
+        assert.equal(w[1], BigInt(1));
+    });
+
+    it("passes if city ID changes when taking unowned tile", async () => {
+        const p1 = new Player("A", "");
+        const l1 = { r: 0, c: 0 };
+        const p2 = new Player("B", "");
+        const l2 = { r: 1, c: 0 };
+
+        const tFrom = Tile.genOwned(p1, l1, 10, 1, 0, Tile.BARE_TILE);
+        const tTo = Tile.genVirtual(l2, BigInt(0), terrainUtils);
+        const uFrom = Tile.genOwned(p1, l1, 5, 1, 0, Tile.BARE_TILE);
+        const uTo = Tile.genOwned(p1, l2, 5, 1, 0, Tile.BARE_TILE);
+
+        const w = await circuit.calculateWitness({
+            tFrom: tFrom.toCircuitInput(),
+            tTo: tTo.toCircuitInput(),
+            uFrom: uFrom.toCircuitInput(),
+            uTo: uTo.toCircuitInput(),
+            ontoSelf: "0",
+            ontoEnemy: "0",
+            ontoMoreOrEq: "0",
+        });
+        assert.equal(w[1], BigInt(1));
+    });
+});
