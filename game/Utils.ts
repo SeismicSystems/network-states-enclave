@@ -1,7 +1,7 @@
 // @ts-ignore
 import { groth16 } from "snarkjs";
 import { Signature } from "maci-crypto";
-import crypto from "crypto";
+import * as crypto from "crypto";
 /*
  * poseidonPerm is a modified version of iden3's poseidonPerm.js.
  */
@@ -135,7 +135,7 @@ export class Utils {
      * poseidonPerm.js.
      */
     static poseidonExt(inputs: bigint[]) {
-        return poseidonPerm([0n, ...inputs])[0];
+        return poseidonPerm([BigInt(0), ...inputs])[0];
     }
 
     /*

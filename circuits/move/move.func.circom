@@ -18,12 +18,9 @@ template CheckTileHash(N_TL_ATRS) {
 }
 
 /*
- * Asserts 1) the hashes of all tile states were computed correctly. It's the
- * hiding commitment that's added on-chain. 2) the player owns the public key,
- * which is the case when their bbj private key (hash) matches (the hash of) the 
- * public key.
+ * Asserts that the commitments for all tile states were computed correctly.
  */
-template CheckAuth(N_TL_ATRS) {
+template CheckTileHashes(N_TL_ATRS) {
     signal input hTFrom;
     signal input hTTo;
     signal input hUFrom;
@@ -422,7 +419,7 @@ template Move() {
         toUpdatedTroops);
     pubSignalsCorrect === 1;
 
-    signal authCorrect <== CheckAuth(N_TL_ATRS)(hTFrom, hTTo, hUFrom, hUTo,
+    signal authCorrect <== CheckTileHashes(N_TL_ATRS)(hTFrom, hTTo, hUFrom, hUTo,
         tFrom, tTo, uFrom, uTo);
     authCorrect === 1;
 
