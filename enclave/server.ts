@@ -62,12 +62,12 @@ const abi = IWorldAbi.abi;
 const walletClient = createWalletClient({
     account,
     chain: foundry,
-    transport: httpTransport(),
+    transport: httpTransport(process.env.RPC_URL),
 });
 
 const publicClient = createPublicClient({
     chain: foundry,
-    transport: httpTransport(),
+    transport: httpTransport(process.env.RPC_URL),
 });
 
 const nStates = getContract({

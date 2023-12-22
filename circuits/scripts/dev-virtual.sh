@@ -13,7 +13,7 @@ ARCH=$1
 PTAU=$2
 
 # virtual_cpp and js
-circom virtual/virtual.circom --c --r1cs --wasm
+circom2 virtual/virtual.circom --c --r1cs --wasm
 
 # Generate proving key
 yarn run snarkjs groth16 setup virtual.r1cs \
