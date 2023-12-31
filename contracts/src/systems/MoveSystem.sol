@@ -5,7 +5,7 @@ import {System} from "@latticexyz/world/src/System.sol";
 
 import {Config, City, TileCommitment, ConsumedCommitment} from "codegen/index.sol";
 import {Groth16Proof} from "common/Groth16Proof.sol";
-import {MoveInputs} from "common/MoveInputs.sol";
+import {Move, MoveInputs} from "common/MoveInputs.sol";
 import {VirtualInputs} from "common/VirtualInputs.sol";
 import {Signature} from "common/Signature.sol";
 import {IEnclaveEvents} from "common/IEnclaveEvents.sol";
@@ -16,12 +16,18 @@ import {LibMoveVerify} from "libraries/LibMoveVerify.sol";
 
 contract MoveSystem is IEnclaveEvents, System {
     function move(
-        MoveInputs memory moveInputs,
+        Move memory moveParams,
         Groth16Proof memory moveProof,
         VirtualInputs memory virtualInputs,
         Groth16Proof memory virtualProof,
         Signature memory sig
     ) public {
+        
+        // Perform lazy updates first
+        LibMove.updateCityTroopCountsBeforeMove(moveParams);
+
+        MoveInputs memory moveInputs = LibMove.getMoveInputs(moveParams);
+
         LibMove.checkMoveInputs(_msgSender(), moveInputs, sig);
         LibMoveVerify.verifyMoveProof(moveInputs, moveProof);
 
@@ -49,7 +55,7 @@ contract MoveSystem is IEnclaveEvents, System {
         TileCommitment.deleteRecord({id: moveInputs.hTTo});
         TileCommitment.set({id: moveInputs.hUTo, value: true});
 
-        LibMove.updateCityTroopCounts(moveInputs);
+        LibMove.updateCityTroopCountsAfterMove(moveInputs);
         LibMove.updateCityOwnership(_msgSender(), moveInputs);
 
         // Should be an offchain table since we're in MUD-land, but fine for now
