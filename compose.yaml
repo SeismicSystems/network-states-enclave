@@ -14,7 +14,7 @@ services:
      test: ["CMD", "cat", "/usr/src/app/contracts/worlds.json"]
      interval: 20s
      timeout: 5s
-     retries: 5
+     retries: 10
   enclave:
     build:
       context: .
