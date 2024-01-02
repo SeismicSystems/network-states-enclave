@@ -108,6 +108,9 @@ async function saveToDatabase(encTile: any) {
 
     socket.emit("saveToDatabaseResponse");
 }
+/*
+ * Creates encrypted tiles tables if it doesn't exist.
+ */
 async function create_encrypted_tiles(){
     const client = await pool.connect();
     const tableName = 'encrypted_tiles';

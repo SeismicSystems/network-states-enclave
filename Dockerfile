@@ -62,6 +62,5 @@ COPY --from=contracts /usr/src/app /usr/src/app
 RUN sh docker_scripts/client_setup.sh
 
 # Run the application.
-#CMD ["pnpm", "-C", "client", "devA"]
 CMD ["sleep", "3600"]
 

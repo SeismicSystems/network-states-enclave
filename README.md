@@ -40,37 +40,64 @@ This README would normally document whatever steps are necessary to get your app
 
 ### Manual setup (WIP) 
 
-* Set up local network
-``` 
-anvil
+* Clone the repository.
+* Make sure you have the `.env` file (you can ask the repository manager to provide it).
+* Set up PNPM and yarn
+ ```bash
+npm install -g pnpm
+npm install -g yarn
 ```
-
+* Set up Foundary in local network
+ ```bash
+curl -L https://foundry.paradigm.xyz | bash
+. /root/.bashrc
+foundryup
+```
+* Setup postgres in local or u can use below docker command to setup postgres
+ ```bash
+docker run --name some-postgres -e  POSTGRES_USER=postgres -e POSTGRES_PASSWORD=password -e POSTGRES_DB=networkstates -p 5432:5432 -d postgres
+```
 * Compile circuit
-```
-cd circuits/
-pnpm dev:move
+ ```bash
+cd circuits
+yarn
+mkdir artifacts
+cd artifacts
+wget https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_17.ptau
+cd ..
+yarn dev
+cd ..
 # This takes a while: it compiles the circuit and runs a smoke test
 ```
 
 * Deploy contracts
-```
-cd contracts/scripts
-bash forge_create_local_verifier.sh
-# copy over deploy address to verifierContract in contract/src/NStates.sol
-bash forge_create_local.sh
-# copy over deploy address to CONTRACT_ADDR in .env
+ ```bash
+cd contracts
+pnpm build
+pnpm dev
 ```
 
 * Run server
-```
-cd enclave/
+ ```bash
+cd game
+pnpm install
+cd ..
+
+cd enclave
+pnpm install
 pnpm dev
 # Wait for "Server running..." log
 ```
-
+* Run DA server
+ ```bash
+cd DA
+pnpm install
+pnpm dev
+```
 * Run client
-``` 
-cd client/
+ ```bash
+cd client
+pnpm install
 pnpm devA  # can also do {devB, devC}
 ```
 
