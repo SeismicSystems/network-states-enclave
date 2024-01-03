@@ -72,6 +72,4 @@ services:
         condition: service_healthy
 volumes:
   db-data:
-    driver: local
   common-contracts:
-    driver: local
