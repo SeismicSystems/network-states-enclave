@@ -13,5 +13,6 @@ rm -rf node_modules
 cd ..
 
 cd contracts
+pnpm install
 pnpm build
 cd ..
