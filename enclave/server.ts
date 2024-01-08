@@ -378,8 +378,6 @@ async function virtualZKP(virtTile: Tile, socketId: string) {
     let publicSignals;
     let proverStatus = ProverStatus.Incomplete;
     try {
-        // [TMP]: not compiling while dev environment is macOs
-        throw new Error("Rapidsnark is disabled");
         // Unique ID for proof-related files
         const proofId = socketId + "-" + inputs.hVirt;
 

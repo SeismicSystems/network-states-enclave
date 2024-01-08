@@ -36,7 +36,7 @@ yarn run snarkjs zkey export solidityverifier virtual.zkey \
 sed -i -e 's/0.6.11;/0.8.13;/g' virtualVerifier.sol
 mv virtualVerifier.sol ../contracts/src/VirtualVerifier.sol
 
-# Save proving key and witness generation script
+# Save proving key, verifying key, and witness generation script
 mv virtual_js/virtual.wasm virtual.zkey virtual/
 
 # Generate witness generator
@@ -70,7 +70,7 @@ if [ "$ARCH" = "x86_64" ]; then
   make -j4 && make install
 
   cd $CURRENT_DIR
-  cp package/bin/prover ../virtual/virtual-prover
+  mv package/bin/prover ../virtual/virtual-prover
 elif [ "$ARCH" = "arm64" ]; then
   ./build_gmp.sh macos_arm64
   mkdir build_prover_macos_arm64 && cd build_prover_macos_arm64
@@ -78,7 +78,7 @@ elif [ "$ARCH" = "arm64" ]; then
   make -j4 && make install
 
   cd $CURRENT_DIR
-  cp package_macos_arm64/bin/prover ../virtual/virtual-prover
+  mv package_macos_arm64/bin/prover ../virtual/virtual-prover
 fi
 cd $CURRENT_DIR
 cd ..
