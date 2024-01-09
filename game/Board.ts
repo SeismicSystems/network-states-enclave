@@ -336,7 +336,7 @@ export class Board {
         nStates: any,
         wasmPath?: string,
         zkeyPath?: string
-    ): Promise<[Tile, Tile, Tile, Tile, Groth16Proof, any]> {
+    ): Promise<[Tile, Tile, Promise<any>]> {
         const tFrom: Tile = this.getTile(from, BigInt(0));
         const tTo: Tile = this.getTile(to, BigInt(0));
 
@@ -391,7 +391,7 @@ export class Board {
         const wasm = wasmPath || Board.MOVE_WASM;
         const zkey = zkeyPath || Board.MOVE_PROVKEY;
 
-        const { proof, publicSignals } = await groth16.fullProve(
+        const moveZKPPromise = groth16.fullProve(
             {
                 currentWaterInterval: currentWaterInterval.toString(),
                 fromCityId: tFrom.cityId.toString(),
@@ -421,6 +421,6 @@ export class Board {
             zkey
         );
 
-        return [tFrom, tTo, uFrom, uTo, proof, publicSignals];
+        return [uFrom, uTo, moveZKPPromise];
     }
 }

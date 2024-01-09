@@ -23,7 +23,7 @@ import {
     TerrainUtils,
     Tile,
     Utils,
-    Location
+    Location,
 } from "@seismic-systems/ns-fow-game";
 dotenv.config({ path: "../.env" });
 
@@ -112,7 +112,11 @@ let clientLatestMoveBlock: bigint = 0n;
 /*
  * Store pending move.
  */
-let formattedProof: Groth16ProofCalldata;
+let currentMoveFormattedProof: Groth16ProofCalldata | undefined = undefined;
+let currentVirtualFormattedProof: Groth16ProofCalldata | undefined = undefined;
+let currentEnclaveSig: object | undefined = undefined;
+
+let startProveTime: number, endProveTime: number;
 
 /*
  * Using Socket.IO to manage communication with enclave.
@@ -205,46 +209,6 @@ async function spawnSignatureResponse(
 }
 
 /*
- * Constructs new states induced by army at cursor moving in one of the
- * cardinal directions. Alerts enclave of intended move before sending it
- * to chain. Currently hardcoded to move all but one army unit to the next
- * tile.
- */
-async function move(inp: string, currentBlockHeight: bigint) {
-    try {
-        if (inp !== "w" && inp !== "a" && inp !== "s" && inp !== "d") {
-            throw new Error("Invalid move input.");
-        }
-
-        // Construct move states
-        const nr = cursor.r + MOVE_KEYS[inp][0],
-            nc = cursor.c + MOVE_KEYS[inp][1];
-
-        if (!b.inBounds(nr, nc)) {
-            throw new Error("Cannot move off the board.");
-        }
-
-        clientLatestMoveBlock = currentBlockHeight;
-
-        const [tFrom, tTo, uFrom, uTo, prf, pubSignals] = await b.moveZKP(
-            cursor,
-            { r: nr, c: nc },
-            nStates
-        );
-
-        formattedProof = await Utils.exportCallDataGroth16(prf, pubSignals);
-
-        // Update player position
-        cursor = { r: nr, c: nc };
-
-        // Alert enclave of intended move
-        socket.emit("getMoveSignature", uFrom, uTo, PLAYER.blind.toString());
-    } catch (error) {
-        console.log(error);
-    }
-}
-
-/*
  * After logging in, player recieves a list of locations that they should
  * decrypt.
  */
@@ -267,6 +231,60 @@ function decryptResponse(t: any) {
 }
 
 /*
+ * Constructs new states induced by army at cursor moving in one of the
+ * cardinal directions. Alerts enclave of intended move before sending it
+ * to chain. Currently hardcoded to move all but one army unit to the next
+ * tile.
+ */
+async function move(inp: string, currentBlockHeight: bigint) {
+    startProveTime = Date.now();
+    try {
+        if (inp !== "w" && inp !== "a" && inp !== "s" && inp !== "d") {
+            throw new Error("Invalid move input.");
+        }
+
+        // Construct move states
+        const nr = cursor.r + MOVE_KEYS[inp][0],
+            nc = cursor.c + MOVE_KEYS[inp][1];
+
+        if (!b.inBounds(nr, nc)) {
+            throw new Error("Cannot move off the board.");
+        }
+
+        clientLatestMoveBlock = currentBlockHeight;
+
+        const [uFrom, uTo, moveZKPPromise] = await b.moveZKP(
+            cursor,
+            { r: nr, c: nc },
+            nStates
+        );
+
+        currentMoveFormattedProof = undefined;
+        currentVirtualFormattedProof = undefined;
+
+        moveZKPPromise.then(async (moveRes) => {
+            console.log("successfully proved move ZKP");
+
+            currentMoveFormattedProof = await Utils.exportCallDataGroth16(
+                moveRes.proof,
+                moveRes.publicSignals
+            );
+
+            // Submit to chain if all zkps and signatures are returned
+            await tryToSubmitMove();
+        });
+
+        // Update player position
+        cursor = { r: nr, c: nc };
+
+        // Alert enclave of intended move
+        socket.emit("getMoveSignature", uFrom, uTo, PLAYER.blind.toString());
+    } catch (error) {
+        console.log(error);
+    }
+}
+
+/*
  * Get signature for move proposal. This signature and the queued move will be
  * sent to the chain for approval.
  */
@@ -286,29 +304,58 @@ async function moveSignatureResponse(
             console.log(`${proverStatus} successfully proved virtual ZKP`);
     }
 
-    const [moveInputs, moveProof] = Utils.unpackMoveInputs(formattedProof);
+    currentVirtualFormattedProof = await Utils.exportCallDataGroth16(
+        virtPrf,
+        virtPubSigs
+    );
     const unpackedSig = hexToSignature(sig as Address);
-    const moveSig = {
+    currentEnclaveSig = {
         v: unpackedSig.v,
         r: unpackedSig.r,
         s: unpackedSig.s,
         b: blockNumber,
     };
 
-    const virtFormattedProof = await Utils.exportCallDataGroth16(
-        virtPrf,
-        virtPubSigs
+    // Submit to chain if all zkps and signatures are returned
+    await tryToSubmitMove();
+}
+
+/*
+ * Submit pending move to contract. Will only write to nStates if 1) the player
+ * has finished proving the move ZKP, 2) the enclave has finished proving
+ * virtual ZKP and returned it with a signature.
+ */
+async function tryToSubmitMove() {
+    if (
+        !currentMoveFormattedProof ||
+        !currentVirtualFormattedProof ||
+        !currentEnclaveSig
+    ) {
+        return;
+    }
+
+    const [moveInputs, moveProof] = Utils.unpackMoveInputs(
+        currentMoveFormattedProof
     );
-    const [virtInputs, virtProof] =
-        Utils.unpackVirtualInputs(virtFormattedProof);
+    const [virtInputs, virtProof] = Utils.unpackVirtualInputs(
+        currentVirtualFormattedProof
+    );
+
+    endProveTime = Date.now();
+    console.log(`Time to prove: ${endProveTime - startProveTime}ms`);
 
     await nStates.write.move([
         moveInputs,
         moveProof,
         virtInputs,
         virtProof,
-        moveSig,
+        currentEnclaveSig,
     ]);
+
+    // Reset global variables when move has been submitted onchain
+    currentMoveFormattedProof = undefined;
+    currentVirtualFormattedProof = undefined;
+    currentEnclaveSig = undefined;
 }
 
 /*

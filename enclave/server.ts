@@ -98,12 +98,14 @@ const CLAIMED_MOVE_LIFE_SPAN = BigInt(
  */
 const app = express();
 const server = http.createServer(app);
+
+console.log("Warning: currently accepting requests from all origins");
 const io = new Server<
     ClientToServerEvents,
     ServerToClientEvents,
     InterServerEvents,
     SocketData
->(server);
+>(server, { cors: { origin: "*" } });
 
 /*
  * Enclave randomness that it commits to in contract. Used for virtual tile
@@ -378,8 +380,6 @@ async function virtualZKP(virtTile: Tile, socketId: string) {
     let publicSignals;
     let proverStatus = ProverStatus.Incomplete;
     try {
-        // [TMP]: not compiling while dev environment is macOs
-        throw new Error("Rapidsnark is disabled");
         // Unique ID for proof-related files
         const proofId = socketId + "-" + inputs.hVirt;
 
