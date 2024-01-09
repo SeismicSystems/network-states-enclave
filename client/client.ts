@@ -116,6 +116,8 @@ let moveFormattedProof: Groth16ProofCalldata | undefined = undefined;
 let virtualFormattedProof: Groth16ProofCalldata | undefined = undefined;
 let enclaveSig: object | undefined = undefined;
 
+let startProveTime: number, endProveTime: number;
+
 /*
  * Using Socket.IO to manage communication with enclave.
  */
@@ -235,6 +237,7 @@ function decryptResponse(t: any) {
  * tile.
  */
 async function move(inp: string, currentBlockHeight: bigint) {
+    startProveTime = Date.now();
     try {
         if (inp !== "w" && inp !== "a" && inp !== "s" && inp !== "d") {
             throw new Error("Invalid move input.");
@@ -331,6 +334,9 @@ async function tryToSubmitMove() {
     const [virtInputs, virtProof] = Utils.unpackVirtualInputs(
         virtualFormattedProof
     );
+
+    endProveTime = Date.now();
+    console.log(`Time to prove: ${endProveTime - startProveTime}ms`);
 
     await nStates.write.move([
         moveInputs,
