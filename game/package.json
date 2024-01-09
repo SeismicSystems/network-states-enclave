@@ -1,7 +1,7 @@
 {
     "name": "@seismic-systems/ns-fow-game",
     "type": "module",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "main": "index.ts",
     "license": "GPL-3.0",
     "dependencies": {
