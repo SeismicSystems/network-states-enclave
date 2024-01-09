@@ -98,12 +98,14 @@ const CLAIMED_MOVE_LIFE_SPAN = BigInt(
  */
 const app = express();
 const server = http.createServer(app);
+
+console.log("Warning: currently accepting requests from all origins");
 const io = new Server<
     ClientToServerEvents,
     ServerToClientEvents,
     InterServerEvents,
     SocketData
->(server);
+>(server, { cors: { origin: "*" } });
 
 /*
  * Enclave randomness that it commits to in contract. Used for virtual tile
