@@ -112,7 +112,9 @@ let clientLatestMoveBlock: bigint = 0n;
 /*
  * Store pending move.
  */
-let formattedProof: Groth16ProofCalldata;
+let moveFormattedProof: Groth16ProofCalldata | undefined = undefined;
+let virtualFormattedProof: Groth16ProofCalldata | undefined = undefined;
+let enclaveSig: object | undefined = undefined;
 
 /*
  * Using Socket.IO to manage communication with enclave.
@@ -205,6 +207,28 @@ async function spawnSignatureResponse(
 }
 
 /*
+ * After logging in, player recieves a list of locations that they should
+ * decrypt.
+ */
+async function loginResponse(locs: string[]) {
+    updateDisplay(locs);
+    isSpawned = true;
+}
+
+/*
+ * Update local view of game board based on enclave response.
+ */
+function decryptResponse(t: any) {
+    const tl = Tile.fromJSON(t);
+
+    b.t.set(Utils.stringifyLocation(tl.loc), tl);
+
+    console.clear();
+    b.printView();
+    process.stdout.write(MOVE_PROMPT);
+}
+
+/*
  * Constructs new states induced by army at cursor moving in one of the
  * cardinal directions. Alerts enclave of intended move before sending it
  * to chain. Currently hardcoded to move all but one army unit to the next
@@ -231,12 +255,21 @@ async function move(inp: string, currentBlockHeight: bigint) {
             { r: nr, c: nc },
             nStates
         );
-        const moveRes = await moveZKPPromise;
+        
+        moveFormattedProof = undefined;
+        virtualFormattedProof = undefined;
 
-        formattedProof = await Utils.exportCallDataGroth16(
-            moveRes.proof,
-            moveRes.publicSignals
-        );
+        moveZKPPromise.then(async (moveRes) => {
+            console.log("successfully proved move ZKP");
+
+            moveFormattedProof = await Utils.exportCallDataGroth16(
+                moveRes.proof,
+                moveRes.publicSignals
+            );
+
+            // Submit to chain if all zkps and signatures are returned
+            await tryToSubmitMove();
+        });
 
         // Update player position
         cursor = { r: nr, c: nc };
@@ -246,28 +279,6 @@ async function move(inp: string, currentBlockHeight: bigint) {
     } catch (error) {
         console.log(error);
     }
-}
-
-/*
- * After logging in, player recieves a list of locations that they should
- * decrypt.
- */
-async function loginResponse(locs: string[]) {
-    updateDisplay(locs);
-    isSpawned = true;
-}
-
-/*
- * Update local view of game board based on enclave response.
- */
-function decryptResponse(t: any) {
-    const tl = Tile.fromJSON(t);
-
-    b.t.set(Utils.stringifyLocation(tl.loc), tl);
-
-    console.clear();
-    b.printView();
-    process.stdout.write(MOVE_PROMPT);
 }
 
 /*
@@ -290,29 +301,49 @@ async function moveSignatureResponse(
             console.log(`${proverStatus} successfully proved virtual ZKP`);
     }
 
-    const [moveInputs, moveProof] = Utils.unpackMoveInputs(formattedProof);
+    virtualFormattedProof = await Utils.exportCallDataGroth16(
+        virtPrf,
+        virtPubSigs
+    );
     const unpackedSig = hexToSignature(sig as Address);
-    const moveSig = {
+    enclaveSig = {
         v: unpackedSig.v,
         r: unpackedSig.r,
         s: unpackedSig.s,
         b: blockNumber,
     };
 
-    const virtFormattedProof = await Utils.exportCallDataGroth16(
-        virtPrf,
-        virtPubSigs
+    // Submit to chain if all zkps and signatures are returned
+    await tryToSubmitMove();
+}
+
+/*
+ * Submit pending move to contract. Will only write to nStates if 1) the player
+ * has finished proving the move ZKP, 2) the enclave has finished proving
+ * virtual ZKP and returned it with a signature.
+ */
+async function tryToSubmitMove() {
+    if (!moveFormattedProof || !virtualFormattedProof || !enclaveSig) {
+        return;
+    }
+
+    const [moveInputs, moveProof] = Utils.unpackMoveInputs(moveFormattedProof);
+    const [virtInputs, virtProof] = Utils.unpackVirtualInputs(
+        virtualFormattedProof
     );
-    const [virtInputs, virtProof] =
-        Utils.unpackVirtualInputs(virtFormattedProof);
 
     await nStates.write.move([
         moveInputs,
         moveProof,
         virtInputs,
         virtProof,
-        moveSig,
+        enclaveSig,
     ]);
+
+    // Reset global variables when move has been submitted onchain
+    moveFormattedProof = undefined;
+    virtualFormattedProof = undefined;
+    enclaveSig = undefined;
 }
 
 /*
