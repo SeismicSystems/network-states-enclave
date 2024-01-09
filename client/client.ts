@@ -23,7 +23,7 @@ import {
     TerrainUtils,
     Tile,
     Utils,
-    Location
+    Location,
 } from "@seismic-systems/ns-fow-game";
 dotenv.config({ path: "../.env" });
 
@@ -226,13 +226,17 @@ async function move(inp: string, currentBlockHeight: bigint) {
 
         clientLatestMoveBlock = currentBlockHeight;
 
-        const [tFrom, tTo, uFrom, uTo, prf, pubSignals] = await b.moveZKP(
+        const [uFrom, uTo, moveZKPPromise] = await b.moveZKP(
             cursor,
             { r: nr, c: nc },
             nStates
         );
+        const moveRes = await moveZKPPromise;
 
-        formattedProof = await Utils.exportCallDataGroth16(prf, pubSignals);
+        formattedProof = await Utils.exportCallDataGroth16(
+            moveRes.proof,
+            moveRes.publicSignals
+        );
 
         // Update player position
         cursor = { r: nr, c: nc };
