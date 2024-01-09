@@ -112,9 +112,9 @@ let clientLatestMoveBlock: bigint = 0n;
 /*
  * Store pending move.
  */
-let moveFormattedProof: Groth16ProofCalldata | undefined = undefined;
-let virtualFormattedProof: Groth16ProofCalldata | undefined = undefined;
-let enclaveSig: object | undefined = undefined;
+let currentMoveFormattedProof: Groth16ProofCalldata | undefined = undefined;
+let currentVirtualFormattedProof: Groth16ProofCalldata | undefined = undefined;
+let currentEnclaveSig: object | undefined = undefined;
 
 let startProveTime: number, endProveTime: number;
 
@@ -258,14 +258,14 @@ async function move(inp: string, currentBlockHeight: bigint) {
             { r: nr, c: nc },
             nStates
         );
-        
-        moveFormattedProof = undefined;
-        virtualFormattedProof = undefined;
+
+        currentMoveFormattedProof = undefined;
+        currentVirtualFormattedProof = undefined;
 
         moveZKPPromise.then(async (moveRes) => {
             console.log("successfully proved move ZKP");
 
-            moveFormattedProof = await Utils.exportCallDataGroth16(
+            currentMoveFormattedProof = await Utils.exportCallDataGroth16(
                 moveRes.proof,
                 moveRes.publicSignals
             );
@@ -304,12 +304,12 @@ async function moveSignatureResponse(
             console.log(`${proverStatus} successfully proved virtual ZKP`);
     }
 
-    virtualFormattedProof = await Utils.exportCallDataGroth16(
+    currentVirtualFormattedProof = await Utils.exportCallDataGroth16(
         virtPrf,
         virtPubSigs
     );
     const unpackedSig = hexToSignature(sig as Address);
-    enclaveSig = {
+    currentEnclaveSig = {
         v: unpackedSig.v,
         r: unpackedSig.r,
         s: unpackedSig.s,
@@ -326,13 +326,19 @@ async function moveSignatureResponse(
  * virtual ZKP and returned it with a signature.
  */
 async function tryToSubmitMove() {
-    if (!moveFormattedProof || !virtualFormattedProof || !enclaveSig) {
+    if (
+        !currentMoveFormattedProof ||
+        !currentVirtualFormattedProof ||
+        !currentEnclaveSig
+    ) {
         return;
     }
 
-    const [moveInputs, moveProof] = Utils.unpackMoveInputs(moveFormattedProof);
+    const [moveInputs, moveProof] = Utils.unpackMoveInputs(
+        currentMoveFormattedProof
+    );
     const [virtInputs, virtProof] = Utils.unpackVirtualInputs(
-        virtualFormattedProof
+        currentVirtualFormattedProof
     );
 
     endProveTime = Date.now();
@@ -343,13 +349,13 @@ async function tryToSubmitMove() {
         moveProof,
         virtInputs,
         virtProof,
-        enclaveSig,
+        currentEnclaveSig,
     ]);
 
     // Reset global variables when move has been submitted onchain
-    moveFormattedProof = undefined;
-    virtualFormattedProof = undefined;
-    enclaveSig = undefined;
+    currentMoveFormattedProof = undefined;
+    currentVirtualFormattedProof = undefined;
+    currentEnclaveSig = undefined;
 }
 
 /*
