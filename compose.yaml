@@ -1,0 +1,75 @@
+
+services:
+  contracts:
+    build:
+      context: .
+      target: contracts
+    environment:
+      - ANVIL_IP_ADDR=0.0.0.0
+      - FOUNDRY_ETH_RPC_URL=http://0.0.0.0:8545
+      - FORK_RPC_URL=http://0.0.0.0:8545
+    volumes:
+      - common-contracts:/usr/src/app/contracts
+    ports:
+      - 8545:8545
+    healthcheck:
+     test: ["CMD", "cat", "/usr/src/app/contracts/worlds.json"]
+     interval: 20s
+     timeout: 5s
+     retries: 10
+  enclave:
+    build:
+      context: .
+      target: enclave
+    environment:
+      - PGHOST=db
+    ports:
+      - 3000:3000
+    volumes:
+      - common-contracts:/usr/src/app/contracts
+    depends_on:
+      contracts:
+        condition: service_healthy
+    healthcheck:
+      test: "bash -c 'printf \"GET / HTTP/1.1\n\n\" > /dev/tcp/0.0.0.0/3000; exit $?;'"
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  da:
+    build:
+      context: .
+      target: DA
+    environment:
+      - PGHOST=db
+    volumes:
+      - common-contracts:/usr/src/app/contracts
+    depends_on:
+      enclave:
+        condition: service_healthy
+  db:
+    image: postgres
+    restart: always
+    user: postgres
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=networkstates
+
+    expose:
+      - 5432
+  client:
+    build:
+      context: .
+      target: client
+    environment:
+      - PGHOST=db
+    volumes:
+      - common-contracts:/usr/src/app/contracts
+    depends_on:
+      enclave:
+        condition: service_healthy
+volumes:
+  db-data:
+  common-contracts:

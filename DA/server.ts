@@ -8,7 +8,7 @@ import { ServerToClientEvents, ClientToServerEvents } from "../client/socket";
  * Using Socket.IO to manage communication with enclave.
  */
 const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
-    `http://localhost:${process.env.ENCLAVE_SERVER_PORT}`
+    `${process.env.ENCLAVE_ADDRESS}:${process.env.ENCLAVE_SERVER_PORT}`
 );
 
 /*
@@ -23,6 +23,7 @@ const pool = new Pool();
  * clear old data and wait for enclave to submit new tiles.
  */
 async function handshakeDAResponse(inRecoveryMode: boolean) {
+    await create_encrypted_tiles()
     if (inRecoveryMode) {
         // Print table count
         const client = await pool.connect();
@@ -107,7 +108,24 @@ async function saveToDatabase(encTile: any) {
 
     socket.emit("saveToDatabaseResponse");
 }
+/*
+ * Creates encrypted tiles tables if it doesn't exist.
+ */
+async function create_encrypted_tiles(){
+    const client = await pool.connect();
+    const tableName = 'encrypted_tiles';
+    const columns = `symbol text, address text, ciphertext text, iv text, tag text`;
 
+    const query = `CREATE TABLE IF NOT EXISTS ${tableName} (${columns});`;
+    await client.query(query, (err, res) => {
+        if (err) {
+            console.error('Error creating table:', err);
+        } else {
+            console.log('Table created successfully');
+        }
+      });
+     client.release();
+}
 /*
  * Clears the table of past encrypted tiles.
  */

@@ -12,7 +12,7 @@ PTAU=$2
 UPPER_NAME="$(tr '[:lower:]' '[:upper:]' <<< ${NAME:0:1})${NAME:1}"
 
 # Compile circuit
-circom ${NAME}/${NAME}.circom --r1cs --wasm
+circom2 ${NAME}/${NAME}.circom --r1cs --wasm
 
 # Generate proving key
 yarn run snarkjs groth16 setup ${NAME}.r1cs \
