@@ -2,11 +2,35 @@
 pragma solidity >=0.8.0;
 
 import {City, CityPlayer, Config, PlayerLastUpdateBlock, TileCommitment} from "codegen/index.sol";
-import {MoveInputs} from "common/MoveInputs.sol";
+import {Move, MoveInputs} from "common/MoveInputs.sol";
 import {Signature} from "common/Signature.sol";
 import {LibCity} from "libraries/LibCity.sol";
 
 library LibMove {
+
+    /// @notice Fills in various arguments to convert the passed Move struct into the MoveInputs necessary for the zk proof
+    function getMoveInputs(Move memory move) internal view returns(MoveInputs memory) {
+        return MoveInputs({
+            fromIsCityCenter: move.fromIsCityCenter,
+            toIsCityCenter: move.toIsCityCenter,
+            fromIsWaterTile: move.fromIsWaterTile,
+            toIsWaterTile: move.toIsWaterTile,
+            takingCity: move.takingCity,
+            ontoSelfOrUnowned: move.ontoSelfOrUnowned,
+            fromCityId: move.fromCityId,
+            toCityId: move.toCityId,
+            fromCityTroops: City.getCenterTroopCount({id: move.fromCityId}),
+            toCityTroops: City.getCenterTroopCount({id: move.toCityId}),
+            numTroopsMoved: move.numTroopsMoved,
+            enemyLoss: move.enemyLoss,
+            currentInterval: move.currentInterval,
+            hTFrom: move.hTFrom,
+            hTTo: move.hTTo,
+            hUFrom: move.hUFrom,
+            hUTo: move.hUTo
+        });
+    }
+
     /// @notice Runs various checks for the move
     function checkMoveInputs(
         address player,
@@ -35,7 +59,7 @@ library LibMove {
         );
         require(
             _checkCityTroops({mv: moveInputs}),
-            "Incorrect (from/to)CityTroops"
+            "Incorrect (from/to) CityTroops"
         );
         require(
             _getSigner({
@@ -47,7 +71,14 @@ library LibMove {
         );
     }
 
-    function updateCityTroopCounts(MoveInputs memory mv) internal {
+    function updateCityTroopCountsBeforeMove(Move memory mv) internal {
+        _troopUpdate(CityPlayer.get({id: mv.fromCityId}));
+        if (mv.toCityId != 0) {
+            _troopUpdate(CityPlayer.get({id: mv.toCityId}));
+        }
+    }
+
+    function updateCityTroopCountsAfterMove(MoveInputs memory mv) internal {
         if (mv.fromIsWaterTile) {
             LibCity.incrementCityTroops({
                 cityId: mv.fromCityId,
@@ -127,12 +158,6 @@ library LibMove {
                 id: mv.fromCityId,
                 area: City.getArea({id: mv.fromCityId}) + 1
             });
-        }
-
-        // Troop updates for all players' cities
-        _troopUpdate(CityPlayer.get({id: mv.fromCityId}));
-        if (mv.toCityId != 0) {
-            _troopUpdate(CityPlayer.get({id: mv.toCityId}));
         }
     }
 
