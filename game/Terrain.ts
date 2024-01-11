@@ -1,8 +1,17 @@
 import { perlin } from "@darkforest_eth/hashing";
 import { Terrain, Location } from "./Utils";
 
+class DBInterface {
+    // [TODO] fill in here
+    constructor() {}
+
+    get = (key: string) => {};
+
+    set = (key: string, cached: Terrain) => {};
+}
+
 export class TerrainUtils {
-    terrainMemo: Map<string, Terrain>;
+    terrainMemo: Map<string, Terrain> | DBInterface;
     perlinKey: number;
     perlinScale: number;
     perlinThresholdBonusTroops: number;
@@ -14,9 +23,16 @@ export class TerrainUtils {
         perlinScale: number,
         perlinThresholdBonusTroops: number,
         perlinThresholdHill: number,
-        perlinThresholdWater: number
+        perlinThresholdWater: number,
+        dbConstructorOptions?: string
     ) {
-        this.terrainMemo = new Map<string, Terrain>();
+        if (dbConstructorOptions) {
+            // [TODO]: constructor inputs
+            this.terrainMemo = new DBInterface();
+        } else {
+            this.terrainMemo = new Map<string, Terrain>();
+        }
+
         this.perlinKey = perlinKey;
         this.perlinScale = perlinScale;
         this.perlinThresholdBonusTroops = perlinThresholdBonusTroops;

@@ -122,7 +122,8 @@ const terrainUtils = new TerrainUtils(
     Number(process.env.PERLIN_SCALE),
     Number(process.env.PERLIN_THRESHOLD_BONUS_TROOPS),
     Number(process.env.PERLIN_THRESHOLD_HILL),
-    Number(process.env.PERLIN_THRESHOLD_WATER)
+    Number(process.env.PERLIN_THRESHOLD_WATER),
+    "enclave"
 );
 
 type ClaimedSpawn = {

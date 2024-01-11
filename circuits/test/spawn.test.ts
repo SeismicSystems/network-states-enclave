@@ -187,7 +187,7 @@ describe("Unit tests for CheckTileHashes()", () => {
             BigInt(0),
             terrainUtils
         );
-        prevTile.tileType = Tile.BARE_TILE;
+        prevTile.terrain = Tile.BARE_TILE;
 
         const w = await circuit.calculateWitness({
             canSpawn: "0",

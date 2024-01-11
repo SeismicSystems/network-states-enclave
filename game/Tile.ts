@@ -18,7 +18,7 @@ export class Tile {
     // If cityId = 0 then the tile is considered unowned
     static UNOWNED_ID: number = 0;
 
-    // tileType options
+    // terrain options
     static BARE_TILE: number = 0;
     static CITY_TILE: number = 1;
     static WATER_TILE: number = 2;
@@ -30,7 +30,7 @@ export class Tile {
     key: bigint;
     cityId: number;
     latestUpdateInterval: number;
-    tileType: number;
+    terrain: number;
 
     constructor(
         own_: Player,
@@ -47,7 +47,7 @@ export class Tile {
         this.key = key_;
         this.cityId = cityId_;
         this.latestUpdateInterval = interval_;
-        this.tileType = tp_;
+        this.terrain = tp_;
     }
 
     /*
@@ -61,7 +61,7 @@ export class Tile {
             this.key.toString(),
             this.cityId.toString(),
             this.latestUpdateInterval.toString(),
-            this.tileType.toString(),
+            this.terrain.toString(),
         ];
     }
 
@@ -95,7 +95,7 @@ export class Tile {
             key: this.key.toString(10),
             cityId: this.cityId.toString(),
             latestUpdateInterval: this.latestUpdateInterval.toString(),
-            tileType: this.tileType.toString(),
+            terrain: this.terrain.toString(),
         };
     }
 
@@ -117,28 +117,28 @@ export class Tile {
      * Return true if this Tile is a bare tile.
      */
     isBare(): boolean {
-        return this.tileType === Tile.BARE_TILE;
+        return this.terrain === Tile.BARE_TILE;
     }
 
     /*
      * Return true if this Tile is a water tile.
      */
     isWater(): boolean {
-        return this.tileType === Tile.WATER_TILE;
+        return this.terrain === Tile.WATER_TILE;
     }
 
     /*
      * Return true if this Tile is a hill tile.
      */
     isHill(): boolean {
-        return this.tileType === Tile.HILL_TILE;
+        return this.terrain === Tile.HILL_TILE;
     }
 
     /*
      * Return true if this Tile is a city.
      */
     isCityCenter(): boolean {
-        return this.tileType === Tile.CITY_TILE;
+        return this.terrain === Tile.CITY_TILE;
     }
 
     /*
@@ -209,7 +209,7 @@ export class Tile {
             BigInt(obj.key),
             parseInt(obj.cityId, 10),
             parseInt(obj.latestUpdateInterval, 10),
-            parseInt(obj.tileType, 10)
+            parseInt(obj.terrain, 10)
         );
     }
 

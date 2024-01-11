@@ -292,7 +292,7 @@ export class Board {
                 updatedTroops + nMobilize,
                 tTo.cityId,
                 currentWaterInterval,
-                tTo.tileType
+                tTo.terrain
             );
         } else if (tTo.isUnowned()) {
             uTo = Tile.genOwned(
@@ -301,7 +301,7 @@ export class Board {
                 nMobilize + tTo.resources,
                 tFrom.cityId,
                 currentWaterInterval,
-                tTo.tileType
+                tTo.terrain
             );
         } else {
             uTo = Tile.genOwned(
@@ -310,12 +310,12 @@ export class Board {
                 updatedTroops - nMobilize,
                 tTo.cityId,
                 currentWaterInterval,
-                tTo.tileType
+                tTo.terrain
             );
             if (uTo.resources < 0) {
                 uTo.owner = uFrom.owner;
                 uTo.resources *= -1;
-                if (tTo.tileType != Tile.CITY_TILE) {
+                if (tTo.terrain != Tile.CITY_TILE) {
                     uTo.cityId = uFrom.cityId;
                 }
             }
@@ -369,7 +369,7 @@ export class Board {
             fromUpdatedTroops - nMobilize,
             tFrom.cityId,
             currentWaterInterval,
-            tFrom.tileType
+            tFrom.terrain
         );
         const uTo: Tile = Board.computeOntoTile(
             tTo,
