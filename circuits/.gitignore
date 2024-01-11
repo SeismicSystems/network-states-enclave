@@ -1,9 +1,11 @@
 node_modules/
 artifacts/
-move/move.wasm
-move/move.zkey
-spawn/spawn.wasm
-spawn/spawn.zkey
+move.wasm
+move.zkey
+spawn.wasm
+spawn.zkey
+virtual.wasm
+virtual.zkey
 virtual-prover
 virtual-witness-generator
 virtual-witness-generator.dat
