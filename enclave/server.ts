@@ -97,6 +97,10 @@ const CLAIMED_MOVE_LIFE_SPAN = BigInt(
  * Using Socket.IO to manage communication to clients.
  */
 const app = express();
+app.get("/ping", (req, res) => {
+    res.sendStatus(200);
+});
+
 const server = http.createServer(app);
 
 console.log("Warning: currently accepting requests from all origins");
