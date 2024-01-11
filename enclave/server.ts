@@ -28,7 +28,7 @@ import {
     SocketData,
 } from "../client/socket";
 import {
-    Board,
+    EnclaveBoard,
     Player,
     ProverStatus,
     TerrainUtils,
@@ -152,9 +152,9 @@ type EncryptedTile = {
 };
 
 /*
- * Enclave's internal belief on game state stored in Board object.
+ * Enclave's internal belief on game state stored in EnclaveBoard object.
  */
-let b: Board;
+let b: EnclaveBoard;
 
 /*
  * City ID given to each spawning player. Increments by one each time.
@@ -930,7 +930,7 @@ publicClient.watchBlockNumber({
  * Start server & initialize game.
  */
 server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
-    b = new Board(terrainUtils);
+    b = new EnclaveBoard(terrainUtils);
     b.printView();
 
     if (inRecoveryMode) {

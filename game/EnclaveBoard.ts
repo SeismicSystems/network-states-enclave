@@ -5,7 +5,7 @@ import { TerrainUtils } from "./Terrain";
 import { Utils, Location } from "./Utils";
 import { Player } from "./Player";
 
-export class Board {
+export class EnclaveBoard {
     static MOVE_WASM: string = "../circuits/move/move.wasm";
     static MOVE_PROVKEY: string = "../circuits/move/move.zkey";
     static PERIMETER: number[][] = [-1, 0, 1].flatMap((x) =>
@@ -32,9 +32,9 @@ export class Board {
      */
     public inBounds(r: number, c: number): boolean {
         return (
-            r <= Board.COORDINATE_MAX_VALUE &&
+            r <= EnclaveBoard.COORDINATE_MAX_VALUE &&
             r >= 0 &&
-            c <= Board.COORDINATE_MAX_VALUE &&
+            c <= EnclaveBoard.COORDINATE_MAX_VALUE &&
             c >= 0
         );
     }
@@ -235,7 +235,7 @@ export class Board {
      */
     public noFog(l: Location, reqPlayer: Player, r: bigint): boolean {
         let foundNeighbor = false;
-        Board.PERIMETER.forEach(([dy, dx]) => {
+        EnclaveBoard.PERIMETER.forEach(([dy, dx]) => {
             let nr = l.r + dy,
                 nc = l.c + dx;
             let tl = this.getTile({ r: nr, c: nc }, r);
@@ -350,12 +350,12 @@ export class Board {
         ]);
 
         // Most recent troop counts
-        const fromUpdatedTroops = Board.computeUpdatedTroops(
+        const fromUpdatedTroops = EnclaveBoard.computeUpdatedTroops(
             tFrom,
             fromCityTroops,
             currentWaterInterval
         );
-        const toUpdatedTroops = Board.computeUpdatedTroops(
+        const toUpdatedTroops = EnclaveBoard.computeUpdatedTroops(
             tTo,
             toCityTroops,
             currentWaterInterval
@@ -371,7 +371,7 @@ export class Board {
             currentWaterInterval,
             tFrom.terrain
         );
-        const uTo: Tile = Board.computeOntoTile(
+        const uTo: Tile = EnclaveBoard.computeOntoTile(
             tTo,
             tFrom,
             uFrom,
@@ -388,8 +388,8 @@ export class Board {
         const capturedTile = uTo.owner.address != tTo.owner.address;
         const takingCity = tTo.isCityCenter() && capturedTile ? "1" : "0";
 
-        const wasm = wasmPath || Board.MOVE_WASM;
-        const zkey = zkeyPath || Board.MOVE_PROVKEY;
+        const wasm = wasmPath || EnclaveBoard.MOVE_WASM;
+        const zkey = zkeyPath || EnclaveBoard.MOVE_PROVKEY;
 
         const moveZKPPromise = groth16.fullProve(
             {
