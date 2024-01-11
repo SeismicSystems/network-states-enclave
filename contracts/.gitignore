@@ -10,3 +10,7 @@ broadcast/
 
 deploys/**/*.json
 worlds.json
+
+src/MoveVerifier.sol
+src/SpawnVerifier.sol
+src/VirtualVerifier.sol
