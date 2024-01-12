@@ -342,7 +342,20 @@ async function tryToSubmitMove() {
     );
 
     endProveTime = Date.now();
-    console.log(`Time to prove: ${endProveTime - startProveTime}ms`);
+    const provingTime = endProveTime - startProveTime;
+    console.log(`Time to prove: ${provingTime}ms`);
+
+    // Send provingTime to enclave
+    fetch(
+        `${process.env.ENCLAVE_ADDRESS}:${process.env.ENCLAVE_SERVER_PORT}/provingTime`,
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ provingTime }),
+        }
+    );
 
     await nStates.write.move([
         moveInputs,

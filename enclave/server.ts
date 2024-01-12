@@ -39,6 +39,10 @@ import {
 dotenv.config({ path: "../.env" });
 const exec = promisify(execCb);
 
+const ENCLAVE_STARTUP_TIMESTAMP = new Date()
+    .toISOString()
+    .replace(/[:.-]/g, "");
+
 /*
  * Whether the enclave's global state should be blank or pull from DA.
  */
@@ -97,6 +101,24 @@ const CLAIMED_MOVE_LIFE_SPAN = BigInt(
  * Using Socket.IO to manage communication to clients.
  */
 const app = express();
+app.use(express.json());
+
+app.get("/ping", (req, res) => {
+    res.sendStatus(200);
+});
+
+app.post("/provingTime", (req, res) => {
+    const provingTime = req.body.provingTime;
+    fs.appendFile(
+        `bin/proving_times_${ENCLAVE_STARTUP_TIMESTAMP}.txt`,
+        provingTime + "\n",
+        (err: any) => {
+            if (err) throw err;
+        }
+    );
+    res.sendStatus(200);
+});
+
 const server = http.createServer(app);
 
 console.log("Warning: currently accepting requests from all origins");
@@ -925,6 +947,8 @@ publicClient.watchBlockNumber({
  * Start server & initialize game.
  */
 server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
+    fs.writeFileSync(`bin/proving_times_${ENCLAVE_STARTUP_TIMESTAMP}.txt`, '');
+
     b = new Board(terrainUtils);
     b.printView();
 
