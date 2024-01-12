@@ -36,13 +36,14 @@ import {
     Utils,
     Location,
 } from "@seismic-systems/ns-fow-game";
+import { addorReplaceDataToDynamoDB } from "./dynamodb_wrapper";
 dotenv.config({ path: "../.env" });
 const exec = promisify(execCb);
 
 /*
  * Whether the enclave's global state should be blank or pull from DA.
  */
-let inRecoveryMode = process.argv[2] == "1";
+let inSyncMode = process.argv[2] == "1";
 
 /*
  * All NewTile Events emitted
@@ -218,7 +219,7 @@ let recoveryModeIndex = 0;
  * tell player to initiate spawning.
  */
 async function login(socket: Socket, address: string, sigStr: string) {
-    if (inRecoveryMode) {
+    if (inSyncMode) {
         socket.disconnect();
         return;
     }
@@ -285,7 +286,7 @@ async function sendSpawnSignature(
     blind: string
 ) {
     const sender = idToAddress.get(socket.id);
-    if (inRecoveryMode || !sender) {
+    if (inSyncMode || !sender) {
         socket.disconnect();
         return;
     }
@@ -449,7 +450,7 @@ async function sendMoveSignature(
     blind: string
 ) {
     const sender = idToAddress.get(socket.id);
-    if (inRecoveryMode || !sender) {
+    if (inSyncMode || !sender) {
         // Cut the connection
         socket.disconnect();
         return;
@@ -510,6 +511,16 @@ async function sendMoveSignature(
         const uFromEnc = enqueueTile(uFromAsTile);
         const uToEnc = enqueueTile(uToAsTile);
 
+        // Save to DynamoDB
+        await addorReplaceDataToDynamoDB("tiles", {
+            hash: hUFrom,
+            ...uFromAsTile.toJSON(),
+        });
+        await addorReplaceDataToDynamoDB("tiles", {
+            hash: hUTo,
+            ...uToAsTile.toJSON(),
+        });
+
         claimedMoves.set(hUFrom.concat(hUTo), {
             uFrom: uFromAsTile,
             uTo: uToAsTile,
@@ -531,7 +542,7 @@ async function sendMoveSignature(
  * neighboring tile.
  */
 function decrypt(socket: Socket, l: string) {
-    if (inRecoveryMode || !idToAddress.has(socket.id)) {
+    if (inSyncMode || !idToAddress.has(socket.id)) {
         socket.disconnect();
         return;
     }
@@ -572,8 +583,8 @@ function disconnect(socket: Socket) {
  * emitted when a player tries to spawn in, whether or not they can. After
  * doing so, they should be allowed to try to spawn again.
  */
-function onSpawnAttempt(player: string, success: boolean) {
-    if (inRecoveryMode) {
+async function onSpawnAttempt(player: string, success: boolean) {
+    if (inSyncMode) {
         return;
     }
 
@@ -589,6 +600,12 @@ function onSpawnAttempt(player: string, success: boolean) {
 
         enqueueTile(spawn.spawnTile);
         dequeueTileIfDAConnected();
+
+        // Save to DynamoDB
+        await addorReplaceDataToDynamoDB("tiles", {
+            hash: spawn.spawnTile.hash(),
+            ...spawn.spawnTile.toJSON(),
+        });
 
         const visibleLocs = b
             .getNearbyLocations(spawn.spawnTile.loc)
@@ -607,7 +624,7 @@ function onSpawnAttempt(player: string, success: boolean) {
  * into enclave's internal beliefs, and alerts players in range to decrypt.
  */
 function onMoveFinalize(hUFrom: string, hUTo: string) {
-    if (inRecoveryMode) {
+    if (inSyncMode) {
         return;
     }
     const moveHash = hUFrom.concat(hUTo);
@@ -644,6 +661,7 @@ function onMoveFinalize(hUFrom: string, hUTo: string) {
         b.setTile(move.uTo);
 
         // Add finalized states and try to send to DA
+        // [TODO]: this will be removed, but should I add DynamoDB/Redis?
         enqueueTile(move.uFrom);
         enqueueTile(move.uTo);
         dequeueTileIfDAConnected();
@@ -697,7 +715,7 @@ function alertPlayers(
 
 /*
  * Sets the socket ID of the DA node, if not already set. Sends back
- * inRecoveryMode variable.
+ * inSyncMode variable.
  */
 async function handshakeDA(socket: Socket) {
     if (socketIdDA == undefined) {
@@ -713,7 +731,7 @@ async function handshakeDA(socket: Socket) {
             hashHistory.add(e.args.hTile.toString());
         });
 
-        io.to(socketIdDA).emit("handshakeDAResponse", inRecoveryMode);
+        io.to(socketIdDA).emit("handshakeDAResponse", inSyncMode);
     } else {
         // If DA socket ID is already set, then do nothing and break connection
         socket.disconnect();
@@ -783,7 +801,7 @@ function finishRecovery(socket: Socket) {
     b.printView();
 
     // Enable play
-    inRecoveryMode = false;
+    inSyncMode = false;
 }
 
 /*
@@ -895,8 +913,9 @@ publicClient.watchEvent({
     ),
     strict: true,
     onLogs: (logs) =>
-        logs.forEach((log) =>
-            onSpawnAttempt(log.args.player, log.args.success)
+        logs.forEach(
+            async (log) =>
+                await onSpawnAttempt(log.args.player, log.args.success)
         ),
 });
 
@@ -933,7 +952,7 @@ server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
     b = new EnclaveBoard(terrainUtils);
     b.printView();
 
-    if (inRecoveryMode) {
+    if (inSyncMode) {
         // Get previous encryption key
         tileEncryptionKey = Buffer.from(
             fs.readFileSync(process.env.ENCRYPTION_KEY_PATH!, {

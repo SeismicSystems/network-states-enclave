@@ -2,6 +2,8 @@
     "license": "GPL-3.0",
     "type": "module",
     "dependencies": {
+        "@aws-sdk/client-dynamodb": "^3.490.0",
+        "@aws-sdk/lib-dynamodb": "^3.490.0",
         "@seismic-systems/ns-fow-game": "link:../game",
         "@types/express": "^4.17.17",
         "axios": "^1.5.1",
@@ -18,7 +20,7 @@
         "start": "rm -f encryption_key.txt && mkdir -p bin && pm2 start scripts/enclave.sh && pm2 logs",
         "reset": "pm2 delete enclave",
         "dev": "pnpm tsx server.ts 0",
-        "dev:recover": "pnpm tsx server.ts 1"
+        "dev:sync": "pnpm tsx server.ts 1"
     },
     "devDependencies": {
         "ts-node": "^10.9.1",
