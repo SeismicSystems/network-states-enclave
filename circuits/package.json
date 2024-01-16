@@ -6,7 +6,7 @@
   "scripts": {
     "dev:move": "bash scripts/dev.sh move artifacts/powersOfTau28_hez_final_17.ptau",
     "dev:spawn": "bash scripts/dev.sh spawn artifacts/powersOfTau28_hez_final_17.ptau",
-    "dev:virtual": "bash scripts/dev-virtual.sh arm64 artifacts/powersOfTau28_hez_final_17.ptau",
+    "dev:virtual": "bash scripts/dev-virtual.sh x86_64 artifacts/powersOfTau28_hez_final_17.ptau",
     "dev": "yarn dev:move && yarn dev:spawn && yarn dev:virtual",
     "test": "mocha -r ts-node/register 'test/**/*.ts'"
   },

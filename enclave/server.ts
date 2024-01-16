@@ -19,7 +19,6 @@ import {
     recoverMessageAddress,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { foundry } from "viem/chains";
 import IWorldAbi from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "json" };
 import worlds from "../contracts/worlds.json" assert { type: "json" };
 import {
@@ -63,23 +62,21 @@ const worldData = worldsTyped[CHAIN_ID];
 const worldAddress = worldData.address as Address;
 const account = privateKeyToAccount(process.env.PRIVATE_KEY as Address);
 const abi = IWorldAbi.abi;
-export const redstone = defineChain({
+const redstone = defineChain({
     name: "Redstone Testnet",
-    id: 894,
+    id: 901,
     network: "redstone-testnet",
     nativeCurrency: { decimals: 18, name: "Ether", symbol: "ETH" },
     rpcUrls: {
         default: {
-            http: ["https://894.quarry.linfra.xyz"],
-            webSocket: ["wss://894.quarry.linfra.xyz/ws"],
+            http: ["https://redstone.linfra.xyz/"],
+            webSocket: ["wss://redstone.linfra.xyz/"],
         },
         public: {
-            http: ["https://894.quarry.linfra.xyz"],
-            webSocket: ["wss://894.quarry.linfra.xyz/ws"],
+            http: ["https://redstone.linfra.xyz/"],
+            webSocket: ["wss://redstone.linfra.xyz/"],
         },
     },
-    faucetUrl: "https://894-faucet.quarry.linfra.xyz/trpc",
-    indexerUrl: "https://894-indexer.quarry.linfra.xyz/trpc",
 });
 
 const walletClient = createWalletClient({
