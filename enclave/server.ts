@@ -79,26 +79,6 @@ const redstone = defineChain({
     },
 });
 
-
-export const redstone = defineChain({
-    name: "Redstone Testnet",
-    id: 894,
-    network: "redstone-testnet",
-    nativeCurrency: { decimals: 18, name: "Ether", symbol: "ETH" },
-    rpcUrls: {
-        default: {
-            http: ["https://894.quarry.linfra.xyz"],
-            webSocket: ["wss://894.quarry.linfra.xyz/ws"],
-        },
-        public: {
-            http: ["https://894.quarry.linfra.xyz"],
-            webSocket: ["wss://894.quarry.linfra.xyz/ws"],
-        },
-    },
-    faucetUrl: "https://894-faucet.quarry.linfra.xyz/trpc",
-    indexerUrl: "https://894-indexer.quarry.linfra.xyz/trpc",
-});
-
 const walletClient = createWalletClient({
     account,
     chain: redstone,
