@@ -5,13 +5,13 @@ import {
     Address,
     createPublicClient,
     createWalletClient,
+    defineChain,
     formatEther,
     getContract,
     hexToSignature,
     http as httpTransport,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { foundry } from "viem/chains";
 import IWorldAbi from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "json" };
 import worlds from "../contracts/worlds.json" assert { type: "json" };
 import { ClientToServerEvents, ServerToClientEvents } from "./socket";
@@ -54,15 +54,31 @@ const worldData = worldsTyped[CHAIN_ID];
 const worldAddress = worldData.address as Address;
 const account = privateKeyToAccount(`0x${PLAYER_PRIVKEY}`);
 const abi = IWorldAbi.abi;
+const redstone = defineChain({
+    name: "Redstone Testnet",
+    id: 901,
+    network: "redstone-testnet",
+    nativeCurrency: { decimals: 18, name: "Ether", symbol: "ETH" },
+    rpcUrls: {
+        default: {
+            http: ["https://redstone.linfra.xyz/"],
+            webSocket: ["wss://redstone.linfra.xyz/"],
+        },
+        public: {
+            http: ["https://redstone.linfra.xyz/"],
+            webSocket: ["wss://redstone.linfra.xyz/"],
+        },
+    },
+});
 
 const walletClient = createWalletClient({
     account,
-    chain: foundry,
+    chain: redstone,
     transport: httpTransport(process.env.RPC_URL),
 });
 
 const publicClient = createPublicClient({
-    chain: foundry,
+    chain: redstone,
     transport: httpTransport(process.env.RPC_URL),
 });
 
@@ -195,13 +211,14 @@ async function spawnSignatureResponse(
 
     console.log("Submitting spawn proof to nStates");
     try {
-        await nStates.write.spawn([
+        const tx = await nStates.write.spawn([
             spawnInputs,
             spawnProof,
             virtInputs,
             virtProof,
             spawnSig,
         ]);
+        console.log("spawn tx hash", tx);
         cursor = spawnTile.loc;
     } catch (error) {
         console.error(error);
@@ -403,7 +420,7 @@ socket.on("connect", async () => {
     const balance = await publicClient.getBalance({
         address: account.address,
     });
-    console.log(`Signer's balance in ETH: ${formatEther(balance)}`);
+    console.log(`Players's balance in ETH: ${formatEther(balance)}`);
 
     console.log("Press any key to continue or ESC to exit...");
     process.stdin.resume();

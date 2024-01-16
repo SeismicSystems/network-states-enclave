@@ -63,7 +63,6 @@ const worldData = worldsTyped[CHAIN_ID];
 const worldAddress = worldData.address as Address;
 const account = privateKeyToAccount(process.env.PRIVATE_KEY as Address);
 const abi = IWorldAbi.abi;
-
 export const redstone = defineChain({
     name: "Redstone Testnet",
     id: 894,
