@@ -93,13 +93,6 @@ library TileCommitment {
   }
 
   /**
-   * @notice Register the table with its config (using the specified store).
-   */
-  function register(IStore _store) internal {
-    _store.registerTable(_tableId, _fieldLayout, getKeySchema(), getValueSchema(), getKeyNames(), getFieldNames());
-  }
-
-  /**
    * @notice Get value.
    */
   function getValue(uint256 id) internal view returns (bool value) {
@@ -118,17 +111,6 @@ library TileCommitment {
     _keyTuple[0] = bytes32(uint256(id));
 
     bytes32 _blob = StoreCore.getStaticField(_tableId, _keyTuple, 0, _fieldLayout);
-    return (_toBool(uint8(bytes1(_blob))));
-  }
-
-  /**
-   * @notice Get value (using the specified store).
-   */
-  function getValue(IStore _store, uint256 id) internal view returns (bool value) {
-    bytes32[] memory _keyTuple = new bytes32[](1);
-    _keyTuple[0] = bytes32(uint256(id));
-
-    bytes32 _blob = _store.getStaticField(_tableId, _keyTuple, 0, _fieldLayout);
     return (_toBool(uint8(bytes1(_blob))));
   }
 
@@ -155,17 +137,6 @@ library TileCommitment {
   }
 
   /**
-   * @notice Get value (using the specified store).
-   */
-  function get(IStore _store, uint256 id) internal view returns (bool value) {
-    bytes32[] memory _keyTuple = new bytes32[](1);
-    _keyTuple[0] = bytes32(uint256(id));
-
-    bytes32 _blob = _store.getStaticField(_tableId, _keyTuple, 0, _fieldLayout);
-    return (_toBool(uint8(bytes1(_blob))));
-  }
-
-  /**
    * @notice Set value.
    */
   function setValue(uint256 id, bool value) internal {
@@ -183,16 +154,6 @@ library TileCommitment {
     _keyTuple[0] = bytes32(uint256(id));
 
     StoreCore.setStaticField(_tableId, _keyTuple, 0, abi.encodePacked((value)), _fieldLayout);
-  }
-
-  /**
-   * @notice Set value (using the specified store).
-   */
-  function setValue(IStore _store, uint256 id, bool value) internal {
-    bytes32[] memory _keyTuple = new bytes32[](1);
-    _keyTuple[0] = bytes32(uint256(id));
-
-    _store.setStaticField(_tableId, _keyTuple, 0, abi.encodePacked((value)), _fieldLayout);
   }
 
   /**
@@ -216,16 +177,6 @@ library TileCommitment {
   }
 
   /**
-   * @notice Set value (using the specified store).
-   */
-  function set(IStore _store, uint256 id, bool value) internal {
-    bytes32[] memory _keyTuple = new bytes32[](1);
-    _keyTuple[0] = bytes32(uint256(id));
-
-    _store.setStaticField(_tableId, _keyTuple, 0, abi.encodePacked((value)), _fieldLayout);
-  }
-
-  /**
    * @notice Delete all data for given keys.
    */
   function deleteRecord(uint256 id) internal {
@@ -243,16 +194,6 @@ library TileCommitment {
     _keyTuple[0] = bytes32(uint256(id));
 
     StoreCore.deleteRecord(_tableId, _keyTuple, _fieldLayout);
-  }
-
-  /**
-   * @notice Delete all data for given keys (using the specified store).
-   */
-  function deleteRecord(IStore _store, uint256 id) internal {
-    bytes32[] memory _keyTuple = new bytes32[](1);
-    _keyTuple[0] = bytes32(uint256(id));
-
-    _store.deleteRecord(_tableId, _keyTuple);
   }
 
   /**
