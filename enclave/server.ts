@@ -10,6 +10,7 @@ import {
     Address,
     createPublicClient,
     createWalletClient,
+    defineChain,
     encodeAbiParameters,
     getContract,
     http as httpTransport,
@@ -63,14 +64,33 @@ const worldAddress = worldData.address as Address;
 const account = privateKeyToAccount(process.env.PRIVATE_KEY as Address);
 const abi = IWorldAbi.abi;
 
+export const redstone = defineChain({
+    name: "Redstone Testnet",
+    id: 894,
+    network: "redstone-testnet",
+    nativeCurrency: { decimals: 18, name: "Ether", symbol: "ETH" },
+    rpcUrls: {
+        default: {
+            http: ["https://894.quarry.linfra.xyz"],
+            webSocket: ["wss://894.quarry.linfra.xyz/ws"],
+        },
+        public: {
+            http: ["https://894.quarry.linfra.xyz"],
+            webSocket: ["wss://894.quarry.linfra.xyz/ws"],
+        },
+    },
+    faucetUrl: "https://894-faucet.quarry.linfra.xyz/trpc",
+    indexerUrl: "https://894-indexer.quarry.linfra.xyz/trpc",
+});
+
 const walletClient = createWalletClient({
     account,
-    chain: foundry,
+    chain: redstone,
     transport: httpTransport(process.env.RPC_URL),
 });
 
 const publicClient = createPublicClient({
-    chain: foundry,
+    chain: redstone,
     transport: httpTransport(process.env.RPC_URL),
 });
 
@@ -947,7 +967,7 @@ publicClient.watchBlockNumber({
  * Start server & initialize game.
  */
 server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
-    fs.writeFileSync(`bin/proving_times_${ENCLAVE_STARTUP_TIMESTAMP}.txt`, '');
+    fs.writeFileSync(`bin/proving_times_${ENCLAVE_STARTUP_TIMESTAMP}.txt`, "");
 
     b = new Board(terrainUtils);
     b.printView();
