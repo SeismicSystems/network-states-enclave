@@ -146,6 +146,8 @@ const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
  * hidden state.
  */
 function updatePlayerView(l: Location) {
+    // TODO: don't stringify/unstringify
+    // TODO: batch decrypts in 10-20
     socket.emit("decrypt", Utils.stringifyLocation(l));
 }
 
@@ -438,6 +440,13 @@ socket.on("connect", async () => {
 
     const sig = await walletClient.signMessage({ message: socket.id });
     socket.emit("login", PLAYER.address, sig);
+});
+
+socket.on("disconnect", () => {
+    console.log(
+        "Disconnected from Seismic socket connection. Safely terminating client..."
+    );
+    process.exit();
 });
 
 /*

@@ -15,6 +15,7 @@ import {
     getContract,
     http as httpTransport,
     keccak256,
+    parseAbi,
     parseAbiItem,
     recoverMessageAddress,
 } from "viem";
@@ -38,6 +39,7 @@ import {
 } from "@seismic-systems/ns-fow-game";
 dotenv.config({ path: "../.env" });
 const exec = promisify(execCb);
+import { TileDAWrapper } from "./DA";
 
 const ENCLAVE_STARTUP_TIMESTAMP = new Date()
     .toISOString()
@@ -57,7 +59,9 @@ let hashHistory: Set<string>;
  * Contract values
  */
 const CHAIN_ID = Number(process.env.CHAIN_ID);
-const worldsTyped = worlds as { [key: number]: { address: string } };
+const worldsTyped = worlds as unknown as {
+    [key: number]: { address: string; blockNumber: bigint };
+};
 const worldData = worldsTyped[CHAIN_ID];
 const worldAddress = worldData.address as Address;
 const account = privateKeyToAccount(process.env.PRIVATE_KEY as Address);
@@ -88,6 +92,7 @@ const walletClient = createWalletClient({
 const publicClient = createPublicClient({
     chain: redstone,
     transport: httpTransport(process.env.RPC_URL),
+    pollingInterval: 100,
 });
 
 const nStates = getContract({
@@ -119,6 +124,7 @@ const CLAIMED_MOVE_LIFE_SPAN = BigInt(
 const app = express();
 app.use(express.json());
 
+// [TODO]: add auth to all endpoints
 app.get("/ping", (req, res) => {
     res.sendStatus(200);
 });
@@ -134,6 +140,19 @@ app.post("/provingTime", (req, res) => {
     );
     res.sendStatus(200);
 });
+
+// TODO: enclave can determine player's moveTime
+// app.post("/moveTime", (req, res) => {
+//     const moveTime = req.body.moveTime;
+//     fs.appendFile(
+//         `bin/proving_times_${ENCLAVE_STARTUP_TIMESTAMP}.txt`,
+//         moveTime + "\n",
+//         (err: any) => {
+//             if (err) throw err;
+//         }
+//     );
+//     res.sendStatus(200);
+// });
 
 const server = http.createServer(app);
 
@@ -172,8 +191,6 @@ type ClaimedMove = {
     uFrom: Tile;
     uTo: Tile;
     blockSubmitted: bigint;
-    uFromEnc: EncryptedTile;
-    uToEnc: EncryptedTile;
 };
 
 type EncryptedTile = {
@@ -220,6 +237,10 @@ let claimedSpawns = new Map<string, ClaimedSpawn>();
  * unnecessarily indexing twice.
  */
 let currentBlockHeight: bigint;
+
+let latestBlockSynced: bigint = worldData.blockNumber;
+
+let syncMode: boolean = false;
 
 /*
  * Latest block height players proposed a move.
@@ -284,9 +305,6 @@ async function login(socket: Socket, address: string, sigStr: string) {
     addressToId.set(address, socket.id);
 
     if (b.isSpawned(new Player("", address))) {
-        idToAddress.set(socket.id, address);
-        addressToId.set(address, socket.id);
-
         playerLatestBlock.set(address, 0n);
 
         let visibleTiles = new Set<string>();
@@ -398,6 +416,8 @@ async function sendSpawnSignature(
     );
 
     claimedSpawns.set(sender, { virtTile, spawnTile });
+
+    await TileDAWrapper.saveTileToDA(spawnTile);
 }
 
 /*
@@ -539,16 +559,13 @@ async function sendMoveSignature(
 
         playerLatestBlock.set(sender, currentBlockHeight);
 
-        // Push to DA
-        const uFromEnc = enqueueTile(uFromAsTile);
-        const uToEnc = enqueueTile(uToAsTile);
+        await TileDAWrapper.saveTileToDA(uFromAsTile);
+        await TileDAWrapper.saveTileToDA(uToAsTile);
 
         claimedMoves.set(hUFrom.concat(hUTo), {
             uFrom: uFromAsTile,
             uTo: uToAsTile,
             blockSubmitted: currentBlockHeight,
-            uFromEnc,
-            uToEnc,
         });
 
         // Clear queue if DA node is online
@@ -605,7 +622,7 @@ function disconnect(socket: Socket) {
  * emitted when a player tries to spawn in, whether or not they can. After
  * doing so, they should be allowed to try to spawn again.
  */
-function onSpawnAttempt(player: string, success: boolean) {
+async function onSpawnAttempt(player: string, success: boolean) {
     if (inRecoveryMode) {
         return;
     }
@@ -619,9 +636,6 @@ function onSpawnAttempt(player: string, success: boolean) {
         b.setTile(spawn.spawnTile);
 
         playerLatestBlock.set(player, 0n);
-
-        enqueueTile(spawn.spawnTile);
-        dequeueTileIfDAConnected();
 
         const visibleLocs = b
             .getNearbyLocations(spawn.spawnTile.loc)
@@ -639,7 +653,7 @@ function onSpawnAttempt(player: string, success: boolean) {
  * Callback function for when a NewMove event is emitted. Reads claimed move
  * into enclave's internal beliefs, and alerts players in range to decrypt.
  */
-function onMoveFinalize(hUFrom: string, hUTo: string) {
+async function onMoveFinalize(hUFrom: string, hUTo: string) {
     if (inRecoveryMode) {
         return;
     }
@@ -677,9 +691,9 @@ function onMoveFinalize(hUFrom: string, hUTo: string) {
         b.setTile(move.uTo);
 
         // Add finalized states and try to send to DA
-        enqueueTile(move.uFrom);
-        enqueueTile(move.uTo);
-        dequeueTileIfDAConnected();
+        // enqueueTile(move.uFrom);
+        // enqueueTile(move.uTo);
+        // dequeueTileIfDAConnected();
 
         alertPlayers(newOwner, prevOwner, updatedLocs);
     } else {
@@ -919,43 +933,43 @@ io.on("connection", (socket: Socket) => {
 });
 
 /*
- * Event handler for NewSpawnAttempt event.
- */
-publicClient.watchEvent({
-    address: nStates.address,
-    event: parseAbiItem(
-        "event NewSpawnAttempt(address indexed player, bool indexed success)"
-    ),
-    strict: true,
-    onLogs: (logs) =>
-        logs.forEach((log) =>
-            onSpawnAttempt(log.args.player, log.args.success)
-        ),
-});
-
-/*
- * Event handler for NewMove event.
- */
-publicClient.watchEvent({
-    address: nStates.address,
-    event: parseAbiItem(
-        "event NewMove(uint256 indexed hUFrom, uint256 indexed hUTo)"
-    ),
-    strict: true,
-    onLogs: (logs) =>
-        logs.forEach((log) =>
-            onMoveFinalize(log.args.hUFrom.toString(), log.args.hUTo.toString())
-        ),
-});
-
-/*
  * Event handler for new blocks. Claimed moves that have been stored for too
  * long should be deleted.
  */
 publicClient.watchBlockNumber({
-    onBlockNumber: (blockNumber) => {
+    onBlockNumber: async (blockNumber) => {
         currentBlockHeight = blockNumber;
-        upkeepClaimedMoves();
+        // upkeepClaimedMoves();
+
+        if (syncMode) {
+            return;
+        }
+        syncMode = true;
+
+        const logs = await publicClient.getLogs({
+            address: worldAddress,
+            events: parseAbi([
+                "event NewSpawnAttempt(address indexed player, bool indexed success)",
+                "event NewMove(uint256 indexed hUFrom, uint256 indexed hUTo)",
+            ]),
+            strict: true,
+            fromBlock: 0n,
+            toBlock: blockNumber,
+        });
+
+        for (const log of logs) {
+            if (log.eventName === "NewSpawnAttempt") {
+                await onSpawnAttempt(log.args.player, log.args.success);
+            } else if (log.eventName === "NewMove") {
+                await onMoveFinalize(
+                    log.args.hUFrom.toString(),
+                    log.args.hUTo.toString()
+                );
+            }
+        }
+
+        syncMode = false;
+        latestBlockSynced = blockNumber;
     },
 });
 
