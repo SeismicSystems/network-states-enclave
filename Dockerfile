@@ -55,8 +55,8 @@ RUN pnpm install -C game
 RUN pnpm install -C enclave
 EXPOSE 3000
 
-# CMD ["pnpm", "-C", "enclave", "dev"]
-CMD ["sleep", "3600"]
+CMD ["pnpm", "-C", "enclave", "dev"]
+# CMD ["sleep", "3600"]
 
 
 FROM node:21-alpine3.18 as client
