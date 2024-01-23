@@ -7,8 +7,24 @@
 ARG NODE_VERSION=21.3.0
 ARG PNPM_VERSION=8.12.0
 
-FROM node as contracts
 
+FROM node:21-alpine3.18 as DA
+RUN npm install -g pnpm@${PNPM_VERSION}
+
+WORKDIR /usr/src/app
+
+COPY DA DA/
+COPY .env .
+COPY docker_scripts/da_setup.sh .
+COPY client client/
+RUN sh da_setup.sh
+
+# Run the application.
+CMD ["pnpm", "-C", "DA", "dev"]
+
+
+
+FROM node as contracts-build
 RUN apt-get update
 
 RUN npm install -g pnpm@${PNPM_VERSION}
@@ -17,50 +33,42 @@ RUN apt-get install -y build-essential cmake libgmp-dev libsodium-dev nasm curl 
 
 
 WORKDIR /usr/src/app
-COPY . .
+COPY circuits circuits/
+COPY contracts contracts/
+COPY .env .
+COPY docker_scripts/contracts_redstone.sh .
 RUN curl -L https://foundry.paradigm.xyz | bash
-RUN sh docker_scripts/contracts_setup.sh
 
-EXPOSE 8545
+RUN sh contracts_redstone.sh
 
-RUN ["chmod", "+x", "/usr/src/app/docker_scripts/contracts_run.sh"]
-CMD ["/usr/src/app/docker_scripts/contracts_run.sh"]
-
-
-FROM node as enclave
+FROM node as enclave-image
 
 RUN npm install -g pnpm@${PNPM_VERSION}
-
 WORKDIR /usr/src/app
-COPY --from=contracts /usr/src/app /usr/src/app
 
-RUN sh docker_scripts/enclave_setup.sh
-
+COPY --from=contracts-build /usr/src/app /usr/src/app
+COPY .env .
+COPY enclave enclave/
+COPY game game/
+COPY client client/
+RUN pnpm install -C game
+RUN pnpm install -C enclave
 EXPOSE 3000
 
-CMD ["pnpm", "-C", "enclave", "dev"]
+# CMD ["pnpm", "-C", "enclave", "dev"]
+CMD ["sleep", "3600"]
 
 
-FROM node as DA
+FROM node:21-alpine3.18 as client
 RUN npm install -g pnpm@${PNPM_VERSION}
 
 WORKDIR /usr/src/app
-
-COPY --from=contracts /usr/src/app /usr/src/app
-RUN sh docker_scripts/da_setup.sh
-
-# Run the application.
-CMD ["pnpm", "-C", "DA", "dev"]
-
-
-FROM node as client
-RUN npm install -g pnpm@${PNPM_VERSION}
-
-WORKDIR /usr/src/app
-# COPY . .
-COPY --from=contracts /usr/src/app /usr/src/app
-RUN sh docker_scripts/client_setup.sh
+COPY --from=contracts-build /usr/src/app /usr/src/app
+COPY .env .
+COPY client client/
+COPY game game/
+RUN pnpm install -C game
+RUN pnpm install -C client
 
 # Run the application.
 CMD ["sleep", "3600"]
-

@@ -370,7 +370,8 @@ async function sendSpawnSignature(
         START_RESOURCES,
         cityId
     );
-    cityId++;
+    // TODO : Why CityID is incremental it would create colision in multiple instances -> hashstring or anyrandom=> 10^9
+    cityId++; // store it dynamo or redis or randomnumber
     const hSpawnTile = spawnTile.hash();
 
     const { proof, publicSignals, proverStatus } = await virtualZKP(
@@ -521,7 +522,7 @@ async function sendMoveSignature(
                 { name: "currentBlockHeight", type: "uint256" },
                 { name: "hUFrom", type: "uint256" },
                 { name: "hUTo", type: "uint256" },
-            ],
+            ], 
             [currentBlockHeight, BigInt(hUFrom), BigInt(hUTo)]
         );
         const sig = await walletClient.signMessage({
@@ -550,7 +551,8 @@ async function sendMoveSignature(
             uFromEnc,
             uToEnc,
         });
-
+        // tiles-> location(string)-> tile -> recovery ()
+        // City
         // Clear queue if DA node is online
         dequeueTileIfDAConnected();
     } else {
@@ -671,12 +673,17 @@ function onMoveFinalize(hUFrom: string, hUTo: string) {
         } else {
             updatedLocs.push(move.uTo.loc);
         }
+        // Replaying all of request( this currently) 
 
         // Update state
+        // TODO : Why update ufrm  -> u r storing history user operation contracts ->
+        // contracts:- A-3,  B->3- === B=3
+        // ufrom uto
         b.setTile(move.uFrom);
         b.setTile(move.uTo);
 
         // Add finalized states and try to send to DA
+        // TODO : Why we enque only ufrom and uto why not all updated locs
         enqueueTile(move.uFrom);
         enqueueTile(move.uTo);
         dequeueTileIfDAConnected();
@@ -904,6 +911,7 @@ io.on("connection", (socket: Socket) => {
     socket.on("decrypt", (l: string) => {
         decrypt(socket, l);
     });
+    // TODO : Explain this
     socket.on("sendRecoveredTileResponse", (encTile: any) => {
         sendRecoveredTileResponse(socket, encTile);
     });
@@ -952,6 +960,7 @@ publicClient.watchEvent({
  * Event handler for new blocks. Claimed moves that have been stored for too
  * long should be deleted.
  */
+// TODO : Do we need this now? and also when it will run
 publicClient.watchBlockNumber({
     onBlockNumber: (blockNumber) => {
         currentBlockHeight = blockNumber;

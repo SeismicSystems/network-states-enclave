@@ -153,7 +153,7 @@ export class Board {
         return undefined;
     }
 
-    public getNearbyLocations(l: Location): Location[] {
+    public  getNearbyLocations(l: Location): Location[] {
         let locs: Location[] = [];
         for (let r = l.r - 1; r <= l.r + 1; r++) {
             for (let c = l.c - 1; c <= l.c + 1; c++) {
@@ -181,6 +181,7 @@ export class Board {
                 new Set<string>().add(Utils.stringifyLocation(tl.loc))
             );
         } else {
+            // TODO: Logic seems to be broken
             if (oldOwner !== newOwner) {
                 // Some type of capture happened: must update state
                 if (oldTile.isCityCenter()) {
@@ -206,8 +207,10 @@ export class Board {
                     this.cityTiles.get(oldTile.cityId)?.delete(locString);
                     this.cityTiles.get(tl.cityId)?.add(locString);
                 }
+                // TODO : Why are deleting oldplayer cities fully??
                 this.playerCities.delete(oldOwner);
             } else if (oldTile.isCityCenter()) {
+                // TODO : Explain this part??
                 // Change tile ownership
                 this.cityTiles.get(oldTile.cityId).forEach((locString) => {
                     const tile = this.t.get(locString);
