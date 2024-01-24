@@ -53,6 +53,7 @@ COPY game game/
 COPY client client/
 RUN pnpm install -C game
 RUN pnpm install -C enclave
+RUN mkdir -p enclave/bin
 EXPOSE 3000
 
 CMD ["pnpm", "-C", "enclave", "dev"]
