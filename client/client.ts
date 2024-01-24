@@ -12,6 +12,7 @@ import {
     http as httpTransport,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import { foundry } from "viem/chains";
 import IWorldAbi from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "json" };
 import worlds from "../contracts/worlds.json" assert { type: "json" };
 import { ClientToServerEvents, ServerToClientEvents } from "./socket";
@@ -73,12 +74,12 @@ const redstone = defineChain({
 
 const walletClient = createWalletClient({
     account,
-    chain: redstone,
+    chain: foundry,
     transport: httpTransport(process.env.RPC_URL),
 });
 
 const publicClient = createPublicClient({
-    chain: redstone,
+    chain: foundry,
     transport: httpTransport(process.env.RPC_URL),
 });
 
@@ -146,20 +147,14 @@ const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
  * hidden state.
  */
 function updatePlayerView(l: Location) {
-    // TODO: don't stringify/unstringify
-    // TODO: batch decrypts in 10-20
     socket.emit("decrypt", Utils.stringifyLocation(l));
 }
 
 async function commitToSpawn() {
-    PLAYER.sampleBlind();
-
-    // Save block number player commited to spawning
-    // await PLAYER.commitToSpawn(PLAYER_SPAWN, nStates);
-
     console.log();
     console.log("Getting spawn sig from enclave");
 
+    PLAYER.sampleBlind();
     socket.emit(
         "getSpawnSignature",
         PLAYER.symbol,
