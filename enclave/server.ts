@@ -55,14 +55,7 @@ let inRecoveryMode = process.argv[2] == "1";
 /*
  * Contract values
  */
-const CHAIN_ID = Number(process.env.CHAIN_ID);
-const worldsTyped = worlds as unknown as {
-    [key: number]: { address: string; blockNumber: bigint };
-};
-const worldData = worldsTyped[CHAIN_ID];
-const worldAddress = worldData.address as Address;
-const account = privateKeyToAccount(process.env.PRIVATE_KEY as Address);
-const abi = IWorldAbi.abi;
+
 const redstone = defineChain({
     name: "Redstone Testnet",
     id: 901,
@@ -80,14 +73,25 @@ const redstone = defineChain({
     },
 });
 
+const CHAIN = process.env.CHAIN;
+const chain = CHAIN === "redstone" ? redstone : foundry;
+
+const worldsTyped = worlds as unknown as {
+    [key: number]: { address: string; blockNumber: bigint };
+};
+const worldData = worldsTyped[chain.id];
+const worldAddress = worldData.address as Address;
+const account = privateKeyToAccount(process.env.PRIVATE_KEY as Address);
+const abi = IWorldAbi.abi;
+
 const walletClient = createWalletClient({
     account,
-    chain: foundry,
+    chain,
     transport: httpTransport(process.env.RPC_URL),
 });
 
 const publicClient = createPublicClient({
-    chain: foundry,
+    chain,
     transport: httpTransport(process.env.RPC_URL),
     pollingInterval: 100,
 });
