@@ -1,6 +1,7 @@
 import { ProverStatus } from "@seismic-systems/ns-fow-game/Utils";
 
 interface ServerToClientEvents {
+    challengeResponse: (a: string) => void;
     loginResponse: (locs: string[]) => void;
     trySpawn: () => void;
     handshakeDAResponse: (inRecoveryMode: boolean) => void;
@@ -27,10 +28,11 @@ interface ServerToClientEvents {
 }
 
 interface ClientToServerEvents {
-    login: (address: string, sig: string) => void;
+    challenge: () => void;
+    login: (sig: string) => void;
     handshakeDA: () => void;
     decrypt: (l: string) => void;
-    getSpawnSignature: (symb: string, l: string, blind: string) => void;
+    getSpawnSignature: (symb: string, l: string) => void;
     getMoveSignature: (uFrom: any, uTo: any, blind: string) => void;
     sendRecoveredTileResponse: (enc: any) => void;
     recoveryFinished: () => void;

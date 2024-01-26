@@ -1,6 +1,5 @@
 // @ts-ignore
 import { Utils, Location } from "./Utils";
-import { genRandomSalt } from "maci-crypto";
 /*
  * poseidonPerm is a modified version of iden3's poseidonPerm.js.
  */
@@ -12,7 +11,7 @@ export class Player {
     blind: bigint;
     hBlind: string;
 
-    constructor(symb: string, address: string, socketId?: string) {
+    constructor(symb: string, address: string) {
         this.symbol = symb;
         this.address = address;
 
@@ -20,7 +19,7 @@ export class Player {
     }
 
     public sampleBlind() {
-        this.blind = genRandomSalt() as bigint;
+        this.blind = Utils.genRandomInt();
         this.hBlind = poseidonPerm([BigInt(0), this.blind])[0].toString();
     }
 

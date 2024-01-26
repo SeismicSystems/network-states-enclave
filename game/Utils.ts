@@ -1,6 +1,6 @@
 // @ts-ignore
 import { groth16 } from "snarkjs";
-import { Signature } from "maci-crypto";
+import { Signature, genRandomSalt } from "maci-crypto";
 import * as crypto from "crypto";
 /*
  * poseidonPerm is a modified version of iden3's poseidonPerm.js.
@@ -223,6 +223,13 @@ export class Utils {
         };
 
         return [spawnInputs, spawnProof];
+    }
+
+    /*
+     * Wrapper for genRandomSalt();
+     */
+    static genRandomInt(): bigint {
+        return genRandomSalt() as bigint;
     }
 
     /*

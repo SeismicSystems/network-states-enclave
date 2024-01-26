@@ -75,7 +75,7 @@ const worldsTyped = worlds as unknown as {
 };
 const worldData = worldsTyped[chain.id];
 const worldAddress = worldData.address as Address;
-const account = privateKeyToAccount(process.env.PRIVATE_KEY as Address);
+const account = privateKeyToAccount(PLAYER_PRIVKEY as Address);
 const abi = IWorldAbi.abi;
 
 const walletClient = createWalletClient({
@@ -160,13 +160,16 @@ async function commitToSpawn() {
     console.log();
     console.log("Getting spawn sig from enclave");
 
-    PLAYER.sampleBlind();
     socket.emit(
         "getSpawnSignature",
         PLAYER.symbol,
-        Utils.stringifyLocation(PLAYER_SPAWN),
-        PLAYER.blind.toString()
+        Utils.stringifyLocation(PLAYER_SPAWN)
     );
+}
+
+async function challengeResponse(a: string) {
+    const sig = await walletClient.signMessage({ message: a });
+    socket.emit("login", sig);
 }
 
 /*
@@ -439,8 +442,7 @@ socket.on("connect", async () => {
     b = new Board(terrainUtils);
     b.seed();
 
-    const sig = await walletClient.signMessage({ message: socket.id });
-    socket.emit("login", PLAYER.address, sig);
+    socket.emit("challenge");
 });
 
 socket.on("disconnect", () => {
@@ -463,6 +465,7 @@ process.stdin.on("keypress", async (str) => {
 /*
  * Attach event handlers.
  */
+socket.on("challengeResponse", challengeResponse);
 socket.on("spawnSignatureResponse", spawnSignatureResponse);
 socket.on("trySpawn", commitToSpawn);
 socket.on("loginResponse", loginResponse);

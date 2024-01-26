@@ -174,6 +174,11 @@ let idToAddress = new Map<string, string>();
 let addressToId = new Map<string, string>();
 
 /*
+ * Record of challenges submitted to clients for authentication.
+ */
+let socketChallenges = new Map<string, string>();
+
+/*
  * Current block height. Storing the value in a variable saves from
  * unnecessarily indexing twice.
  */
@@ -194,39 +199,58 @@ let playerLatestBlock = new Map<string, bigint>();
  */
 let tileEncryptionKey: Buffer;
 
-/*
- * If player is already spawned, return visible tiles for decryption. If not,
- * tell player to initiate spawning.
- */
-async function login(socket: Socket, address: string, sigStr: string) {
+function socketChallenge(socket: Socket) {
     if (inRecoveryMode) {
         socket.disconnect();
         return;
     }
 
-    if (addressToId.has(address)) {
-        console.log("Address already logged on");
+    if (socketChallenges.has(socket.id)) {
+        socket.emit("challengeResponse", socketChallenges.get(socket.id));
+        return;
+    }
+
+    const challenge = Utils.genRandomInt().toString();
+    socketChallenges.set(socket.id, challenge);
+    socket.emit("challengeResponse", challenge);
+}
+
+/*
+ * If player is already spawned, return visible tiles for decryption. If not,
+ * tell player to initiate spawning.
+ */
+async function login(socket: Socket, sig: string) {
+    if (inRecoveryMode) {
         socket.disconnect();
         return;
     }
 
-    let sender: string | undefined;
+    let challenge = socketChallenges.get(socket.id);
+    if (!challenge) {
+        console.log("Request challenge first");
+        socket.disconnect();
+        return;
+    }
+
+    let address: string | undefined;
     try {
-        sender = await recoverMessageAddress({
-            message: socket.id,
-            signature: sigStr as Address,
+        address = await recoverMessageAddress({
+            message: challenge,
+            signature: sig as Address,
         });
     } catch (error) {
-        console.log("Malignant signature", sigStr);
+        console.log("Malignant signature", sig);
         socket.disconnect();
         return;
     }
 
-    if (!sender || address != sender) {
-        console.log("Incorrect address given or bad signature");
+    if (!address) {
+        console.log("Bad challenge signature");
         socket.disconnect();
         return;
     }
+
+    socketChallenges.delete(socket.id);
 
     idToAddress.set(socket.id, address);
     addressToId.set(address, socket.id);
@@ -256,12 +280,7 @@ async function login(socket: Socket, address: string, sigStr: string) {
  * at location for contract to verify, or null value if player cannot spawn at
  * this location.
  */
-async function sendSpawnSignature(
-    socket: Socket,
-    symbol: string,
-    l: string,
-    blind: string
-) {
+async function sendSpawnSignature(socket: Socket, symbol: string, l: string) {
     const sender = idToAddress.get(socket.id);
     if (inRecoveryMode || !sender) {
         socket.disconnect();
@@ -275,8 +294,6 @@ async function sendSpawnSignature(
     }
 
     const latestBlock = playerLatestBlock.get(sender);
-    console.log("latestBlock", latestBlock);
-    console.log("currentBlockHeight", currentBlockHeight);
     if (latestBlock === undefined || latestBlock === currentBlockHeight) {
         console.log(`address ${sender} must wait before trying to spawn again`);
         socket.disconnect();
@@ -677,15 +694,15 @@ async function setEnclaveRandCommitment(nStates: any) {
 io.on("connection", (socket: Socket) => {
     console.log("Connected: ", socket.id);
 
-    socket.on("login", (address: string, sig: string) => {
-        login(socket, address, sig);
+    socket.on("challenge", () => {
+        socketChallenge(socket);
     });
-    socket.on(
-        "getSpawnSignature",
-        async (symb: string, l: string, blind: string) => {
-            await sendSpawnSignature(socket, symb, l, blind);
-        }
-    );
+    socket.on("login", (sig: string) => {
+        login(socket, sig);
+    });
+    socket.on("getSpawnSignature", async (symb: string, l: string) => {
+        await sendSpawnSignature(socket, symb, l);
+    });
     socket.on(
         "getMoveSignature",
         async (uFrom: any, uTo: any, blind: string) => {
