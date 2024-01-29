@@ -185,7 +185,7 @@ let socketChallenges = new Map<string, string>();
 let currentBlockHeight: bigint;
 
 let latestBlockSynced: bigint =
-    worldData.blockNumber !== undefined ? worldData.blockNumber : 0n;
+    worldData.blockNumber !== undefined ? BigInt(worldData.blockNumber) : 0n;
 
 let syncMode: boolean = false;
 
