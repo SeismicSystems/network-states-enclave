@@ -136,7 +136,7 @@ app.post("/provingTime", (req, res) => {
 
 const server = http.createServer(app);
 
-console.log("Warning: currently accepting requests from all origins");
+console.log("- Warning: currently accepting requests from all origins");
 const io = new Server<
     ClientToServerEvents,
     ServerToClientEvents,
@@ -227,7 +227,7 @@ async function login(socket: Socket, sig: string) {
 
     let challenge = socketChallenges.get(socket.id);
     if (!challenge) {
-        console.log("Request challenge first");
+        console.log("- Request challenge first");
         socket.disconnect();
         return;
     }
@@ -239,13 +239,13 @@ async function login(socket: Socket, sig: string) {
             signature: sig as Address,
         });
     } catch (error) {
-        console.log("Malignant signature", sig);
+        console.log("- Malignant signature", sig);
         socket.disconnect();
         return;
     }
 
     if (!address) {
-        console.log("Bad challenge signature");
+        console.log("- Bad challenge signature");
         socket.disconnect();
         return;
     }
@@ -288,14 +288,14 @@ async function sendSpawnSignature(socket: Socket, symbol: string, l: string) {
     }
 
     if (b.isSpawned(new Player("", sender))) {
-        console.log(`address ${sender} already spawned`);
+        console.log(`- Address ${sender} already spawned`);
         socket.disconnect();
         return;
     }
 
     const latestBlock = playerLatestBlock.get(sender);
     if (latestBlock === undefined || latestBlock === currentBlockHeight) {
-        console.log(`address ${sender} must wait before trying to spawn again`);
+        console.log(`- Address ${sender} must wait before trying to spawn again`);
         socket.disconnect();
         return;
     }
@@ -304,18 +304,18 @@ async function sendSpawnSignature(socket: Socket, symbol: string, l: string) {
     try {
         loc = Utils.unstringifyLocation(l);
     } catch (error) {
-        console.log("Malignant location string: ", l);
+        console.log("- Malignant location string: ", l);
         socket.disconnect();
     }
 
     if (!loc) {
-        console.log("Location is undefined");
+        console.log("- Location is undefined");
         return;
     }
 
     const virtTile = b.getTile(loc, rand);
     if (!virtTile || !virtTile.isSpawnable()) {
-        console.log("Tile cannot be spawned on");
+        console.log("- Tile cannot be spawned on");
         socket.emit("trySpawn");
         return;
     }
@@ -390,13 +390,13 @@ async function virtualZKP(virtTile: Tile, socketId: string) {
         fs.writeFileSync(`bin/input-${proofId}.json`, JSON.stringify(inputs));
 
         // Call virtual-prover.sh
-        console.log(`Proving virtual ZKP with ID = ${proofId}`);
+        console.log(`- Proving virtual ZKP with ID = ${proofId}`);
         const startTime = Date.now();
         await exec(`../enclave/scripts/virtual-prover.sh ${proofId}`);
         const endTime = Date.now();
 
         const proverTime = endTime - startTime;
-        console.log(`virtual-prover.sh: completed in ${proverTime} ms`);
+        console.log(`- virtual-prover.sh finished in ${proverTime} ms`);
 
         // Read from bin/proof-proofId.json and bin/public-proofId.json
         proof = JSON.parse(
@@ -412,23 +412,23 @@ async function virtualZKP(virtTile: Tile, socketId: string) {
 
         proverStatus = ProverStatus.Rapidsnark;
     } catch (error) {
-        console.error(`Error: ${error}`);
+        console.error(`- Error: ${error}`);
     }
 
     if (proverStatus === ProverStatus.Incomplete) {
         try {
             // If rapidsnark fails, run snarkjs prover
-            console.log(`Proving virtual ZKP with snarkjs`);
+            console.log(`- Proving virtual ZKP with snarkjs`);
             const startTime = Date.now();
             [proof, publicSignals] = await Tile.virtualZKP(inputs);
             const endTime = Date.now();
 
             const proverTime = endTime - startTime;
-            console.log(`snarkjs: completed in ${proverTime} ms`);
+            console.log(`- snarkjs finished in ${proverTime} ms`);
 
             proverStatus = ProverStatus.Snarkjs;
         } catch (error) {
-            console.error(`Error: ${error}`);
+            console.error(`- Error: ${error}`);
             proverStatus = ProverStatus.Incomplete;
         }
     }
@@ -538,7 +538,7 @@ function disconnect(socket: Socket) {
         addressToId.delete(address);
         idToAddress.delete(socket.id);
     }
-    console.log("Disconnected:", socket.id);
+    console.log("- Disconnected: ", socket.id);
 }
 
 /*
@@ -554,7 +554,7 @@ async function onSpawnAttempt(
     const spawnTile = await ClaimedTileDAWrapper.getClaimedTile(hSpawn);
 
     if (!spawnTile) {
-        console.error(`Spawn with hash ${hSpawn} finalized with no preimage`);
+        console.error(`- Spawn with hash ${hSpawn} finalized with no preimage`);
         return;
     }
 
@@ -591,12 +591,12 @@ async function onSpawnAttempt(
 async function onMoveFinalize(hUFrom: string, hUTo: string) {
     const uFrom = await ClaimedTileDAWrapper.getClaimedTile(hUFrom);
     if (!uFrom) {
-        console.error(`Tile with hash ${hUFrom} finalized with no preimage`);
+        console.error(`- Tile with hash ${hUFrom} finalized with no preimage`);
         return;
     }
     const uTo = await ClaimedTileDAWrapper.getClaimedTile(hUTo);
     if (!uTo) {
-        console.error(`Tile with hash ${hUTo} finalized with no preimage`);
+        console.error(`- Tile with hash ${hUTo} finalized with no preimage`);
         return;
     }
 
@@ -692,7 +692,7 @@ async function setEnclaveRandCommitment(nStates: any) {
  * Attach event handlers to a new connection.
  */
 io.on("connection", (socket: Socket) => {
-    console.log("Connected: ", socket.id);
+    console.log("- Connected: ", socket.id);
 
     socket.on("challenge", () => {
         socketChallenge(socket);
@@ -781,12 +781,7 @@ server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
 
         // Compute and save rand, hRand from tileEncryptionKey
         setRand();
-
-        // Cannot recover until DA node connects
-        console.log("In recovery mode, waiting for DA node to connect");
     } else {
-        // [TODO] wait for sufficient time post start up to get from PRNG
-
         // Generate and save encryption key
         tileEncryptionKey = Utils.genAESEncKey();
 
@@ -799,6 +794,6 @@ server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
     }
 
     console.log(
-        `Server running on ${process.env.ENCLAVE_ADDRESS}:${process.env.ENCLAVE_SERVER_PORT}`
+        `- Server running on ${process.env.ENCLAVE_ADDRESS}:${process.env.ENCLAVE_SERVER_PORT}`
     );
 });

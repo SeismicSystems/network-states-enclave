@@ -80,7 +80,7 @@ export class Utils {
                 c: Number(location.c),
             };
         } catch (error) {
-            console.error("Error while unstringifying location:", error);
+            console.error("- Error while unstringifying location:", error);
             return undefined;
         }
     }

@@ -71,7 +71,7 @@ export class Board {
         this.assertBounds(l);
 
         if (!this.getTile(l, BigInt(0)).isUnowned()) {
-            console.error("Tried to spawn player on an owned tile.");
+            console.error("- Tried to spawn player on an owned tile.");
             return;
         }
 

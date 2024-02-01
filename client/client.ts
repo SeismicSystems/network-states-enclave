@@ -158,7 +158,7 @@ function updatePlayerView(l: Location) {
 
 async function commitToSpawn() {
     console.log();
-    console.log("Getting spawn sig from enclave");
+    console.log("- Requesting signature to spawn");
 
     socket.emit(
         "getSpawnSignature",
@@ -186,10 +186,10 @@ async function spawnSignatureResponse(
     proverStatus: ProverStatus
 ) {
     if (proverStatus === ProverStatus.Incomplete) {
-        console.error(`Rapidsnark and snarkjs failed, canceled spawn`);
+        console.error(`- Rapidsnark and snarkjs failed, canceled spawn`);
         return;
     } else {
-        console.log(`${proverStatus} successfully proved virtual ZKP`);
+        console.log(`- ${proverStatus} successfully proved virtual ZKP`);
     }
 
     const virtTile = Tile.fromJSON(virt);
@@ -215,7 +215,7 @@ async function spawnSignatureResponse(
         b: 0,
     };
 
-    console.log("Submitting spawn proof to nStates");
+    console.log("- Submitting spawn proof to NS contract");
     try {
         const tx = await nStates.write.spawn([
             spawnInputs,
@@ -224,10 +224,10 @@ async function spawnSignatureResponse(
             virtProof,
             spawnSig,
         ]);
-        console.log("spawn tx hash", tx);
+        console.log(`- Spawn transaction hash: ${tx}`);
         cursor = spawnTile.loc;
     } catch (error) {
-        console.error(error);
+        console.error("- Error: ", error);
     }
 }
 
@@ -285,8 +285,10 @@ async function move(inp: string, currentBlockHeight: bigint) {
         currentMoveFormattedProof = undefined;
         currentVirtualFormattedProof = undefined;
 
+        const moveZKPStart = Date.now();
         moveZKPPromise.then(async (moveRes) => {
-            console.log("successfully proved move ZKP");
+            const moveZKPEnd = Date.now();
+            console.log(`- Proved move ZKP in ${moveZKPEnd - moveZKPStart} ms`);
 
             currentMoveFormattedProof = await Utils.exportCallDataGroth16(
                 moveRes.proof,
@@ -296,14 +298,13 @@ async function move(inp: string, currentBlockHeight: bigint) {
             // Submit to chain if all zkps and signatures are returned
             await tryToSubmitMove();
         });
-
         // Update player position
         cursor = { r: nr, c: nc };
 
         // Alert enclave of intended move
         socket.emit("getMoveSignature", uFrom, uTo, PLAYER.blind.toString());
     } catch (error) {
-        console.log(error);
+        console.log("- Error: ", error);
     }
 }
 
@@ -321,10 +322,10 @@ async function moveSignatureResponse(
     console.log();
     switch (proverStatus) {
         case ProverStatus.Incomplete:
-            console.error(`Rapidsnark and snarkjs failed, canceled move`);
+            console.error(`- Rapidsnark and snarkjs failed, canceled move`);
             break;
         default:
-            console.log(`${proverStatus} successfully proved virtual ZKP`);
+            console.log(`- ${proverStatus} successfully proved virtual ZKP`);
     }
 
     currentVirtualFormattedProof = await Utils.exportCallDataGroth16(
@@ -366,7 +367,7 @@ async function tryToSubmitMove() {
 
     endProveTime = Date.now();
     const provingTime = endProveTime - startProveTime;
-    console.log(`Time to prove: ${provingTime}ms`);
+    console.log(`- Total move construction time: ${provingTime}ms`);
 
     // Send provingTime to enclave
     fetch(
@@ -412,28 +413,29 @@ async function updateDisplay(locs: string[]) {
     }
 }
 
+// [TODO]: remove errorResponse after console
 async function errorResponse(msg: string) {
-    console.log("Enclave error: ", msg);
+    console.log("- Enclave error: ", msg);
 }
 
 /*
  * Set up player session with enclave. Spawning if necessary.
  */
 socket.on("connect", async () => {
-    console.log("Server connection established");
+    console.log("- Seismic Node connection established");
 
-    console.log(`Player's address: ${walletClient.account.address}`);
+    console.log(`- Player's address: ${walletClient.account.address}`);
     const balance = await publicClient.getBalance({
         address: account.address,
     });
-    console.log(`Players's balance in ETH: ${formatEther(balance)}`);
-
-    console.log("Press any key to continue or ESC to exit...");
+    console.log(`- Player's balance in ETH: ${formatEther(balance)}`);
+ 
+    console.log("- Press any key to continue or ESC to exit...");
     process.stdin.resume();
     process.stdin.on("data", (key) => {
         // ESC
         if (key.toString() === "\u001B") {
-            console.log("Exiting...");
+            console.log("- Exiting...");
             process.exit();
         }
     });
@@ -447,7 +449,7 @@ socket.on("connect", async () => {
 
 socket.on("disconnect", () => {
     console.log(
-        "Disconnected from Seismic socket connection. Safely terminating client..."
+        "- Disconnected from Seismic socket connection. Safely terminating client..."
     );
     process.exit();
 });
