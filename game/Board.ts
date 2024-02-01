@@ -340,7 +340,7 @@ export class Board {
         const tFrom: Tile = this.getTile(from, BigInt(0));
         const tTo: Tile = this.getTile(to, BigInt(0));
 
-        const currentWaterInterval = await nStates.read.getCurrentInterval();
+        const currentWaterInterval= Number(await nStates.read.getCurrentInterval());
 
         const fromCityTroops = await nStates.read.getCityCenterTroops([
             tFrom.cityId,
