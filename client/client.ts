@@ -5,6 +5,7 @@ import {
     Address,
     createPublicClient,
     createWalletClient,
+    defineChain,
     formatEther,
     getContract,
     hexToSignature,
@@ -48,21 +49,43 @@ const MOVE_KEYS: Record<string, number[]> = {
 /*
  * Contract values
  */
-const CHAIN_ID = Number(process.env.CHAIN_ID);
-const worldsTyped = worlds as { [key: number]: { address: string } };
-const worldData = worldsTyped[CHAIN_ID];
+
+const redstone = defineChain({
+    name: "Redstone Testnet",
+    id: 901,
+    network: "redstone-testnet",
+    nativeCurrency: { decimals: 18, name: "Ether", symbol: "ETH" },
+    rpcUrls: {
+        default: {
+            http: ["https://redstone.linfra.xyz/"],
+            webSocket: ["wss://redstone.linfra.xyz/"],
+        },
+        public: {
+            http: ["https://redstone.linfra.xyz/"],
+            webSocket: ["wss://redstone.linfra.xyz/"],
+        },
+    },
+});
+
+const CHAIN = process.env.CHAIN;
+const chain = CHAIN === "redstone" ? redstone : foundry;
+
+const worldsTyped = worlds as unknown as {
+    [key: number]: { address: string; blockNumber: bigint };
+};
+const worldData = worldsTyped[chain.id];
 const worldAddress = worldData.address as Address;
-const account = privateKeyToAccount(`0x${PLAYER_PRIVKEY}`);
+const account = privateKeyToAccount(PLAYER_PRIVKEY as Address);
 const abi = IWorldAbi.abi;
 
 const walletClient = createWalletClient({
     account,
-    chain: foundry,
+    chain,
     transport: httpTransport(process.env.RPC_URL),
 });
 
 const publicClient = createPublicClient({
-    chain: foundry,
+    chain,
     transport: httpTransport(process.env.RPC_URL),
 });
 
@@ -134,20 +157,19 @@ function updatePlayerView(l: Location) {
 }
 
 async function commitToSpawn() {
-    PLAYER.sampleBlind();
-
-    // Save block number player commited to spawning
-    // await PLAYER.commitToSpawn(PLAYER_SPAWN, nStates);
-
     console.log();
-    console.log("Getting spawn sig from enclave");
+    console.log("- Requesting signature to spawn");
 
     socket.emit(
         "getSpawnSignature",
         PLAYER.symbol,
-        Utils.stringifyLocation(PLAYER_SPAWN),
-        PLAYER.blind.toString()
+        Utils.stringifyLocation(PLAYER_SPAWN)
     );
+}
+
+async function challengeResponse(a: string) {
+    const sig = await walletClient.signMessage({ message: a });
+    socket.emit("login", sig);
 }
 
 /*
@@ -164,10 +186,10 @@ async function spawnSignatureResponse(
     proverStatus: ProverStatus
 ) {
     if (proverStatus === ProverStatus.Incomplete) {
-        console.error(`Rapidsnark and snarkjs failed, canceled spawn`);
+        console.error(`- Rapidsnark and snarkjs failed, canceled spawn`);
         return;
     } else {
-        console.log(`${proverStatus} successfully proved virtual ZKP`);
+        console.log(`- ${proverStatus} successfully proved virtual ZKP`);
     }
 
     const virtTile = Tile.fromJSON(virt);
@@ -193,18 +215,19 @@ async function spawnSignatureResponse(
         b: 0,
     };
 
-    console.log("Submitting spawn proof to nStates");
+    console.log("- Submitting spawn proof to NS contract");
     try {
-        await nStates.write.spawn([
+        const tx = await nStates.write.spawn([
             spawnInputs,
             spawnProof,
             virtInputs,
             virtProof,
             spawnSig,
         ]);
+        console.log(`- Spawn transaction hash: ${tx}`);
         cursor = spawnTile.loc;
     } catch (error) {
-        console.error(error);
+        console.error("- Error: ", error);
     }
 }
 
@@ -262,8 +285,10 @@ async function move(inp: string, currentBlockHeight: bigint) {
         currentMoveFormattedProof = undefined;
         currentVirtualFormattedProof = undefined;
 
+        const moveZKPStart = Date.now();
         moveZKPPromise.then(async (moveRes) => {
-            console.log("successfully proved move ZKP");
+            const moveZKPEnd = Date.now();
+            console.log(`- Proved move ZKP in ${moveZKPEnd - moveZKPStart} ms`);
 
             currentMoveFormattedProof = await Utils.exportCallDataGroth16(
                 moveRes.proof,
@@ -273,14 +298,13 @@ async function move(inp: string, currentBlockHeight: bigint) {
             // Submit to chain if all zkps and signatures are returned
             await tryToSubmitMove();
         });
-
         // Update player position
         cursor = { r: nr, c: nc };
 
         // Alert enclave of intended move
         socket.emit("getMoveSignature", uFrom, uTo, PLAYER.blind.toString());
     } catch (error) {
-        console.log(error);
+        console.log("- Error: ", error);
     }
 }
 
@@ -298,10 +322,10 @@ async function moveSignatureResponse(
     console.log();
     switch (proverStatus) {
         case ProverStatus.Incomplete:
-            console.error(`Rapidsnark and snarkjs failed, canceled move`);
+            console.error(`- Rapidsnark and snarkjs failed, canceled move`);
             break;
         default:
-            console.log(`${proverStatus} successfully proved virtual ZKP`);
+            console.log(`- ${proverStatus} successfully proved virtual ZKP`);
     }
 
     currentVirtualFormattedProof = await Utils.exportCallDataGroth16(
@@ -342,7 +366,20 @@ async function tryToSubmitMove() {
     );
 
     endProveTime = Date.now();
-    console.log(`Time to prove: ${endProveTime - startProveTime}ms`);
+    const provingTime = endProveTime - startProveTime;
+    console.log(`- Total move construction time: ${provingTime}ms`);
+
+    // Send provingTime to enclave
+    fetch(
+        `${process.env.ENCLAVE_ADDRESS}:${process.env.ENCLAVE_SERVER_PORT}/provingTime`,
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ provingTime }),
+        }
+    );
 
     await nStates.write.move([
         moveInputs,
@@ -376,28 +413,24 @@ async function updateDisplay(locs: string[]) {
     }
 }
 
-async function errorResponse(msg: string) {
-    console.log("Enclave error: ", msg);
-}
-
 /*
  * Set up player session with enclave. Spawning if necessary.
  */
 socket.on("connect", async () => {
-    console.log("Server connection established");
+    console.log("- Seismic Node connection established");
 
-    console.log(`Player's address: ${walletClient.account.address}`);
+    console.log(`- Player's address: ${walletClient.account.address}`);
     const balance = await publicClient.getBalance({
         address: account.address,
     });
-    console.log(`Signer's balance in ETH: ${formatEther(balance)}`);
-
-    console.log("Press any key to continue or ESC to exit...");
+    console.log(`- Player's balance in ETH: ${formatEther(balance)}`);
+ 
+    console.log("- Press any key to continue or ESC to exit...");
     process.stdin.resume();
     process.stdin.on("data", (key) => {
         // ESC
         if (key.toString() === "\u001B") {
-            console.log("Exiting...");
+            console.log("- Exiting...");
             process.exit();
         }
     });
@@ -406,8 +439,14 @@ socket.on("connect", async () => {
     b = new Board(terrainUtils);
     b.seed();
 
-    const sig = await walletClient.signMessage({ message: socket.id });
-    socket.emit("login", PLAYER.address, sig);
+    socket.emit("challenge");
+});
+
+socket.on("disconnect", () => {
+    console.log(
+        "- Disconnected from Seismic socket connection. Safely terminating client..."
+    );
+    process.exit();
 });
 
 /*
@@ -423,10 +462,10 @@ process.stdin.on("keypress", async (str) => {
 /*
  * Attach event handlers.
  */
+socket.on("challengeResponse", challengeResponse);
 socket.on("spawnSignatureResponse", spawnSignatureResponse);
 socket.on("trySpawn", commitToSpawn);
 socket.on("loginResponse", loginResponse);
 socket.on("decryptResponse", decryptResponse);
 socket.on("moveSignatureResponse", moveSignatureResponse);
-socket.on("errorResponse", errorResponse);
 socket.on("updateDisplay", updateDisplay);

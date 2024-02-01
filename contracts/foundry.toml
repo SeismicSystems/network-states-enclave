@@ -19,5 +19,5 @@ gas_reports = ["*"]
 [profile.lattice-testnet]
 eth_rpc_url = "https://follower.testnet-chain.linfra.xyz"
 
-[profile.lattice-redstone-testnet]
+[profile.redstone]
 eth_rpc_url = "https://redstone.linfra.xyz/"

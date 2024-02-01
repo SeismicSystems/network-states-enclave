@@ -1,6 +1,5 @@
 // @ts-ignore
 import { groth16 } from "snarkjs";
-import { genRandomSalt } from "maci-crypto";
 import { Player } from "./Player";
 import { Utils, Location, Groth16Proof, Terrain } from "./Utils";
 import { TerrainUtils } from "./Terrain";
@@ -316,7 +315,7 @@ export class Tile {
             owner,
             loc,
             rsrc,
-            genRandomSalt() as bigint,
+            Utils.genRandomInt(),
             cityId,
             interval,
             tp

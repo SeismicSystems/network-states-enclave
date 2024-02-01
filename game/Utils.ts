@@ -1,6 +1,6 @@
 // @ts-ignore
 import { groth16 } from "snarkjs";
-import { Signature } from "maci-crypto";
+import { genRandomSalt } from "maci-crypto";
 import * as crypto from "crypto";
 /*
  * poseidonPerm is a modified version of iden3's poseidonPerm.js.
@@ -80,7 +80,7 @@ export class Utils {
                 c: Number(location.c),
             };
         } catch (error) {
-            console.error("Error while unstringifying location:", error);
+            console.error("- Error while unstringifying location:", error);
             return undefined;
         }
     }
@@ -90,32 +90,6 @@ export class Utils {
      */
     static sleep(milliseconds: number) {
         return new Promise((resolve) => setTimeout(resolve, milliseconds));
-    }
-
-    /*
-     * Serialize a MACI signature.
-     */
-    static serializeSig(sig: Signature): string {
-        return JSON.stringify({
-            R8: sig.R8.map((bigIntValue) => bigIntValue.toString()),
-            S: sig.S.toString(),
-        });
-    }
-
-    /*
-     * Unserialize a MACI signature.
-     */
-    static unserializeSig(serializedSignature: string): Signature | null {
-        try {
-            const parsed = JSON.parse(serializedSignature);
-            return {
-                R8: [BigInt(parsed["R8"][0]), BigInt(parsed["R8"][1])],
-                S: BigInt(parsed["S"]),
-            };
-        } catch (error) {
-            console.error("Error while unserializing signature:", error);
-            return null;
-        }
     }
 
     /*
@@ -223,6 +197,13 @@ export class Utils {
         };
 
         return [spawnInputs, spawnProof];
+    }
+
+    /*
+     * Wrapper for genRandomSalt();
+     */
+    static genRandomInt(): bigint {
+        return genRandomSalt() as bigint;
     }
 
     /*

@@ -1,43 +1,51 @@
+import {
+    Board,
+    Location,
+    Player,
+    ProverStatus,
+    TerrainUtils,
+    Tile,
+    Utils,
+} from "@seismic-systems/ns-fow-game";
 import { exec as execCb } from "child_process";
 import dotenv from "dotenv";
 import express from "express";
 import * as fs from "fs";
 import http from "http";
-import { Queue } from "queue-typescript";
 import { Server, Socket } from "socket.io";
 import { promisify } from "util";
 import {
     Address,
     createPublicClient,
     createWalletClient,
+    defineChain,
     encodeAbiParameters,
     getContract,
     http as httpTransport,
     keccak256,
-    parseAbiItem,
+    parseAbi,
     recoverMessageAddress,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { foundry } from "viem/chains";
-import IWorldAbi from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "json" };
-import worlds from "../contracts/worlds.json" assert { type: "json" };
 import {
     ClientToServerEvents,
     InterServerEvents,
     ServerToClientEvents,
     SocketData,
 } from "../client/socket";
-import {
-    Board,
-    Player,
-    ProverStatus,
-    TerrainUtils,
-    Tile,
-    Utils,
-    Location,
-} from "@seismic-systems/ns-fow-game";
+import IWorldAbi from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "json" };
+import worlds from "../contracts/worlds.json" assert { type: "json" };
+import { ClaimedTileDAWrapper } from "./DA";
 dotenv.config({ path: "../.env" });
 const exec = promisify(execCb);
+
+/*
+ * Proving times saved into `bin/proving_times_${ENCLAVE_STARTUP_TIMESTAMP}.txt`
+ */
+const ENCLAVE_STARTUP_TIMESTAMP = new Date()
+    .toISOString()
+    .replace(/[:.-]/g, "");
 
 /*
  * Whether the enclave's global state should be blank or pull from DA.
@@ -45,29 +53,47 @@ const exec = promisify(execCb);
 let inRecoveryMode = process.argv[2] == "1";
 
 /*
- * All NewTile Events emitted
- */
-let hashHistory: Set<string>;
-
-/*
  * Contract values
  */
-const CHAIN_ID = Number(process.env.CHAIN_ID);
-const worldsTyped = worlds as { [key: number]: { address: string } };
-const worldData = worldsTyped[CHAIN_ID];
+
+const redstone = defineChain({
+    name: "Redstone Testnet",
+    id: 901,
+    network: "redstone-testnet",
+    nativeCurrency: { decimals: 18, name: "Ether", symbol: "ETH" },
+    rpcUrls: {
+        default: {
+            http: ["https://redstone.linfra.xyz/"],
+            webSocket: ["wss://redstone.linfra.xyz/"],
+        },
+        public: {
+            http: ["https://redstone.linfra.xyz/"],
+            webSocket: ["wss://redstone.linfra.xyz/"],
+        },
+    },
+});
+
+const CHAIN = process.env.CHAIN;
+const chain = CHAIN === "redstone" ? redstone : foundry;
+
+const worldsTyped = worlds as unknown as {
+    [key: number]: { address: string; blockNumber: bigint };
+};
+const worldData = worldsTyped[chain.id];
 const worldAddress = worldData.address as Address;
 const account = privateKeyToAccount(process.env.PRIVATE_KEY as Address);
 const abi = IWorldAbi.abi;
 
 const walletClient = createWalletClient({
     account,
-    chain: foundry,
+    chain,
     transport: httpTransport(process.env.RPC_URL),
 });
 
 const publicClient = createPublicClient({
-    chain: foundry,
+    chain,
     transport: httpTransport(process.env.RPC_URL),
+    pollingInterval: 100,
 });
 
 const nStates = getContract({
@@ -86,20 +112,31 @@ const START_RESOURCES: number = parseInt(
 );
 
 /*
- * Number of blocks that a claimed move is allowed to be pending without being
- * deleted.
- */
-const CLAIMED_MOVE_LIFE_SPAN = BigInt(
-    <string>process.env.CLAIMED_MOVE_LIFE_SPAN
-);
-
-/*
  * Using Socket.IO to manage communication to clients.
  */
 const app = express();
+app.use(express.json());
+
+// [TODO]: add auth to all endpoints
+app.get("/ping", (req, res) => {
+    res.sendStatus(200);
+});
+
+app.post("/provingTime", (req, res) => {
+    const provingTime = req.body.provingTime;
+    fs.appendFile(
+        `bin/proving_times_${ENCLAVE_STARTUP_TIMESTAMP}.txt`,
+        provingTime + "\n",
+        (err: any) => {
+            if (err) throw err;
+        }
+    );
+    res.sendStatus(200);
+});
+
 const server = http.createServer(app);
 
-console.log("Warning: currently accepting requests from all origins");
+console.log("- Warning: currently accepting requests from all origins");
 const io = new Server<
     ClientToServerEvents,
     ServerToClientEvents,
@@ -125,39 +162,10 @@ const terrainUtils = new TerrainUtils(
     Number(process.env.PERLIN_THRESHOLD_WATER)
 );
 
-type ClaimedSpawn = {
-    virtTile: Tile;
-    spawnTile: Tile;
-};
-
-type ClaimedMove = {
-    uFrom: Tile;
-    uTo: Tile;
-    blockSubmitted: bigint;
-    uFromEnc: EncryptedTile;
-    uToEnc: EncryptedTile;
-};
-
-type EncryptedTile = {
-    symbol: string;
-    address: string;
-    ciphertext: string;
-    iv: string;
-    tag: string;
-};
-
 /*
  * Enclave's internal belief on game state stored in Board object.
  */
 let b: Board;
-
-/*
- * City ID given to each spawning player. Increments by one each time.
- *
- * [TODO]: eventually, the client will sample their own cityId, and the contract
- * will check that the cityId is not in use.
- */
-let cityId: number = 1;
 
 /*
  * Bijection between player's public keys and their socket IDs.
@@ -166,22 +174,20 @@ let idToAddress = new Map<string, string>();
 let addressToId = new Map<string, string>();
 
 /*
- * Moves claimed by players. A move is finalized whenever NewMove event is
- * emitted.
+ * Record of challenges submitted to clients for authentication.
  */
-let claimedMoves = new Map<string, ClaimedMove>();
-
-/*
- * Spawn attempts players successfully commit. Player is spawned in whenever a
- * Spawn event is emitted.
- */
-let claimedSpawns = new Map<string, ClaimedSpawn>();
+let socketChallenges = new Map<string, string>();
 
 /*
  * Current block height. Storing the value in a variable saves from
  * unnecessarily indexing twice.
  */
 let currentBlockHeight: bigint;
+
+let latestBlockSynced: bigint =
+    worldData.blockNumber !== undefined ? BigInt(worldData.blockNumber) : 0n;
+
+let syncMode: boolean = false;
 
 /*
  * Latest block height players proposed a move.
@@ -193,64 +199,63 @@ let playerLatestBlock = new Map<string, bigint>();
  */
 let tileEncryptionKey: Buffer;
 
-/*
- * Socket ID of DA node.
- */
-let socketIdDA: string | undefined;
-
-/*
- * Queue of claimed new tile states that have yet to be pushed to DA.
- */
-let queuedTilesDA = new Queue<EncryptedTile>();
-
-/*
- * Index for retrieving encrypted tiles from DA node.
- */
-let recoveryModeIndex = 0;
-
-/*
- * If player is already spawned, return visible tiles for decryption. If not,
- * tell player to initiate spawning.
- */
-async function login(socket: Socket, address: string, sigStr: string) {
+function socketChallenge(socket: Socket) {
     if (inRecoveryMode) {
         socket.disconnect();
         return;
     }
 
-    if (addressToId.has(address)) {
-        console.log("Address already logged on");
+    if (socketChallenges.has(socket.id)) {
+        socket.emit("challengeResponse", socketChallenges.get(socket.id));
+        return;
+    }
+
+    const challenge = Utils.genRandomInt().toString();
+    socketChallenges.set(socket.id, challenge);
+    socket.emit("challengeResponse", challenge);
+}
+
+/*
+ * If player is already spawned, return visible tiles for decryption. If not,
+ * tell player to initiate spawning.
+ */
+async function login(socket: Socket, sig: string) {
+    if (inRecoveryMode) {
         socket.disconnect();
         return;
     }
 
-    let sender: string | undefined;
+    let challenge = socketChallenges.get(socket.id);
+    if (!challenge) {
+        console.log("- Request challenge first");
+        socket.disconnect();
+        return;
+    }
+
+    let address: string | undefined;
     try {
-        sender = await recoverMessageAddress({
-            message: socket.id,
-            signature: sigStr as Address,
+        address = await recoverMessageAddress({
+            message: challenge,
+            signature: sig as Address,
         });
     } catch (error) {
-        console.log("Malignant signature", sigStr);
+        console.log("- Malignant signature", sig);
         socket.disconnect();
         return;
     }
 
-    if (!sender || address != sender) {
-        console.log("Incorrect address given or bad signature");
+    if (!address) {
+        console.log("- Bad challenge signature");
         socket.disconnect();
         return;
     }
+
+    socketChallenges.delete(socket.id);
 
     idToAddress.set(socket.id, address);
     addressToId.set(address, socket.id);
 
     if (b.isSpawned(new Player("", address))) {
-        idToAddress.set(socket.id, address);
-        addressToId.set(address, socket.id);
-
-        playerLatestBlock.set(address, 0n);
-
         let visibleTiles = new Set<string>();
         b.playerCities.get(address)?.forEach((cityId: number) => {
             b.cityTiles.get(cityId)?.forEach((locString: string) => {
@@ -266,6 +271,8 @@ async function login(socket: Socket, address: string, sigStr: string) {
     } else {
         socket.emit("trySpawn");
     }
+
+    playerLatestBlock.set(address, 0n);
 }
 
 /*
@@ -273,51 +280,42 @@ async function login(socket: Socket, address: string, sigStr: string) {
  * at location for contract to verify, or null value if player cannot spawn at
  * this location.
  */
-async function sendSpawnSignature(
-    socket: Socket,
-    symbol: string,
-    l: string,
-    blind: string
-) {
+async function sendSpawnSignature(socket: Socket, symbol: string, l: string) {
     const sender = idToAddress.get(socket.id);
     if (inRecoveryMode || !sender) {
         socket.disconnect();
         return;
     }
 
-    if (claimedSpawns.has(sender)) {
-        console.log("Already committed to spawn");
+    if (b.isSpawned(new Player("", sender))) {
+        console.log(`- Address ${sender} already spawned`);
         socket.disconnect();
         return;
     }
 
-    let playerChallenge: bigint;
-    try {
-        playerChallenge = BigInt(blind);
-    } catch (error) {
-        console.log("Malignant secret: ", blind);
+    const latestBlock = playerLatestBlock.get(sender);
+    if (latestBlock === undefined || latestBlock === currentBlockHeight) {
+        console.log(`- Address ${sender} must wait before trying to spawn again`);
         socket.disconnect();
         return;
     }
 
     let loc: Location | undefined;
-
     try {
         loc = Utils.unstringifyLocation(l);
     } catch (error) {
-        console.log("Malignant location string: ", l);
+        console.log("- Malignant location string: ", l);
         socket.disconnect();
     }
 
     if (!loc) {
-        console.log("Location is undefined");
+        console.log("- Location is undefined");
         return;
     }
 
-    const virtTile = Tile.genVirtual(loc, rand, terrainUtils);
-    const tile = b.getTile(loc, rand);
-    if (!virtTile.isSpawnable() || !tile || !tile.isUnowned()) {
-        console.log("Tile cannot be spawned on");
+    const virtTile = b.getTile(loc, rand);
+    if (!virtTile || !virtTile.isSpawnable()) {
+        console.log("- Tile cannot be spawned on");
         socket.emit("trySpawn");
         return;
     }
@@ -326,13 +324,15 @@ async function sendSpawnSignature(
     idToAddress.set(socket.id, sender);
     addressToId.set(sender, socket.id);
 
+    // Generate a random 24-bit number for city ID
+    const genCityId = Math.floor(Math.random() * 0xffffff);
+
     const spawnTile = Tile.spawn(
         new Player(symbol, sender),
         loc,
         START_RESOURCES,
-        cityId
+        genCityId
     );
-    cityId++;
     const hSpawnTile = spawnTile.hash();
 
     const { proof, publicSignals, proverStatus } = await virtualZKP(
@@ -359,7 +359,10 @@ async function sendSpawnSignature(
         proverStatus
     );
 
-    claimedSpawns.set(sender, { virtTile, spawnTile });
+    // allow player to try to spawn
+    playerLatestBlock.set(sender, currentBlockHeight);
+
+    await ClaimedTileDAWrapper.saveClaimedTile(spawnTile);
 }
 
 /*
@@ -387,13 +390,13 @@ async function virtualZKP(virtTile: Tile, socketId: string) {
         fs.writeFileSync(`bin/input-${proofId}.json`, JSON.stringify(inputs));
 
         // Call virtual-prover.sh
-        console.log(`Proving virtual ZKP with ID = ${proofId}`);
+        console.log(`- Proving virtual ZKP with ID = ${proofId}`);
         const startTime = Date.now();
         await exec(`../enclave/scripts/virtual-prover.sh ${proofId}`);
         const endTime = Date.now();
 
         const proverTime = endTime - startTime;
-        console.log(`virtual-prover.sh: completed in ${proverTime} ms`);
+        console.log(`- virtual-prover.sh finished in ${proverTime} ms`);
 
         // Read from bin/proof-proofId.json and bin/public-proofId.json
         proof = JSON.parse(
@@ -409,23 +412,23 @@ async function virtualZKP(virtTile: Tile, socketId: string) {
 
         proverStatus = ProverStatus.Rapidsnark;
     } catch (error) {
-        console.error(`Error: ${error}`);
+        console.error(`- Error: ${error}`);
     }
 
     if (proverStatus === ProverStatus.Incomplete) {
         try {
             // If rapidsnark fails, run snarkjs prover
-            console.log(`Proving virtual ZKP with snarkjs`);
+            console.log(`- Proving virtual ZKP with snarkjs`);
             const startTime = Date.now();
             [proof, publicSignals] = await Tile.virtualZKP(inputs);
             const endTime = Date.now();
 
             const proverTime = endTime - startTime;
-            console.log(`snarkjs: completed in ${proverTime} ms`);
+            console.log(`- snarkjs finished in ${proverTime} ms`);
 
             proverStatus = ProverStatus.Snarkjs;
         } catch (error) {
-            console.error(`Error: ${error}`);
+            console.error(`- Error: ${error}`);
             proverStatus = ProverStatus.Incomplete;
         }
     }
@@ -446,15 +449,6 @@ async function sendMoveSignature(
     const sender = idToAddress.get(socket.id);
     if (inRecoveryMode || !sender) {
         // Cut the connection
-        socket.disconnect();
-        return;
-    }
-
-    let playerChallenge: bigint;
-    try {
-        playerChallenge = BigInt(blind);
-    } catch (error) {
-        console.log("Malignant secret: ", blind);
         socket.disconnect();
         return;
     }
@@ -501,20 +495,8 @@ async function sendMoveSignature(
 
         playerLatestBlock.set(sender, currentBlockHeight);
 
-        // Push to DA
-        const uFromEnc = enqueueTile(uFromAsTile);
-        const uToEnc = enqueueTile(uToAsTile);
-
-        claimedMoves.set(hUFrom.concat(hUTo), {
-            uFrom: uFromAsTile,
-            uTo: uToAsTile,
-            blockSubmitted: currentBlockHeight,
-            uFromEnc,
-            uToEnc,
-        });
-
-        // Clear queue if DA node is online
-        dequeueTileIfDAConnected();
+        await ClaimedTileDAWrapper.saveClaimedTile(uFromAsTile);
+        await ClaimedTileDAWrapper.saveClaimedTile(uToAsTile);
     } else {
         // Cut the connection
         socket.disconnect();
@@ -525,7 +507,7 @@ async function sendMoveSignature(
  * Exposes secrets at location l if a requesting player proves ownership of
  * neighboring tile.
  */
-function decrypt(socket: Socket, l: string) {
+async function decrypt(socket: Socket, l: string) {
     if (inRecoveryMode || !idToAddress.has(socket.id)) {
         socket.disconnect();
         return;
@@ -556,10 +538,7 @@ function disconnect(socket: Socket) {
         addressToId.delete(address);
         idToAddress.delete(socket.id);
     }
-    if (socketIdDA == socket.id) {
-        socketIdDA = undefined;
-    }
-    console.log("Disconnected:", socket.id);
+    console.log("- Disconnected: ", socket.id);
 }
 
 /*
@@ -567,33 +546,41 @@ function disconnect(socket: Socket) {
  * emitted when a player tries to spawn in, whether or not they can. After
  * doing so, they should be allowed to try to spawn again.
  */
-function onSpawnAttempt(player: string, success: boolean) {
-    if (inRecoveryMode) {
+async function onSpawnAttempt(
+    player: string,
+    hSpawn: string,
+    success: boolean
+) {
+    const spawnTile = await ClaimedTileDAWrapper.getClaimedTile(hSpawn);
+
+    if (!spawnTile) {
+        console.error(`- Spawn with hash ${hSpawn} finalized with no preimage`);
         return;
     }
 
-    const spawn = claimedSpawns.get(player);
-    claimedSpawns.delete(player);
+    // Update state even if player is not currently connected
+    if (success) {
+        b.setTile(spawnTile);
+    }
+
+    // Let player move or try to spawn again
+    playerLatestBlock.set(player, 0n);
+
     const socketId = addressToId.get(player);
 
-    if (success && spawn && socketId) {
-        // Spawn in player
-        b.setTile(spawn.spawnTile);
+    if (!socketId) {
+        return;
+    }
 
-        playerLatestBlock.set(player, 0n);
-
-        enqueueTile(spawn.spawnTile);
-        dequeueTileIfDAConnected();
-
+    // socketID exists -> player is connected
+    if (success) {
         const visibleLocs = b
-            .getNearbyLocations(spawn.spawnTile.loc)
+            .getNearbyLocations(spawnTile.loc)
             .map((loc) => Utils.stringifyLocation(loc));
 
         io.to(socketId).emit("loginResponse", visibleLocs);
-    } else if (!success && socketId) {
+    } else {
         io.to(socketId).emit("trySpawn");
-    } else if (socketId) {
-        console.error(`Player ${player} spawned without a signature.`);
     }
 }
 
@@ -601,54 +588,45 @@ function onSpawnAttempt(player: string, success: boolean) {
  * Callback function for when a NewMove event is emitted. Reads claimed move
  * into enclave's internal beliefs, and alerts players in range to decrypt.
  */
-function onMoveFinalize(hUFrom: string, hUTo: string) {
-    if (inRecoveryMode) {
+async function onMoveFinalize(hUFrom: string, hUTo: string) {
+    const uFrom = await ClaimedTileDAWrapper.getClaimedTile(hUFrom);
+    if (!uFrom) {
+        console.error(`- Tile with hash ${hUFrom} finalized with no preimage`);
         return;
     }
-    const moveHash = hUFrom.concat(hUTo);
-    const move = claimedMoves.get(moveHash);
-    if (move) {
-        // Move is no longer pending
-        claimedMoves.delete(moveHash);
-
-        // Before state is updated, we need the previous 'to' tile owner
-        const tTo = b.getTile(move.uTo.loc, rand);
-        if (!tTo) {
-            return;
-        }
-
-        const newOwner = move.uTo.owner.address;
-        const prevOwner = tTo.owner.address;
-        const ownershipChanged = prevOwner !== newOwner;
-
-        // Alert all nearby players that an updateDisplay is needed
-        let updatedLocs = [move.uFrom.loc];
-        if (ownershipChanged && tTo.isCityCenter()) {
-            b.cityTiles.get(tTo.cityId)?.forEach((locString: string) => {
-                const loc = Utils.unstringifyLocation(locString);
-                if (loc) {
-                    updatedLocs.push(loc);
-                }
-            });
-        } else {
-            updatedLocs.push(move.uTo.loc);
-        }
-
-        // Update state
-        b.setTile(move.uFrom);
-        b.setTile(move.uTo);
-
-        // Add finalized states and try to send to DA
-        enqueueTile(move.uFrom);
-        enqueueTile(move.uTo);
-        dequeueTileIfDAConnected();
-
-        alertPlayers(newOwner, prevOwner, updatedLocs);
-    } else {
-        console.error(
-            `Move: (${hUFrom}, ${hUTo}) was finalized without a signature.`
-        );
+    const uTo = await ClaimedTileDAWrapper.getClaimedTile(hUTo);
+    if (!uTo) {
+        console.error(`- Tile with hash ${hUTo} finalized with no preimage`);
+        return;
     }
+
+    const tTo = b.getTile(uTo.loc, rand);
+    if (!tTo) {
+        // uTo cannot be out-of-bounds if verification passed
+        return;
+    }
+
+    const newOwner = uTo.owner.address;
+    const prevOwner = tTo.owner.address;
+    const ownershipChanged = prevOwner !== newOwner;
+
+    // Alert all nearby players that an updateDisplay is needed
+    let updatedLocs = [uFrom.loc];
+    if (ownershipChanged && tTo.isCityCenter()) {
+        b.cityTiles.get(tTo.cityId)?.forEach((locString: string) => {
+            const loc = Utils.unstringifyLocation(locString);
+            if (loc) {
+                updatedLocs.push(loc);
+            }
+        });
+    } else {
+        updatedLocs.push(uTo.loc);
+    }
+
+    b.setTile(uFrom);
+    b.setTile(uTo);
+
+    alertPlayers(newOwner, prevOwner, updatedLocs);
 }
 
 /*
@@ -657,7 +635,7 @@ function onMoveFinalize(hUFrom: string, hUTo: string) {
  * decrypt all tiles in the 3x3 region, and nearby players decrypt the tile in
  * updatedLocs.
  */
-function alertPlayers(
+async function alertPlayers(
     newOwner: string,
     prevOwner: string,
     updatedLocs: Location[]
@@ -691,135 +669,6 @@ function alertPlayers(
 }
 
 /*
- * Sets the socket ID of the DA node, if not already set. Sends back
- * inRecoveryMode variable.
- */
-async function handshakeDA(socket: Socket) {
-    if (socketIdDA == undefined) {
-        socketIdDA = socket.id;
-
-        // Fetch all NewTile events
-        const newTileLogs = await publicClient.getLogs({
-            event: parseAbiItem("event NewTile(uint256 indexed hTile)"),
-            strict: true,
-        });
-        hashHistory = new Set<string>();
-        newTileLogs.forEach((e) => {
-            hashHistory.add(e.args.hTile.toString());
-        });
-
-        io.to(socketIdDA).emit("handshakeDAResponse", inRecoveryMode);
-    } else {
-        // If DA socket ID is already set, then do nothing and break connection
-        socket.disconnect();
-    }
-}
-
-/*
- * Read from DA node for recovery process.
- */
-async function sendRecoveredTileResponse(socket: Socket, encTile: any) {
-    if (socketIdDA == undefined || socket.id != socketIdDA) {
-        socket.disconnect();
-        return;
-    }
-
-    const ciphertext = encTile.ciphertext;
-    const iv = encTile.iv;
-    const tag = encTile.tag;
-
-    if (!ciphertext || !iv || !tag) {
-        return;
-    }
-
-    const tile = Tile.fromJSON(
-        Utils.decryptTile(tileEncryptionKey, ciphertext, iv, tag)
-    );
-
-    // Push tile into state if it's hash has been emitted
-    if (tile && hashHistory.has(tile.hash())) {
-        if (!b.isSpawned(tile.owner)) {
-            b.spawn(tile.loc, tile.owner, START_RESOURCES, tile.cityId);
-            cityId++;
-        } else {
-            b.setTile(tile);
-        }
-
-        console.log(`Tile ${recoveryModeIndex}: success`);
-    } else {
-        console.error(`Tile ${recoveryModeIndex}: failure`);
-    }
-
-    // Request next tile
-    recoveryModeIndex++;
-    io.to(socketIdDA).emit("sendRecoveredTile", recoveryModeIndex);
-}
-
-/*
- * Continue to push encrypted tiles to DA node.
- */
-function saveToDatabaseResponse(socket: Socket) {
-    if (socketIdDA == undefined || socket.id != socketIdDA) {
-        socket.disconnect();
-        return;
-    }
-    dequeueTileIfDAConnected();
-}
-
-/*
- * Wrap-up function when DA reports a finished recovery.
- */
-function finishRecovery(socket: Socket) {
-    if (socketIdDA == undefined || socket.id != socketIdDA) {
-        socket.disconnect();
-        return;
-    }
-    console.log("Recovery finished");
-    b.printView();
-
-    // Enable play
-    inRecoveryMode = false;
-}
-
-/*
- * Encrypt and enqueue tile.
- */
-function enqueueTile(tile: Tile): EncryptedTile {
-    const { ciphertext, iv, tag } = Utils.encryptTile(tileEncryptionKey, tile);
-    const enc = {
-        symbol: tile.owner.symbol,
-        address: tile.owner.address,
-        ciphertext,
-        iv,
-        tag,
-    };
-    queuedTilesDA.enqueue(enc);
-    return enc;
-}
-
-/*
- * Submit encrypted tile to DA node to push into database.
- */
-function dequeueTileIfDAConnected() {
-    if (socketIdDA != undefined && queuedTilesDA.length > 0) {
-        let encTile = queuedTilesDA.dequeue();
-        io.to(socketIdDA).emit("saveToDatabase", encTile);
-    }
-}
-
-/*
- * Callback function called on new block events. Deletes claimed moves that
- * are unresolved for too long.
- */
-function upkeepClaimedMoves() {
-    for (let [h, c] of claimedMoves.entries()) {
-        if (currentBlockHeight > c.blockSubmitted + CLAIMED_MOVE_LIFE_SPAN) {
-            claimedMoves.delete(h);
-        }
-    }
-}
-
-/*
  * Computes rand from the AES key. Rand is some randomness the enclave commits
  * to. In recovery mode it is crucial that rand is the same as in the enclave's
  * previous execution.
@@ -843,37 +692,25 @@ async function setEnclaveRandCommitment(nStates: any) {
  * Attach event handlers to a new connection.
  */
 io.on("connection", (socket: Socket) => {
-    console.log("Connected: ", socket.id);
+    console.log("- Connected: ", socket.id);
 
-    socket.on("login", (address: string, sig: string) => {
-        login(socket, address, sig);
+    socket.on("challenge", () => {
+        socketChallenge(socket);
     });
-    socket.on(
-        "getSpawnSignature",
-        async (symb: string, l: string, blind: string) => {
-            sendSpawnSignature(socket, symb, l, blind);
-        }
-    );
-    socket.on("handshakeDA", async () => {
-        handshakeDA(socket);
+    socket.on("login", (sig: string) => {
+        login(socket, sig);
+    });
+    socket.on("getSpawnSignature", async (symb: string, l: string) => {
+        await sendSpawnSignature(socket, symb, l);
     });
     socket.on(
         "getMoveSignature",
         async (uFrom: any, uTo: any, blind: string) => {
-            sendMoveSignature(socket, uFrom, uTo, blind);
+            await sendMoveSignature(socket, uFrom, uTo, blind);
         }
     );
-    socket.on("decrypt", (l: string) => {
-        decrypt(socket, l);
-    });
-    socket.on("sendRecoveredTileResponse", (encTile: any) => {
-        sendRecoveredTileResponse(socket, encTile);
-    });
-    socket.on("recoveryFinished", () => {
-        finishRecovery(socket);
-    });
-    socket.on("saveToDatabaseResponse", () => {
-        saveToDatabaseResponse(socket);
+    socket.on("decrypt", async (l: string) => {
+        await decrypt(socket, l);
     });
     socket.on("disconnecting", () => {
         disconnect(socket);
@@ -881,43 +718,46 @@ io.on("connection", (socket: Socket) => {
 });
 
 /*
- * Event handler for NewSpawnAttempt event.
- */
-publicClient.watchEvent({
-    address: nStates.address,
-    event: parseAbiItem(
-        "event NewSpawnAttempt(address indexed player, bool indexed success)"
-    ),
-    strict: true,
-    onLogs: (logs) =>
-        logs.forEach((log) =>
-            onSpawnAttempt(log.args.player, log.args.success)
-        ),
-});
-
-/*
- * Event handler for NewMove event.
- */
-publicClient.watchEvent({
-    address: nStates.address,
-    event: parseAbiItem(
-        "event NewMove(uint256 indexed hUFrom, uint256 indexed hUTo)"
-    ),
-    strict: true,
-    onLogs: (logs) =>
-        logs.forEach((log) =>
-            onMoveFinalize(log.args.hUFrom.toString(), log.args.hUTo.toString())
-        ),
-});
-
-/*
  * Event handler for new blocks. Claimed moves that have been stored for too
  * long should be deleted.
  */
 publicClient.watchBlockNumber({
-    onBlockNumber: (blockNumber) => {
+    onBlockNumber: async (blockNumber) => {
         currentBlockHeight = blockNumber;
-        upkeepClaimedMoves();
+
+        if (syncMode) {
+            return;
+        }
+        syncMode = true;
+
+        const logs = await publicClient.getLogs({
+            address: worldAddress,
+            events: parseAbi([
+                "event NewSpawnAttempt(address indexed player, uint256 indexed hSpawn, bool indexed success)",
+                "event NewMove(uint256 indexed hUFrom, uint256 indexed hUTo)",
+            ]),
+            strict: true,
+            fromBlock: latestBlockSynced + 1n,
+            toBlock: blockNumber,
+        });
+
+        for (const log of logs) {
+            if (log.eventName === "NewSpawnAttempt") {
+                await onSpawnAttempt(
+                    log.args.player,
+                    log.args.hSpawn.toString(),
+                    log.args.success
+                );
+            } else if (log.eventName === "NewMove") {
+                await onMoveFinalize(
+                    log.args.hUFrom.toString(),
+                    log.args.hUTo.toString()
+                );
+            }
+        }
+
+        syncMode = false;
+        latestBlockSynced = blockNumber;
     },
 });
 
@@ -925,6 +765,8 @@ publicClient.watchBlockNumber({
  * Start server & initialize game.
  */
 server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
+    fs.writeFileSync(`bin/proving_times_${ENCLAVE_STARTUP_TIMESTAMP}.txt`, "");
+
     b = new Board(terrainUtils);
     b.printView();
 
@@ -939,12 +781,7 @@ server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
 
         // Compute and save rand, hRand from tileEncryptionKey
         setRand();
-
-        // Cannot recover until DA node connects
-        console.log("In recovery mode, waiting for DA node to connect");
     } else {
-        // [TODO] wait for sufficient time post start up to get from PRNG
-
         // Generate and save encryption key
         tileEncryptionKey = Utils.genAESEncKey();
 
@@ -957,6 +794,6 @@ server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
     }
 
     console.log(
-        `Server running on ${process.env.ENCLAVE_ADDRESS}:${process.env.ENCLAVE_SERVER_PORT}`
+        `- Server running on ${process.env.ENCLAVE_ADDRESS}:${process.env.ENCLAVE_SERVER_PORT}`
     );
 });

@@ -31,7 +31,7 @@ contract SpawnSystem is IEnclaveEvents, System {
         Groth16Proof memory virtualProof,
         Signature memory sig
     ) public {
-        LibSpawn.checkSpawnInputs(_msgSender(), spawnInputs, sig);
+        LibSpawn.checkSpawnInputs(spawnInputs, sig);
         LibSpawnVerify.verifySpawnProof(spawnInputs, spawnProof);
         LibVirtualVerify.verifyVirtualProof(virtualInputs, virtualProof);
 
@@ -39,11 +39,11 @@ contract SpawnSystem is IEnclaveEvents, System {
             LibSpawn.spawnPlayer(_msgSender(), spawnInputs);
 
             emit NewTile(spawnInputs.hSpawnTile);
-            emit NewSpawnAttempt(_msgSender(), true);
+            emit NewSpawnAttempt(_msgSender(), spawnInputs.hSpawnTile, true);
         } else {
             LibSpawn.resetPlayer(_msgSender());
 
-            emit NewSpawnAttempt(_msgSender(), false);
+            emit NewSpawnAttempt(_msgSender(), spawnInputs.hSpawnTile, false);
         }
     }
 
