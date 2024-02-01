@@ -21,7 +21,6 @@ interface ServerToClientEvents {
         pubsigs: any,
         proverStatus: ProverStatus
     ) => void;
-    errorResponse: (msg: string) => void;
     updateDisplay: (locs: string[]) => void;
     sendRecoveredTile: (index: number) => void;
     saveToDatabase: (enc: any) => void;

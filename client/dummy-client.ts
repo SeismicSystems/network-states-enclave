@@ -444,10 +444,6 @@ async function updateDisplay(locs: string[]) {
     }
 }
 
-async function errorResponse(msg: string) {
-    console.log("Enclave error: ", msg);
-}
-
 /*
  * Set up player session with enclave. Spawning if necessary.
  */
@@ -475,5 +471,4 @@ socket.on("trySpawn", commitToSpawn);
 socket.on("loginResponse", loginResponse);
 socket.on("decryptResponse", decryptResponse);
 socket.on("moveSignatureResponse", moveSignatureResponse);
-socket.on("errorResponse", errorResponse);
 socket.on("updateDisplay", updateDisplay);
