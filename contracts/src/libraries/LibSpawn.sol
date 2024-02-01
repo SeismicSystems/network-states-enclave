@@ -13,7 +13,6 @@ library LibSpawn {
     ) internal view {
         require(spawnInputs.spawnCityId != 0, "City ID must be non-zero");
 
-        // [TMP]: commented out for debugging purposes
         require(
             CityPlayer.getValue(spawnInputs.spawnCityId) == address(0),
             "City is already in game"
