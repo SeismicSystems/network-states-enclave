@@ -288,6 +288,7 @@ async function move(inp: string, currentBlockHeight: bigint) {
         const moveZKPStart = Date.now();
         moveZKPPromise.then(async (moveRes) => {
             const moveZKPEnd = Date.now();
+            console.log();
             console.log(`- Proved move ZKP in ${moveZKPEnd - moveZKPStart} ms`);
 
             currentMoveFormattedProof = await Utils.exportCallDataGroth16(
@@ -319,7 +320,6 @@ async function moveSignatureResponse(
     virtPubSigs: any,
     proverStatus: ProverStatus
 ) {
-    console.log();
     switch (proverStatus) {
         case ProverStatus.Incomplete:
             console.error(`- Rapidsnark and snarkjs failed, canceled move`);
