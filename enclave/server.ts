@@ -48,9 +48,10 @@ const ENCLAVE_STARTUP_TIMESTAMP = new Date()
     .replace(/[:.-]/g, "");
 
 /*
- * Whether the enclave's global state should be blank or pull from DA.
+ * Enclave is in "recovery mode" until it reads all prior contract events and
+ * syncs with global state. Until then, spawns/moves are not allowed.
  */
-let inRecoveryMode = process.argv[2] == "1";
+let inRecoveryMode = true;
 
 /*
  * Contract values
@@ -104,7 +105,7 @@ const nStates = getContract({
 });
 
 /*
- * Set game parameters and create dummy players.
+ * Game parameters
  */
 const START_RESOURCES: number = parseInt(
     <string>process.env.START_RESOURCES,
@@ -392,7 +393,7 @@ async function virtualZKP(virtTile: Tile, socketId: string) {
         fs.writeFileSync(`bin/input-${proofId}.json`, JSON.stringify(inputs));
 
         // Call virtual-prover.sh
-        console.log(`- Proving virtual ZKP with ID = ${proofId}`);
+        console.log(`- Proving virtual ZKP with ID=${proofId}`);
         const startTime = Date.now();
         await exec(`../enclave/scripts/virtual-prover.sh ${proofId}`);
         const endTime = Date.now();
@@ -759,6 +760,12 @@ publicClient.watchBlockNumber({
 
         syncMode = false;
         latestBlockSynced = blockNumber;
+
+        // Allow client interaction after initial sync with chain
+        if (inRecoveryMode) {
+            inRecoveryMode = false;
+            console.log('- Initial sync with chain complete')
+        }
     },
 });
 
@@ -768,10 +775,9 @@ publicClient.watchBlockNumber({
 server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
     fs.writeFileSync(`bin/proving_times_${ENCLAVE_STARTUP_TIMESTAMP}.txt`, "");
 
-    b = new Board(terrainUtils);
-    b.printView();
-
     await setEnclaveBlindIfBlank();
+
+    b = new Board(terrainUtils);
 
     console.log(
         `- Server running on ${process.env.ENCLAVE_ADDRESS}:${process.env.ENCLAVE_SERVER_PORT}`
