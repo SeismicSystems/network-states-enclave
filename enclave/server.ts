@@ -36,7 +36,7 @@ import {
 } from "../client/socket";
 import IWorldAbi from "../contracts/out/IWorld.sol/IWorld.json" assert { type: "json" };
 import worlds from "../contracts/worlds.json" assert { type: "json" };
-import { ClaimedTileDAWrapper } from "./DA";
+import { ClaimedTileDAWrapper, EnclaveValuesDAWrapper } from "./DA";
 dotenv.config({ path: "../.env" });
 const exec = promisify(execCb);
 
@@ -295,7 +295,9 @@ async function sendSpawnSignature(socket: Socket, symbol: string, l: string) {
 
     const latestBlock = playerLatestBlock.get(sender);
     if (latestBlock === undefined || latestBlock === currentBlockHeight) {
-        console.log(`- Address ${sender} must wait before trying to spawn again`);
+        console.log(
+            `- Address ${sender} must wait before trying to spawn again`
+        );
         socket.disconnect();
         return;
     }
@@ -671,20 +673,21 @@ async function alertPlayers(
 /*
  * Computes rand from the AES key. Rand is some randomness the enclave commits
  * to. In recovery mode it is crucial that rand is the same as in the enclave's
- * previous execution.
+ * previous execution, and that different enclave instances are synced on rand.
  */
-function setRand() {
-    rand = Utils.poseidonExt([
-        BigInt("0x" + tileEncryptionKey.toString("hex")),
-    ]);
-    hRand = Utils.poseidonExt([rand]);
-}
+async function setEnclaveBlindIfBlank() {
+    const res = await EnclaveValuesDAWrapper.getEnclaveBlind();
+    if (res === undefined) {
+        rand = Utils.poseidonExt([
+            BigInt("0x" + tileEncryptionKey.toString("hex")),
+        ]);
+        EnclaveValuesDAWrapper.setEnclaveBlind(rand.toString());
+    } else {
+        rand = res;
+    }
 
-/*
- * Commit to enclave randomness, derived from AES key for DA.
- */
-async function setEnclaveRandCommitment(nStates: any) {
-    setRand();
+    // Ensure contract and enclave are synced, even if rand is saved locally
+    hRand = Utils.poseidonExt([rand]);
     await nStates.write.setEnclaveRandCommitment([hRand.toString()]);
 }
 
@@ -778,9 +781,6 @@ server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
             }),
             "hex"
         );
-
-        // Compute and save rand, hRand from tileEncryptionKey
-        setRand();
     } else {
         // Generate and save encryption key
         tileEncryptionKey = Utils.genAESEncKey();
@@ -788,10 +788,9 @@ server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
         fs.writeFileSync(
             process.env.ENCRYPTION_KEY_PATH!,
             tileEncryptionKey.toString("hex")
-        );
-
-        await setEnclaveRandCommitment(nStates);
+        );        
     }
+    await setEnclaveBlindIfBlank();
 
     console.log(
         `- Server running on ${process.env.ENCLAVE_ADDRESS}:${process.env.ENCLAVE_SERVER_PORT}`
