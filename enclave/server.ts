@@ -678,9 +678,7 @@ async function alertPlayers(
 async function setEnclaveBlindIfBlank() {
     const res = await EnclaveValuesDAWrapper.getEnclaveBlind();
     if (res === undefined) {
-        rand = Utils.poseidonExt([
-            BigInt("0x" + tileEncryptionKey.toString("hex")),
-        ]);
+        rand = Utils.genRandomInt();
         EnclaveValuesDAWrapper.setEnclaveBlind(rand.toString());
     } else {
         rand = res;
@@ -773,23 +771,6 @@ server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
     b = new Board(terrainUtils);
     b.printView();
 
-    if (inRecoveryMode) {
-        // Get previous encryption key
-        tileEncryptionKey = Buffer.from(
-            fs.readFileSync(process.env.ENCRYPTION_KEY_PATH!, {
-                encoding: "utf8",
-            }),
-            "hex"
-        );
-    } else {
-        // Generate and save encryption key
-        tileEncryptionKey = Utils.genAESEncKey();
-
-        fs.writeFileSync(
-            process.env.ENCRYPTION_KEY_PATH!,
-            tileEncryptionKey.toString("hex")
-        );        
-    }
     await setEnclaveBlindIfBlank();
 
     console.log(
