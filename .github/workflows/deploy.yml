@@ -39,7 +39,9 @@ jobs:
 
     - name: Remove 'v' prefix from tag
       id: image-version
-      run: echo "::set-output name=tag::${{ steps.git-tag.outputs.tag:v }}"
+      run: |
+        VERSION=${{ steps.git-tag.outputs.tag }}
+        echo "::set-output name=tag::${VERSION#v}"
 
     - name: Make enclave image and deploy it to ECR
       run: |
