@@ -196,10 +196,9 @@ let syncMode: boolean = false;
 let playerLatestBlock = new Map<string, bigint>();
 
 /*
- * Encryption key for global state sent to DA.
+ * Callback function that returns a challenge for client to sign with their
+ * wallet.
  */
-let tileEncryptionKey: Buffer;
-
 function socketChallenge(socket: Socket) {
     if (inRecoveryMode) {
         socket.disconnect();
