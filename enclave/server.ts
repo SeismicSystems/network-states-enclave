@@ -118,9 +118,15 @@ const START_RESOURCES: number = parseInt(
 const app = express();
 app.use(express.json());
 
-// [TODO]: add auth to all endpoints
+/*
+ * Health status. OK if recoveryMode is finished, Service Unavailable if not.
+ */
 app.get("/ping", (req, res) => {
-    res.sendStatus(200);
+    if (inRecoveryMode) {
+        res.sendStatus(503);
+    } else {
+        res.sendStatus(200);
+    }
 });
 
 app.post("/provingTime", (req, res) => {
@@ -135,9 +141,23 @@ app.post("/provingTime", (req, res) => {
     res.sendStatus(200);
 });
 
+/*
+ * For dev use only. Remove for production.
+ */
+app.post("/reset", async (req, res) => {
+    await ClaimedTileDAWrapper.clearClaimedTiles();
+    b = new Board(terrainUtils);
+
+    // Force reset enclave blind commitment
+    // Prevents the same virtual commitments from being generated
+    await setEnclaveBlindIfBlank(true);
+
+    res.sendStatus(200);
+});
+
 const server = http.createServer(app);
 
-console.log("- Warning: currently accepting requests from all origins");
+console.log("\x1b[31m- Warning: currently accepting requests from all origins\x1b[0m");
 const io = new Server<
     ClientToServerEvents,
     ServerToClientEvents,
@@ -675,9 +695,9 @@ async function alertPlayers(
  * to. In recovery mode it is crucial that rand is the same as in the enclave's
  * previous execution, and that different enclave instances are synced on rand.
  */
-async function setEnclaveBlindIfBlank() {
+async function setEnclaveBlindIfBlank(force: boolean) {
     const res = await EnclaveValuesDAWrapper.getEnclaveBlind();
-    if (res === undefined) {
+    if (res === undefined || force) {
         rand = Utils.genRandomInt();
         EnclaveValuesDAWrapper.setEnclaveBlind(rand.toString());
     } else {
@@ -763,7 +783,7 @@ publicClient.watchBlockNumber({
         // Allow client interaction after initial sync with chain
         if (inRecoveryMode) {
             inRecoveryMode = false;
-            console.log('- Initial sync with chain complete')
+            console.log("- Initial sync with chain complete");
         }
     },
 });
@@ -774,9 +794,8 @@ publicClient.watchBlockNumber({
 server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
     fs.writeFileSync(`bin/proving_times_${ENCLAVE_STARTUP_TIMESTAMP}.txt`, "");
 
-    await setEnclaveBlindIfBlank();
-
     b = new Board(terrainUtils);
+    await setEnclaveBlindIfBlank(false);
 
     console.log(
         `- Server running on ${process.env.ENCLAVE_ADDRESS}:${process.env.ENCLAVE_SERVER_PORT}`

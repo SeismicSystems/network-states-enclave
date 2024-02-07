@@ -23,7 +23,7 @@ import {
     Tile,
     Player,
     Location,
-} from "@seismic-systems/ns-fow-game";
+} from "@seismic-sys/ns-fow-game";
 dotenv.config({ path: "../.env" });
 
 const endpoint = `${process.env.ENCLAVE_ADDRESS}:${process.env.ENCLAVE_SERVER_PORT}`;

@@ -1,7 +1,9 @@
-import { Tile } from "@seismic-systems/ns-fow-game";
+import { Tile } from "@seismic-sys/ns-fow-game";
 import {
     addorReplaceDataToDynamoDB,
     getDataFromDynamoDB,
+    deleteDataFromDynamoDB,
+    scanFullTable,
 } from "./dynamodb_setup";
 
 export class ClaimedTileDAWrapper {
@@ -16,6 +18,15 @@ export class ClaimedTileDAWrapper {
         const res = await getDataFromDynamoDB("claimedTiles", { hash });
 
         return res ? Tile.fromJSON(res.tileJSON) : undefined;
+    }
+
+    static async clearClaimedTiles() {
+        const res = await scanFullTable("claimedTiles");
+        console.log("RES: ", res);
+
+        for (let tl of res) {
+            await deleteDataFromDynamoDB("claimedTiles", { hash: tl.hash });
+        }
     }
 }
 
