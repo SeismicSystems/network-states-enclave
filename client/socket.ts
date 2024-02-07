@@ -1,4 +1,4 @@
-import { ProverStatus } from "@seismic-systems/ns-fow-game/Utils";
+import { ProverStatus } from "@seismic-sys/ns-fow-game/Utils";
 
 interface ServerToClientEvents {
     challengeResponse: (a: string) => void;

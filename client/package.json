@@ -10,7 +10,7 @@
         "devC": "pnpm tsx client.ts 0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6 C 4 0"
     },
     "dependencies": {
-        "@seismic-systems/ns-fow-game": "link:../game",
+        "@seismic-sys/ns-fow-game": "link:../game",
         "dotenv": "^16.3.1",
         "socket.io-client": "^4.7.1",
         "viem": "^1.19.11"

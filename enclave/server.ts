@@ -6,7 +6,7 @@ import {
     TerrainUtils,
     Tile,
     Utils,
-} from "@seismic-systems/ns-fow-game";
+} from "@seismic-sys/ns-fow-game";
 import { exec as execCb } from "child_process";
 import dotenv from "dotenv";
 import express from "express";

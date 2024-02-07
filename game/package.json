@@ -1,5 +1,5 @@
 {
-    "name": "@seismic-systems/ns-fow-game",
+    "name": "@seismic-sys/ns-fow-game",
     "type": "module",
     "version": "1.0.5",
     "main": "index.ts",

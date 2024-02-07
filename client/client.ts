@@ -25,7 +25,7 @@ import {
     Tile,
     Utils,
     Location,
-} from "@seismic-systems/ns-fow-game";
+} from "@seismic-sys/ns-fow-game";
 dotenv.config({ path: "../.env" });
 
 /*
