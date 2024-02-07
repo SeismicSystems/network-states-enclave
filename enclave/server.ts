@@ -74,35 +74,40 @@ const redstone = defineChain({
     },
 });
 
-const CHAIN = process.env.CHAIN;
-const chain = CHAIN === "redstone" ? redstone : foundry;
+let chain = process.env.CHAIN === "redstone" ? redstone : foundry;
 
 const worldsTyped = worlds as unknown as {
     [key: number]: { address: string; blockNumber: bigint };
 };
 const worldData = worldsTyped[chain.id];
-const worldAddress = worldData.address as Address;
-const account = privateKeyToAccount(process.env.PRIVATE_KEY as Address);
-const abi = IWorldAbi.abi;
+let worldAddress = worldData.address as Address;
+let abi = IWorldAbi.abi;
 
-const walletClient = createWalletClient({
+const account = privateKeyToAccount(process.env.PRIVATE_KEY as Address);
+
+let walletClient = createWalletClient({
     account,
     chain,
     transport: httpTransport(process.env.RPC_URL),
 });
 
-const publicClient = createPublicClient({
+let publicClient = createPublicClient({
     chain,
     transport: httpTransport(process.env.RPC_URL),
     pollingInterval: 100,
 });
 
-const nStates = getContract({
+let nStates = getContract({
     abi,
     address: worldAddress,
     walletClient,
     publicClient,
 });
+
+/*
+ * Call stopBlockListenerFn to stop listening to new blocks.
+ */
+let stopBlockListenerFn: any;
 
 /*
  * Game parameters
@@ -117,6 +122,7 @@ const START_RESOURCES: number = parseInt(
  */
 const app = express();
 app.use(express.json());
+app.use(express.raw({ limit: "300kb" }));
 
 /*
  * Health status. OK if recoveryMode is finished, Service Unavailable if not.
@@ -145,19 +151,113 @@ app.post("/provingTime", (req, res) => {
  * For dev use only. Remove for production.
  */
 app.post("/reset", async (req, res) => {
-    await ClaimedTileDAWrapper.clearClaimedTiles();
-    b = new Board(terrainUtils);
+    await reset();
 
-    // Force reset enclave blind commitment
-    // Prevents the same virtual commitments from being generated
-    await setEnclaveBlindIfBlank(true);
+    res.sendStatus(200);
+});
+
+/*
+ * For dev use only. Remove for production.
+ */
+app.post("/newWorld", async (req, res) => {
+    stopBlockListenerFn();
+    await reset();
+
+    const buffer = req.body;
+    if (!Buffer.isBuffer(buffer)) {
+        return res
+            .status(400)
+            .send("Invalid request: expected a buffer object.");
+    }
+
+    let parsedData;
+    try {
+        parsedData = JSON.parse(buffer.toString());
+    } catch (error) {
+        return res
+            .status(400)
+            .send("Invalid request: buffer could not be parsed as JSON.");
+    }
+
+    if (!parsedData.chain || typeof parsedData.chain !== "string") {
+        return res
+            .status(400)
+            .send("Invalid request: 'chain' is required and must be a string.");
+    }
+
+    if (
+        !parsedData.worldAddress ||
+        typeof parsedData.worldAddress !== "string"
+    ) {
+        return res
+            .status(400)
+            .send(
+                "Invalid request: 'worldAddress' is required and must be a string."
+            );
+    }
+
+    if (!parsedData.abi || typeof parsedData.abi !== "object") {
+        return res
+            .status(400)
+            .send(
+                "Invalid request: 'abi' is required and must be a JSON object."
+            );
+    }
+
+    chain = parsedData.chain === "redstone" ? redstone : foundry;
+    latestBlockSynced = 0n;
+    worldAddress = parsedData.worldAddress;
+    abi = parsedData.abi;
+
+    // Overwrite worlds.json
+    const worlds = {
+        [chain.id]: {
+            address: worldAddress,
+        },
+    };
+    fs.writeFileSync(
+        "../contracts/worlds.json",
+        JSON.stringify(worlds, null, 2)
+    );
+
+    // Overwrite IWorld.json
+    fs.writeFileSync(
+        "../contracts/out/IWorld.sol/IWorld.json",
+        JSON.stringify({ abi }, null, 2)
+    );
+
+    walletClient = createWalletClient({
+        account,
+        chain,
+        transport: httpTransport(process.env.RPC_URL),
+    });
+
+    publicClient = createPublicClient({
+        chain,
+        transport: httpTransport(process.env.RPC_URL),
+        pollingInterval: 100,
+    });
+
+    nStates = getContract({
+        abi,
+        address: worldAddress,
+        walletClient,
+        publicClient,
+    });
+
+    inRecoveryMode = true;
+
+    // Start block listener again
+    stopBlockListenerFn = startBlockListener();
 
     res.sendStatus(200);
 });
 
 const server = http.createServer(app);
 
-console.log("\x1b[31m- Warning: currently accepting requests from all origins\x1b[0m");
+console.log(
+    "\x1b[31m- Warning: currently accepting requests from all origins\x1b[0m"
+);
 const io = new Server<
     ClientToServerEvents,
     ServerToClientEvents,
@@ -214,6 +314,15 @@ let syncMode: boolean = false;
  * Latest block height players proposed a move.
  */
 let playerLatestBlock = new Map<string, bigint>();
+
+async function reset() {
+    await ClaimedTileDAWrapper.clearClaimedTiles();
+    b = new Board(terrainUtils);
+
+    // Force reset enclave blind commitment
+    // Prevents the same virtual commitments from being generated
+    await setEnclaveBlindIfBlank(true);
+}
 
 /*
  * Callback function that returns a challenge for client to sign with their
@@ -740,53 +849,56 @@ io.on("connection", (socket: Socket) => {
 
 /*
  * Event handler for new blocks. Claimed moves that have been stored for too
- * long should be deleted.
+ * long should be deleted. Returns unwatchBlockListenerFn.
  */
-publicClient.watchBlockNumber({
-    onBlockNumber: async (blockNumber) => {
-        currentBlockHeight = blockNumber;
+function startBlockListener() {
+    return publicClient.watchBlockNumber({
+        onBlockNumber: async (blockNumber) => {
+            console.log("new block: ", blockNumber);
+            currentBlockHeight = blockNumber;
 
-        if (syncMode) {
-            return;
-        }
-        syncMode = true;
-
-        const logs = await publicClient.getLogs({
-            address: worldAddress,
-            events: parseAbi([
-                "event NewSpawnAttempt(address indexed player, uint256 indexed hSpawn, bool indexed success)",
-                "event NewMove(uint256 indexed hUFrom, uint256 indexed hUTo)",
-            ]),
-            strict: true,
-            fromBlock: latestBlockSynced + 1n,
-            toBlock: blockNumber,
-        });
-
-        for (const log of logs) {
-            if (log.eventName === "NewSpawnAttempt") {
-                await onSpawnAttempt(
-                    log.args.player,
-                    log.args.hSpawn.toString(),
-                    log.args.success
-                );
-            } else if (log.eventName === "NewMove") {
-                await onMoveFinalize(
-                    log.args.hUFrom.toString(),
-                    log.args.hUTo.toString()
-                );
+            if (syncMode) {
+                return;
             }
-        }
+            syncMode = true;
 
-        syncMode = false;
-        latestBlockSynced = blockNumber;
+            const logs = await publicClient.getLogs({
+                address: worldAddress,
+                events: parseAbi([
+                    "event NewSpawnAttempt(address indexed player, uint256 indexed hSpawn, bool indexed success)",
+                    "event NewMove(uint256 indexed hUFrom, uint256 indexed hUTo)",
+                ]),
+                strict: true,
+                fromBlock: latestBlockSynced + 1n,
+                toBlock: blockNumber,
+            });
 
-        // Allow client interaction after initial sync with chain
-        if (inRecoveryMode) {
-            inRecoveryMode = false;
-            console.log("- Initial sync with chain complete");
-        }
-    },
-});
+            for (const log of logs) {
+                if (log.eventName === "NewSpawnAttempt") {
+                    await onSpawnAttempt(
+                        log.args.player,
+                        log.args.hSpawn.toString(),
+                        log.args.success
+                    );
+                } else if (log.eventName === "NewMove") {
+                    await onMoveFinalize(
+                        log.args.hUFrom.toString(),
+                        log.args.hUTo.toString()
+                    );
+                }
+            }
+
+            syncMode = false;
+            latestBlockSynced = blockNumber;
+
+            // Allow client interaction after initial sync with chain
+            if (inRecoveryMode) {
+                inRecoveryMode = false;
+                console.log("- Initial sync with chain complete");
+            }
+        },
+    });
+}
 
 /*
  * Start server & initialize game.
@@ -800,4 +912,6 @@ server.listen(process.env.ENCLAVE_SERVER_PORT, async () => {
     console.log(
         `- Server running on ${process.env.ENCLAVE_ADDRESS}:${process.env.ENCLAVE_SERVER_PORT}`
     );
+
+    stopBlockListenerFn = startBlockListener();
 });
