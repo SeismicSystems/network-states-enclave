@@ -7,7 +7,6 @@ stack_name = "seismic-network-states"
 s3_bucket = "darshan-cloudformation-templates"
 s3_prefix = "NetworkStates"
 region = "us-east-1"
-profile = "default"
 confirm_changeset = false
 capabilities = "CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND"
 parameter_overrides = [
