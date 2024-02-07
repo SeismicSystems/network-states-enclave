@@ -9,7 +9,7 @@
     "build:abi-ts": "mud abi-ts && prettier --write '**/*.abi.json.d.ts'",
     "build:mud": "rimraf src/codegen && mud tablegen && mud worldgen",
     "deploy:local": "cp ../.env .env && pnpm run build && mud deploy",
-    "deploy:testnet": "cp ../.env .env && pnpm run build && mud deploy --profile=lattice-testnet --priorityFeeMultiplier 10",
+    "deploy:remote": "cp ../.env .env && source .env && pnpm run build && mud deploy --rpc $RPC_URL",
     "deploy:redstone": "cp ../.env .env && pnpm run build && mud deploy --profile=redstone",
     "dev": "cp ../.env .env && pnpm mud dev-contracts",
     "faucet": "DEBUG=mud:faucet pnpm faucet-server",
