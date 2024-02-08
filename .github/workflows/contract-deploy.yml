@@ -70,14 +70,6 @@ jobs:
 
     - name: save it to s3 for enclave
       run: |
-        aws s3 cp circuits s3://test-circuits/contract${{ steps.image-version.outputs.tag }}/circuits --recursive
-        aws s3 cp contracts s3://test-circuits/contract${{ steps.image-version.outputs.tag }}/contracts --recursive
-
-    - name: save it to s3 for client
-      run: |
-        aws s3 cp circuits/move/move.wasm s3://dev-client-contrcts/circuits/move/move.wasm
-        aws s3 cp circuits/move/move.zkey s3://dev-client-contrcts/circuits/move/move.zkey 
-        aws s3 cp circuits/spawn/spawn.wasm s3://dev-client-contrcts/circuits/spawn/spawn.wasm 
-        aws s3 cp circuits/spawn/spawn.zkey s3://dev-client-contrcts/circuits/spawn/spawn.zkey 
-        aws s3 cp contracts/worlds.json s3://dev-client-contrcts/contracts/worlds.json 
-        aws s3 cp contracts/out/IWorld.sol/IWorld.json s3://dev-client-contrcts/contracts/out/IWorld.sol/IWorld.json
+        aws s3 cp circuits s3://test-circuits/contract-redstone${{ steps.image-version.outputs.tag }}/circuits --recursive
+        aws s3 cp contracts s3://test-circuits/contract-redstone${{ steps.image-version.outputs.tag }}/contracts --recursive
+        aws s3 cp .env s3://test-circuits/contract-redstone${{ steps.image-version.outputs.tag }}/.env
