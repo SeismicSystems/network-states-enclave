@@ -1,0 +1,83 @@
+name: Circuit and contract deployment to dev
+
+on:
+  push:
+    tags:
+      - 'c*'  # Match any tag starting with 'c'
+#  create:
+#    branches:
+#      - 'release/*'  # Trigger on creation of release branches
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/c') || startsWith(github.ref, 'refs/heads/release/')  # Trigger for tags or release branches
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 21  # Adjust as needed
+        cache: "pnpm"
+    - uses: pnpm/action-setup@v3
+      name: Install pnpm
+      with:
+        version: 8
+
+    - name: Install Foundry
+      uses: foundry-rs/foundry-toolchain@v1
+
+    - name: Configure AWS credentials from Test account
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: arn:aws:iam::411486418994:role/github_action_role # shift this to environment variable
+        aws-region: us-east-1
+        role-session-name: networkstates-contract-deployment
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Get image version by removing prefix "c" from git-tag
+      id: image-version
+      run: |
+        VERSION=$(git describe --tags --abbrev=0)
+        echo "tag=${VERSION#c}" >> $GITHUB_OUTPUT
+
+    - name: Build circuit and contract file
+      run: |
+        aws --region=us-east-1 ssm get-parameter --name "environment-variable" --output text --query Parameter.Value > .env
+        cd circuits
+        yarn
+        mkdir artifacts
+        cd artifacts
+        wget https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_17.ptau
+        cd ..
+        yarn dev
+        rm -rf node_modules
+        rm -rf artifacts
+        cd ..
+        cd contracts
+        pnpm install
+        pnpm deploy:redstone
+        rm -rf node_modules
+        cd ..
+
+    - name: save it to s3 for enclave
+      run: |
+        aws s3 cp circuits s3://test-circuits/contract${{ steps.image-version.outputs.tag }}/circuits --recursive
+        aws s3 cp contracts s3://test-circuits/contract${{ steps.image-version.outputs.tag }}/contracts --recursive
+
+    - name: save it to s3 for client
+      run: |
+        aws s3 cp circuits/move/move.wasm s3://dev-client-contrcts/circuits/move/move.wasm
+        aws s3 cp circuits/move/move.zkey s3://dev-client-contrcts/circuits/move/move.zkey 
+        aws s3 cp circuits/spawn/spawn.wasm s3://dev-client-contrcts/circuits/spawn/spawn.wasm 
+        aws s3 cp circuits/spawn/spawn.zkey s3://dev-client-contrcts/circuits/spawn/spawn.zkey 
+        aws s3 cp contracts/worlds.json s3://dev-client-contrcts/contracts/worlds.json 
+        aws s3 cp contracts/out/IWorld.sol/IWorld.json s3://dev-client-contrcts/contracts/out/IWorld.sol/IWorld.json
