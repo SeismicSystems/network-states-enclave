@@ -4,7 +4,9 @@ on:
   push:
     tags:
       - c**  # Match any tag starting with 'c'
-
+#  create:
+#    branches:
+#      - 'release/*'  # Trigger on creation of release branches
 
 jobs:
   deploy:
