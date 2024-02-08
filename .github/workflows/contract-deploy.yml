@@ -3,10 +3,8 @@ name: Circuit and contract deployment to dev
 on:
   push:
     tags:
-      - 'c*'  # Match any tag starting with 'c'
-#  create:
-#    branches:
-#      - 'release/*'  # Trigger on creation of release branches
+      - c**  # Match any tag starting with 'c'
+
 
 jobs:
   deploy:
@@ -49,7 +47,7 @@ jobs:
         VERSION=$(git describe --tags --abbrev=0)
         echo "tag=${VERSION#c}" >> $GITHUB_OUTPUT
 
-    - name: Build circuit and contract file
+    - name: Build circuit
       run: |
         aws --region=us-east-1 ssm get-parameter --name "environment-variable" --output text --query Parameter.Value > .env
         cd circuits
@@ -62,6 +60,8 @@ jobs:
         rm -rf node_modules
         rm -rf artifacts
         cd ..
+    - name: Build contract
+      run: |
         cd contracts
         pnpm install
         pnpm deploy:redstone

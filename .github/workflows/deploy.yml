@@ -1,12 +1,9 @@
-name: Deploy to Production
+name: Deploy to enclave to dev
 
 on:
   push:
     tags:
-      - 'v*'  # Match any tag starting with 'v'
-#  create:
-#    branches:
-#      - 'release/*'  # Trigger on creation of release branches
+      - v**  # Match any tag starting with 'v'
 
 jobs:
   deploy:
