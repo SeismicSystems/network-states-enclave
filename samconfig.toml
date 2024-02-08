@@ -1,0 +1,24 @@
+version=0.1
+
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "seismic-network-states"
+s3_bucket = "darshan-cloudformation-templates"
+s3_prefix = "NetworkStates"
+region = "us-east-1"
+confirm_changeset = false
+capabilities = "CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND"
+parameter_overrides = [
+    "NatGatwayID=nat-090177b45d6568ea9",#us-east-1a
+    "VPCId=vpc-0ffd167d2177f7b54" ,
+    "LoadBalancerSSLCert=arn:aws:acm:us-east-1:411486418994:certificate/d5f69017-1dfd-4716-a670-3f410a960a57",
+    "MainApplicationName=NetworkStates",
+    "EnvironParameter=dev",
+    "TeamName=Seismic",
+    "EC2InstanceType=c6a.large",
+    "EC2InstanceKeyPairName=Ec2instanceKeyPair",
+    "DynamoDBTableName=claimedTiles",
+    "EnclaveImageVersion={{IMAGE_VERSION}}"
+]
+

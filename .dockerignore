@@ -19,6 +19,7 @@
 **/*.*proj.user
 **/*.dbmdl
 **/*.jfm
+**/*.pem
 **/charts
 **/docker-compose*
 **/compose*

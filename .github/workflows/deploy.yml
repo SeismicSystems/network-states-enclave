@@ -1,0 +1,60 @@
+name: Deploy to enclave to dev
+
+on:
+  push:
+    tags:
+      - v**  # Match any tag starting with 'v'
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') || startsWith(github.ref, 'refs/heads/release/')  # Trigger for tags or release branches
+    environment: development
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials from Test account
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: arn:aws:iam::411486418994:role/github_action_role # shift this to environment variable
+        aws-region: us-east-1
+        role-session-name: networkstates-deployment
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Get image version by removing prefix "v" from git-tag
+      id: image-version
+      run: |
+        VERSION=$(git describe --tags --abbrev=0)
+        echo "tag=${VERSION#v}" >> $GITHUB_OUTPUT
+
+    - name: Make enclave image and deploy it to ECR
+      run: |
+        rm -rf circuits
+        rm -rf contracts
+        aws s3 cp s3://test-circuits/${{ vars.CONTRACTS }} . --recursive
+        chmod +x circuits/virtual/virtual-prover
+        chmod +x circuits/virtual/virtual-witness-generator
+        docker build -t ${{ steps.login-ecr.outputs.registry }}/test-enclave:${{ steps.image-version.outputs.tag }} --target enclave-deploy .
+        docker push ${{ steps.login-ecr.outputs.registry }}/test-enclave:${{ steps.image-version.outputs.tag }}
+
+    - name: save it to s3 for client
+      run: |
+        aws s3 cp circuits/move/move.wasm s3://dev-client-contrcts/circuits/move/move.wasm
+        aws s3 cp circuits/move/move.zkey s3://dev-client-contrcts/circuits/move/move.zkey 
+        aws s3 cp circuits/spawn/spawn.wasm s3://dev-client-contrcts/circuits/spawn/spawn.wasm 
+        aws s3 cp circuits/spawn/spawn.zkey s3://dev-client-contrcts/circuits/spawn/spawn.zkey 
+        aws s3 cp contracts/worlds.json s3://dev-client-contrcts/contracts/worlds.json 
+        aws s3 cp contracts/out/IWorld.sol/IWorld.json s3://dev-client-contrcts/contracts/out/IWorld.sol/IWorld.json
+
+    - name: Deploy the infrastructure
+      run: | 
+        sed -i "s/{{IMAGE_VERSION}}/${{ steps.image-version.outputs.tag }}/" samconfig.toml
+        sam deploy --config-file ./samconfig.toml --config-env default
