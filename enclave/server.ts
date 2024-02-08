@@ -319,6 +319,14 @@ async function reset() {
     await ClaimedTileDAWrapper.clearClaimedTiles();
     b = new Board(terrainUtils);
 
+    socketChallenges.forEach((_, socketId) => {
+        const socket = io.sockets.sockets.get(socketId);
+        socket?.disconnect(true);
+    });
+
+    idToAddress = new Map<string, string>();
+    addressToId = new Map<string, string>();
+
     // Force reset enclave blind commitment
     // Prevents the same virtual commitments from being generated
     await setEnclaveBlindIfBlank(true);
