@@ -339,7 +339,7 @@ Resources:
       TargetTrackingConfiguration:
         PredefinedMetricSpecification:
           PredefinedMetricType: ASGAverageCPUUtilization
-        TargetValue: 80
+        TargetValue: 60
 
 #  ScaleUpCloudWatchAlarm:
 #    Type: AWS::CloudWatch::Alarm
@@ -378,7 +378,6 @@ Resources:
 #      ComparisonOperator: LessThanThreshold
 #      MetricName: CPUUtilization
 
-  # IAM role that executes ECS actions such as pulling the image and storing the application logs in cloudwatch
 
 
   LoadBalancer:
