@@ -9,8 +9,8 @@ jobs:
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
-    environment: development
     if: startsWith(github.ref, 'refs/tags/v') || startsWith(github.ref, 'refs/heads/release/')  # Trigger for tags or release branches
+    environment: development
     permissions:
       id-token: write
       contents: read
