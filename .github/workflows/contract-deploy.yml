@@ -23,7 +23,7 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: 21  # Adjust as needed
-        cache: "pnpm"
+#        cache: "pnpm"
     - uses: pnpm/action-setup@v3
       name: Install pnpm
       with:
